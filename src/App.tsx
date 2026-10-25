@@ -23,6 +23,9 @@ export default function App() {
   function remove(id: number) {
     setTodos(todos.filter(t => t.id !== id))
   }
+  function clearall() {
+    setTodos([])
+  }
   function toggle(id: number) {
     setTodos(todos.map(t => t.id === id ? { ...t, done: !t.done } : t))
   }
@@ -46,6 +49,7 @@ export default function App() {
             <span style={{ textDecoration: t.done ? 'line-through' : 'none', opacity: t.done ? 0.4 : 1 }}>{t.text}</span>
             <button onClick={() => remove(t.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#1a1718ff' }}>删除</button>
             <button onClick={() => toggle(t.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#812278ff' }}>{t.done ? '撤销' : '完成'}</button>
+            <button onClick={clearall} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#812278ff' }}>清除所有</button>
           </li>
         ))}
       </ul>
