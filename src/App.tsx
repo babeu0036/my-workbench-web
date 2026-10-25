@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-type Todo = { id: number; text: string }
+type Todo = { id: number; text: string; done?: boolean }
 
 export default function App() {
   const [text, setText] = useState('')
@@ -23,10 +23,13 @@ export default function App() {
   function remove(id: number) {
     setTodos(todos.filter(t => t.id !== id))
   }
+  function toggle(id: number) {
+    setTodos(todos.map(t => t.id === id ? { ...t, done: !t.done } : t))
+  }
 
   return (
     <div style={{ maxWidth: 480, margin: '40px auto', fontFamily: 'system-ui' }}>
-      <h1>我的待办清单</h1>
+      <h1>我的工作台</h1>
       <div style={{ display: 'flex', gap: 8 }}>
         <input
           value={text}
@@ -40,8 +43,9 @@ export default function App() {
       <ul style={{ padding: 0, listStyle: 'none', marginTop: 16 }}>
         {todos.map(t => (
           <li key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-            <span>{t.text}</span>
-            <button onClick={() => remove(t.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#e11d48' }}>删除</button>
+            <span style={{ textDecoration: t.done ? 'line-through' : 'none', opacity: t.done ? 0.4 : 1 }}>{t.text}</span>
+            <button onClick={() => remove(t.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#1a1718ff' }}>删除</button>
+            <button onClick={() => toggle(t.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#812278ff' }}>{t.done ? '撤销' : '完成'}</button>
           </li>
         ))}
       </ul>
