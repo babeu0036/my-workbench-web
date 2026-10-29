@@ -5,6 +5,7 @@ import type { Todo } from './types'
 export const KEYS = {
   todos: 'workbench.todos',
   deadlines: 'workbench.deadlines',
+  notes: 'workbench.notes',
 } as const
 
 /** 读一个 key，读不出来（没有 / 坏了）就返回兜底值 */

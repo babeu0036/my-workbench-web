@@ -1,13 +1,14 @@
-import { daysUntil, daysLabel, formatDate, todayLabel } from '../lib/date'
-import type { Deadline, TabKey, Todo } from '../lib/types'
+import { daysUntil, daysLabel, formatDate, formatUpdatedAt, todayLabel } from '../lib/date'
+import type { Deadline, Note, TabKey, Todo } from '../lib/types'
 
 type Props = {
   todos: Todo[]
   deadlines: Deadline[]
+  notes: Note[]
   onGo: (tab: TabKey) => void
 }
 
-export default function Home({ todos, deadlines, onGo }: Props) {
+export default function Home({ todos, deadlines, notes, onGo }: Props) {
   const pending = todos.filter(t => !t.done).length
   const doneCount = todos.length - pending
 
@@ -16,6 +17,9 @@ export default function Home({ todos, deadlines, onGo }: Props) {
     .map(item => ({ ...item, days: daysUntil(item.date) }))
     .filter(item => !Number.isNaN(item.days) && item.days >= 0)
     .sort((a, b) => a.days - b.days)[0]
+
+  // 最近改过的那条笔记
+  const latestNote = [...notes].sort((a, b) => b.updatedAt - a.updatedAt)[0]
 
   return (
     <div className="page">
@@ -65,6 +69,28 @@ export default function Home({ todos, deadlines, onGo }: Props) {
           <span className="card__empty">
             {deadlines.length === 0 ? '还没有比赛，去加一个' : '暂时没有进行中的比赛'}
           </span>
+        )}
+      </button>
+
+      <button type="button" className="card card--link" onClick={() => onGo('notes')}>
+        <span className="card__head">
+          <span className="card__title">笔记</span>
+          <span className="card__arrow" aria-hidden="true">
+            →
+          </span>
+        </span>
+
+        {notes.length === 0 ? (
+          <span className="card__empty">还没有笔记，去写一条</span>
+        ) : (
+          <>
+            <span className="card__main">
+              笔记 <strong>{notes.length}</strong> 条
+            </span>
+            <span className="card__sub">
+              最近更新 {latestNote ? formatUpdatedAt(latestNote.updatedAt) : ''}
+            </span>
+          </>
         )}
       </button>
     </div>

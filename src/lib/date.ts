@@ -50,3 +50,29 @@ export function todayLabel(): string {
   const now = new Date()
   return `${now.getMonth() + 1}月${now.getDate()}日 ${WEEKDAYS[now.getDay()]}`
 }
+
+function pad(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+/**
+ * 笔记列表上的更新时间：
+ * 今天 21:04 / 昨天 09:30 / 10-26 21:04 / 2025-12-01
+ */
+export function formatUpdatedAt(ts: number): string {
+  const d = new Date(ts)
+  if (Number.isNaN(d.getTime())) return ''
+
+  const now = new Date()
+  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+
+  const msPerDay = 24 * 60 * 60 * 1000
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const thatStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const dayDiff = Math.round((todayStart - thatStart) / msPerDay)
+
+  if (dayDiff === 0) return `今天 ${hm}`
+  if (dayDiff === 1) return `昨天 ${hm}`
+  if (d.getFullYear() === now.getFullYear()) return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${hm}`
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}

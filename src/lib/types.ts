@@ -11,4 +11,11 @@ export type Deadline = {
   date: string
 }
 
-export type TabKey = 'home' | 'todo' | 'deadlines'
+export type Note = {
+  id: number
+  content: string
+  /** 最近一次保存的时间戳，输入过程中不变 */
+  updatedAt: number
+}
+
+export type TabKey = 'home' | 'todo' | 'deadlines' | 'notes'

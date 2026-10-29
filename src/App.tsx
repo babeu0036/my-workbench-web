@@ -3,8 +3,9 @@ import TabBar from './components/TabBar'
 import Home from './pages/Home'
 import TodoPage from './pages/Todo'
 import Deadlines from './pages/Deadlines'
+import NotesPage from './pages/Notes'
 import { KEYS, useStoredState } from './lib/storage'
-import type { Deadline, TabKey, Todo } from './lib/types'
+import type { Deadline, Note, TabKey, Todo } from './lib/types'
 
 export default function App() {
   const [tab, setTab] = useState<TabKey>('home')
@@ -12,6 +13,7 @@ export default function App() {
   // 数据放在最外层，首页要读、子页面要改，都从这里传
   const [todos, setTodos] = useStoredState<Todo[]>(KEYS.todos, [])
   const [deadlines, setDeadlines] = useStoredState<Deadline[]>(KEYS.deadlines, [])
+  const [notes, setNotes] = useStoredState<Note[]>(KEYS.notes, [])
 
   const pendingCount = todos.filter(t => !t.done).length
 
@@ -24,9 +26,12 @@ export default function App() {
       <TabBar active={tab} onChange={setTab} todoBadge={pendingCount} />
 
       <main className="app__main">
-        {tab === 'home' && <Home todos={todos} deadlines={deadlines} onGo={setTab} />}
+        {tab === 'home' && (
+          <Home todos={todos} deadlines={deadlines} notes={notes} onGo={setTab} />
+        )}
         {tab === 'todo' && <TodoPage todos={todos} setTodos={setTodos} />}
         {tab === 'deadlines' && <Deadlines deadlines={deadlines} setDeadlines={setDeadlines} />}
+        {tab === 'notes' && <NotesPage notes={notes} setNotes={setNotes} />}
       </main>
     </div>
   )

@@ -11,6 +11,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'home', label: '首页' },
   { key: 'todo', label: '待办' },
   { key: 'deadlines', label: '比赛' },
+  { key: 'notes', label: '笔记' },
 ]
 
 export default function TabBar({ active, onChange, todoBadge = 0 }: Props) {

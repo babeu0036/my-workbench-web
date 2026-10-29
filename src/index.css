@@ -87,7 +87,7 @@ input {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   padding: 4px;
   background: var(--surface);
@@ -320,6 +320,24 @@ input {
   color: var(--danger);
 }
 
+.btn--danger-solid {
+  background: var(--danger);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn--danger-solid:hover {
+  opacity: 0.9;
+}
+
+/* 两步确认：点删除后原地展开「确定 / 取消」 */
+.confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
 .btn:disabled {
   opacity: 0.35;
   cursor: default;
@@ -474,10 +492,124 @@ input {
   font-size: 13px;
 }
 
+.empty-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 2px;
+}
+
+/* ---------- 笔记 ---------- */
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.note:last-child {
+  border-bottom: 0;
+}
+
+.note__open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.note__text {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+.note__time {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.note__open:hover .note__text {
+  color: var(--accent);
+}
+
+.editor__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* 只对顶栏自己的按钮去掉左边距，别影响展开后的「确定/取消」 */
+.editor__bar > .btn {
+  margin-left: -10px;
+  margin-right: 0;
+}
+
+/* 编辑页底部的删除区：整行大按钮，手机也好点 */
+.editor__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.editor__actions .btn {
+  flex: 1;
+  padding-block: 12px;
+}
+
+.editor__hint {
+  flex: 1;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.editor__textarea {
+  width: 100%;
+  min-height: 56svh;
+  padding: 14px;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  outline: none;
+  resize: vertical;
+}
+
+.editor__textarea::placeholder {
+  color: var(--muted);
+}
+
+.editor__textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
 @media (max-width: 380px) {
   .btn {
     padding: 8px 10px;
     font-size: 13px;
+  }
+
+  .tab {
+    padding: 9px 2px;
+    font-size: 14px;
+    gap: 4px;
   }
 
   .row {
