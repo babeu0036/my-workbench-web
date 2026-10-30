@@ -51,6 +51,28 @@ export function todayLabel(): string {
   return `${now.getMonth() + 1}月${now.getDate()}日 ${WEEKDAYS[now.getDay()]}`
 }
 
+/**
+ * 本周一 00:00 的时间戳（一周从周一算起，跟国内习惯一致）。
+ * 用年月日重新构造而不是减毫秒，跨夏令时也不会偏一小时。
+ */
+export function weekStart(now: number = Date.now()): number {
+  const d = new Date(now)
+  const offset = (d.getDay() + 6) % 7 // getDay 里周日是 0，换算成「距周一几天」
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - offset).getTime()
+}
+
+/** 本周日 23:59:59.999 之后的那一刻，也就是下周一 00:00（左闭右开） */
+export function weekEnd(now: number = Date.now()): number {
+  const d = new Date(weekStart(now))
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7).getTime()
+}
+
+/** 这个时间戳是不是落在本周（周一 00:00 起，到下周一 00:00 止） */
+export function isThisWeek(ts: number | undefined, now: number = Date.now()): boolean {
+  if (typeof ts !== 'number' || Number.isNaN(ts)) return false
+  return ts >= weekStart(now) && ts < weekEnd(now)
+}
+
 function pad(n: number): string {
   return String(n).padStart(2, '0')
 }

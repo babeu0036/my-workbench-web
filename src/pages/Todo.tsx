@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
+import { UNCATEGORIZED_ID, addTodo, clearDone, removeTodo, toggleTodo } from '../lib/todos'
 import type { Todo } from '../lib/types'
 
 type Props = {
@@ -13,23 +14,24 @@ export default function TodoPage({ todos, setTodos }: Props) {
   const total = todos.length
   const doneCount = todos.filter(t => t.done).length
 
+  // 增删改都走 lib/todos，保证 subjectId / createdAt / doneAt 一个不漏
   function add() {
     const value = text.trim()
     if (!value) return
-    setTodos(list => [...list, { id: Date.now(), text: value, done: false }])
+    setTodos(list => addTodo(list, value, UNCATEGORIZED_ID))
     setText('')
   }
 
   function toggle(id: number) {
-    setTodos(list => list.map(t => (t.id === id ? { ...t, done: !t.done } : t)))
+    setTodos(list => toggleTodo(list, id))
   }
 
   function remove(id: number) {
-    setTodos(list => list.filter(t => t.id !== id))
+    setTodos(list => removeTodo(list, id))
   }
 
-  function clearDone() {
-    setTodos(list => list.filter(t => !t.done))
+  function clearAllDone() {
+    setTodos(list => clearDone(list))
   }
 
   return (
@@ -87,7 +89,7 @@ export default function TodoPage({ todos, setTodos }: Props) {
         <button
           type="button"
           className="btn btn--ghost"
-          onClick={clearDone}
+          onClick={clearAllDone}
           disabled={doneCount === 0}
         >
           清空已完成
