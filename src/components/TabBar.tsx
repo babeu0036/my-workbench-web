@@ -3,15 +3,15 @@ import type { TabKey } from '../lib/types'
 type Props = {
   active: TabKey
   onChange: (tab: TabKey) => void
-  /** 待办上显示未完成条数，0 就不显示 */
+  /** 计划上显示未完成待办条数，0 就不显示 */
   todoBadge?: number
 }
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'home', label: '首页' },
-  { key: 'todo', label: '待办' },
-  { key: 'deadlines', label: '比赛' },
-  { key: 'notes', label: '笔记' },
+  { key: 'today', label: '今日' },
+  { key: 'plan', label: '计划' },
+  { key: 'focus', label: '专注' },
+  { key: 'profile', label: '我的' },
 ]
 
 export default function TabBar({ active, onChange, todoBadge = 0 }: Props) {
@@ -29,7 +29,7 @@ export default function TabBar({ active, onChange, todoBadge = 0 }: Props) {
             onClick={() => onChange(tab.key)}
           >
             {tab.label}
-            {tab.key === 'todo' && todoBadge > 0 && (
+            {tab.key === 'plan' && todoBadge > 0 && (
               <span className="tab__badge">{todoBadge}</span>
             )}
           </button>

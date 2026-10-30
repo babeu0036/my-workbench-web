@@ -18,4 +18,4 @@ export type Note = {
   updatedAt: number
 }
 
-export type TabKey = 'home' | 'todo' | 'deadlines' | 'notes'
+export type TabKey = 'today' | 'plan' | 'focus' | 'profile'
