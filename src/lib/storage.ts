@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { normalizeTodos } from './todos'
 import type { Todo } from './types'
 
-/** localStorage 的三个 key，分开存，互不影响 */
+/** localStorage 的几个 key，分开存，互不影响 */
 export const KEYS = {
   todos: 'workbench.todos',
   deadlines: 'workbench.deadlines',
   notes: 'workbench.notes',
+  /** 首页添加面板上次选的科目，只有一个字符串 */
+  lastSubject: 'workbench.lastSubject',
 } as const
 
 /** 读一个 key，读不出来（没有 / 坏了）就返回兜底值 */

@@ -85,7 +85,9 @@ export default function App() {
         </header>
 
         <main className="app__main">
-          {route.page === 'home' && <Home todos={todos} setTodos={setTodos} />}
+          {route.page === 'home' && (
+            <Home todos={todos} setTodos={setTodos} subjects={subjects} />
+          )}
 
           {route.page === 'plan' && (
             <Plan

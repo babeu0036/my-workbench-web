@@ -409,6 +409,165 @@ input {
   box-shadow: var(--shadow);
 }
 
+/* ---------- 右下角「+」与添加面板 ---------- */
+
+.fab {
+  position: fixed;
+  right: 18px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 20px -6px rgba(124, 58, 237, 0.55), 0 2px 6px rgba(20, 18, 28, 0.12);
+  transition: transform 0.12s ease, opacity 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fab:hover {
+  opacity: 0.92;
+}
+
+.fab:active {
+  transform: scale(0.94);
+}
+
+.fab svg {
+  width: 22px;
+  height: 22px;
+}
+
+.sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 18, 28, 0.38);
+}
+
+.sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+  padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -8px 32px -12px rgba(20, 18, 28, 0.32);
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sheet__title {
+  color: var(--text-h);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sheet__close {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sheet__close:hover {
+  background: var(--surface-2);
+  color: var(--text-h);
+}
+
+.sheet__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.choice:hover {
+  color: var(--text-h);
+  border-color: var(--muted);
+}
+
+.choice--on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sheet__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sheet__submit {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 15px;
+}
+
+@media (min-width: 900px) {
+  .sheet-layer {
+    align-items: center;
+  }
+
+  .sheet {
+    border-radius: 18px;
+    padding-bottom: 16px;
+  }
+
+  .fab {
+    /* 桌面端内容区是居中的 720px，让 + 贴着内容右边而不是屏幕右边 */
+    right: max(18px, calc((100vw - 220px - 720px) / 2 + 18px));
+  }
+}
+
+/* 页面底部有 + 按钮时，给内容留出位置，别让最后一行被压住 */
+.page--fab {
+  padding-bottom: 76px;
+}
+
 .card {
   display: flex;
   flex-direction: column;
