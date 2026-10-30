@@ -1,62 +1,51 @@
-import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import TodoPage from './Todo'
 import Deadlines from './Deadlines'
-import NotesPage from './Notes'
-import type { Deadline, Note, Todo } from '../lib/types'
+import type { Deadline, PlanSegment } from '../lib/types'
 
-/** 三个分段的顺序，第一项也是默认打开的那段 */
-const SEGMENTS = [
-  { key: 'todo', label: '待办' },
+const SEGMENTS: { key: PlanSegment; label: string }[] = [
+  { key: 'week', label: '本周' },
   { key: 'deadlines', label: '比赛' },
-  { key: 'notes', label: '笔记' },
-] as const
-
-type SegmentKey = (typeof SEGMENTS)[number]['key']
+]
 
 type Props = {
-  todos: Todo[]
-  setTodos: Dispatch<SetStateAction<Todo[]>>
+  seg: PlanSegment
+  onSegChange: (seg: PlanSegment) => void
   deadlines: Deadline[]
   setDeadlines: Dispatch<SetStateAction<Deadline[]>>
-  notes: Note[]
-  setNotes: Dispatch<SetStateAction<Note[]>>
 }
 
 /**
- * 计划页：待办 / 比赛 / 笔记合并成三个分段。
- * 三个子页面组件原样复用，只在此处透传数据；segment 留在组件内，
- * 切走 Tab 时卸载即重置回「待办」。
+ * 计划页两个分段：本周 / 比赛。
+ * 今日任务只在首页，这里不重复放一份；本周是「按周看」的视角。
+ * 「本周」的课程表和本周任务在第 4 步接进来，比赛直接复用原来的组件。
  */
-export default function Plan({
-  todos,
-  setTodos,
-  deadlines,
-  setDeadlines,
-  notes,
-  setNotes,
-}: Props) {
-  const [segment, setSegment] = useState<SegmentKey>('todo')
-
+export default function Plan({ seg, onSegChange, deadlines, setDeadlines }: Props) {
   return (
     <div className="plan">
+      <h2 className="page__title">计划</h2>
+
       <div className="seg" role="group" aria-label="计划分类">
-        {SEGMENTS.map(seg => (
+        {SEGMENTS.map(item => (
           <button
-            key={seg.key}
+            key={item.key}
             type="button"
-            aria-pressed={seg.key === segment}
-            className={seg.key === segment ? 'seg__btn seg__btn--active' : 'seg__btn'}
-            onClick={() => setSegment(seg.key)}
+            aria-pressed={item.key === seg}
+            className={item.key === seg ? 'seg__btn seg__btn--active' : 'seg__btn'}
+            onClick={() => onSegChange(item.key)}
           >
-            {seg.label}
+            {item.label}
           </button>
         ))}
       </div>
 
-      {segment === 'todo' && <TodoPage todos={todos} setTodos={setTodos} />}
-      {segment === 'deadlines' && <Deadlines deadlines={deadlines} setDeadlines={setDeadlines} />}
-      {segment === 'notes' && <NotesPage notes={notes} setNotes={setNotes} />}
+      {seg === 'week' ? (
+        <div className="empty-block">
+          <p className="empty">周一到周日的课程表在第 4 步接进来</p>
+          <p className="meta">本周任务和「添加课程」也在那一步一起做</p>
+        </div>
+      ) : (
+        <Deadlines deadlines={deadlines} setDeadlines={setDeadlines} />
+      )}
     </div>
   )
 }

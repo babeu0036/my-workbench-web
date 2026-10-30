@@ -18,4 +18,19 @@ export type Note = {
   updatedAt: number
 }
 
-export type TabKey = 'today' | 'plan' | 'focus' | 'profile'
+export type Subject = {
+  id: string
+  name: string
+}
+
+export type PlanSegment = 'week' | 'deadlines'
+export type SubjectSegment = 'tasks' | 'mistakes'
+export type ReviewBlock = 'data' | 'goal'
+
+/** 侧边栏能去的地方，一个对象就是当前所在位置 */
+export type Route =
+  | { page: 'home' }
+  | { page: 'plan'; seg: PlanSegment }
+  | { page: 'subject'; id: string; seg: SubjectSegment }
+  | { page: 'review'; block: ReviewBlock }
+  | { page: 'settings' }
