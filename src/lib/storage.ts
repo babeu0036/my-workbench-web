@@ -7,6 +7,7 @@ export const KEYS = {
   todos: 'workbench.todos',
   deadlines: 'workbench.deadlines',
   notes: 'workbench.notes',
+  goals: 'workbench.goals',
   /** 首页添加面板上次选的科目，只有一个字符串 */
   lastSubject: 'workbench.lastSubject',
 } as const

@@ -98,3 +98,35 @@ export function formatUpdatedAt(ts: number): string {
   if (d.getFullYear() === now.getFullYear()) return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${hm}`
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
+
+/** 本地日期键 2026-10-26。活跃天数和连续天数都按它去重 */
+export function dayKey(ts: number = Date.now()): string {
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/**
+ * 一周的标识 = 当周周一那天的日期键（如 2026-10-26）。
+ * 固定 10 个字符，所以字符串比较就等于时间先后，不用再转回时间戳。
+ */
+export function weekKeyOf(ts: number = Date.now()): string {
+  return dayKey(weekStart(ts))
+}
+
+/** 从某个 weekKey 往前 / 往后挪几周，负数往前 */
+export function weekKeyOffset(key: string, weeks: number): string {
+  const { y, m, d } = parseDate(key)
+  if (!y || !m || !d) return key
+  // 用年月日重新构造：跨月、跨年、夏令时都不会偏
+  return dayKey(new Date(y, m - 1, d + weeks * 7).getTime())
+}
+
+/** 一周写成 10.26 - 11.01，让人看得出是哪一周 */
+export function formatWeekRange(key: string): string {
+  const { y, m, d } = parseDate(key)
+  if (!y || !m || !d) return key
+  const start = new Date(y, m - 1, d)
+  const end = new Date(y, m - 1, d + 6)
+  const md = (dt: Date) => `${pad(dt.getMonth() + 1)}.${pad(dt.getDate())}`
+  return `${md(start)} - ${md(end)}`
+}

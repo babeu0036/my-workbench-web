@@ -1030,3 +1030,154 @@ input {
     gap: 6px;
   }
 }
+
+/* ---------- 复盘：数据 / 目标 ---------- */
+
+.review__section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* 手机顶栏是 sticky 的，滚动定位时给它让位 */
+  scroll-margin-top: 66px;
+}
+
+.review__h2 {
+  margin: 4px 2px 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 14px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.stat__num {
+  color: var(--text-h);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__sep {
+  margin: 0 1px;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.stat__label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.goal {
+  gap: 10px;
+}
+
+.goal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.goal__week {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.goal__state {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.goal__state--done {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.goal__text {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 16px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.goal__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.goal__btn {
+  flex: 1;
+}
+
+/* 结算后按钮锁定，只把选中的那个留下来；透明度不降到看不清 */
+.goal__btn:disabled {
+  opacity: 0.75;
+}
+
+.goal__btn--on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.goal__btn--on:disabled {
+  opacity: 1;
+}
+
+.goal__empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.goal__label {
+  margin: 2px 2px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (min-width: 900px) {
+  .review__section {
+    scroll-margin-top: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .stat {
+    padding: 12px 10px 10px;
+  }
+
+  .stat__num {
+    font-size: 22px;
+  }
+
+  .goal__actions .btn {
+    padding: 8px 4px;
+  }
+}

@@ -29,6 +29,20 @@ export type Subject = {
   name: string
 }
 
+/**
+ * 一周一条目标。
+ * weekKey 用当周周一的日期字符串（如 2026-10-26），字符串比较就是时间先后。
+ */
+export type Goal = {
+  id: number
+  weekKey: string
+  text: string
+  /** 目标有没有达成；没结算前没有意义 */
+  done: boolean
+  /** 有没有结算过。结算后不再改动，是这一周的历史记录 */
+  settled: boolean
+}
+
 export type PlanSegment = 'week' | 'deadlines'
 export type SubjectSegment = 'tasks' | 'mistakes'
 export type ReviewBlock = 'data' | 'goal'

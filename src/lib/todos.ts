@@ -42,19 +42,29 @@ export function forSubject(todos: Todo[], subjectId: string): Todo[] {
 }
 
 /**
- * 本周统计：x = 本周完成的条数，y = 本周新建 ∪ 本周完成 去重后的条数。
+ * 一组任务的本周统计：x = 本周完成的条数，y = 本周新建 ∪ 本周完成 去重后的条数。
  * 上周建、这周做完的，x 和 y 都会算上它，所以 x 不会超过 y。
+ *
+ * 科目页传单科目的任务，复盘页传全部任务 —— 两边口径必须是同一份，
+ * 所以这里只认「一组任务」，不再重复实现。
  */
+export function weekTotals(
+  list: Todo[],
+  now: number = Date.now(),
+): { done: number; total: number } {
+  const finished = list.filter(todo => isThisWeek(todo.doneAt, now))
+  const created = list.filter(todo => isThisWeek(todo.createdAt, now))
+  const total = new Set([...created, ...finished].map(todo => todo.id)).size
+  return { done: finished.length, total }
+}
+
+/** 某个科目的本周统计 */
 export function weekStats(
   todos: Todo[],
   subjectId: string,
   now: number = Date.now(),
 ): { done: number; total: number } {
-  const mine = forSubject(todos, subjectId)
-  const finished = mine.filter(todo => isThisWeek(todo.doneAt, now))
-  const created = mine.filter(todo => isThisWeek(todo.createdAt, now))
-  const total = new Set([...created, ...finished].map(todo => todo.id)).size
-  return { done: finished.length, total }
+  return weekTotals(forSubject(todos, subjectId), now)
 }
 
 /** 新任务的 id：同一毫秒里连点两次也不会撞 */

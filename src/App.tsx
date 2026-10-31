@@ -7,8 +7,9 @@ import Review from './pages/Review'
 import Settings from './pages/Settings'
 import { KEYS, useStoredState } from './lib/storage'
 import { DEFAULT_SUBJECTS } from './lib/seed'
+import { normalizeGoals } from './lib/goals'
 import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, normalizeTodos } from './lib/todos'
-import type { Deadline, Route, Subject, Todo } from './lib/types'
+import type { Deadline, Goal, Route, Subject, Todo } from './lib/types'
 
 /** 手机顶栏显示当前页名，省得用户不知道自己点进来了哪 */
 function titleOf(route: Route, subjects: Subject[]): string {
@@ -34,6 +35,7 @@ export default function App() {
   // todos 读盘时补一遍字段：老数据没有 subjectId 的归到「未分类」，不丢。
   const [todos, setTodos] = useStoredState<Todo[]>(KEYS.todos, [], normalizeTodos)
   const [deadlines, setDeadlines] = useStoredState<Deadline[]>(KEYS.deadlines, [])
+  const [goals, setGoals] = useStoredState<Goal[]>(KEYS.goals, [], normalizeGoals)
 
   // 科目暂时是三份写死的种子数据；有未分类任务时才在「科目」下多挂一项
   const hasUnclassified = todos.some(todo => !todo.subjectId)
@@ -108,7 +110,14 @@ export default function App() {
             />
           )}
 
-          {route.page === 'review' && <Review block={route.block} />}
+          {route.page === 'review' && (
+            <Review
+              block={route.block}
+              todos={todos}
+              goals={goals}
+              setGoals={setGoals}
+            />
+          )}
 
           {route.page === 'settings' && <Settings />}
         </main>
