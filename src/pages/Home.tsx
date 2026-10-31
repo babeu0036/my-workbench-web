@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import AddTaskPanel from '../components/AddTaskPanel'
+import DueSoon from '../components/DueSoon'
 import TaskList from '../components/TaskList'
 import { todayLabel } from '../lib/date'
 import { KEYS, useStoredState } from '../lib/storage'
@@ -11,14 +12,18 @@ type Props = {
   todos: Todo[]
   setTodos: Dispatch<SetStateAction<Todo[]>>
   subjects: Subject[]
+  /** 该提醒的任务，最急的在前；在 App 里算好传进来，侧边栏角标用的是同一份 */
+  dueItems: Todo[]
+  onOpenSubject: (subjectId: string) => void
 }
 
 /**
  * 首页 = 今日任务。
- * 输入框不常驻了，改成右下角的 + 打开添加面板 —— 加任务时必须选科目，
- * 这样新任务不会再产生「未分类」（老数据里的未分类照常显示，不隐藏）。
+ * 输入框不常驻了，改成右下角的 + 打开添加面板 —— 加任务时必须选科目和截止日期，
+ * 这样新任务不会再产生「未分类」，也不会漏提醒
+ * （老数据里的未分类照常显示，不隐藏）。
  */
-export default function Home({ todos, setTodos, subjects }: Props) {
+export default function Home({ todos, setTodos, subjects, dueItems, onOpenSubject }: Props) {
   const [panelOpen, setPanelOpen] = useState(false)
   // 记住上次选的科目，下次打开面板直接站在那个科目上
   const [lastSubjectId, setLastSubjectId] = useStoredState<string>(KEYS.lastSubject, '')
@@ -31,8 +36,8 @@ export default function Home({ todos, setTodos, subjects }: Props) {
 
   const doneCount = todos.filter(todo => todo.done).length
 
-  function handleAdd(text: string, subjectId: string) {
-    setTodos(list => addTodo(list, text, subjectId))
+  function handleAdd(text: string, subjectId: string, dueDate: string) {
+    setTodos(list => addTodo(list, text, subjectId, dueDate))
     setLastSubjectId(subjectId)
     setPanelOpen(false)
   }
@@ -42,6 +47,8 @@ export default function Home({ todos, setTodos, subjects }: Props) {
       <div className="page page--fab">
         <h2 className="page__title">首页</h2>
         <p className="page__hint">{todayLabel()} · 今天的任务</p>
+
+        <DueSoon items={dueItems} subjects={subjects} onOpenSubject={onOpenSubject} />
 
         <TaskList
           todos={todos}

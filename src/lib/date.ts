@@ -1,5 +1,7 @@
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
 /** 把 2026-11-01 拆成年月日（按本地时区，避免时区把日期推错一天） */
 function parseDate(dateStr: string) {
   const [y, m, d] = dateStr.split('-').map(Number)
@@ -11,15 +13,14 @@ function parseDate(dateStr: string) {
  * 今天截止 = 0，明天 = 1，昨天 = -1。
  * 用两个「本地零点」相减，再取整，跨夏令时也不会差一天。
  */
-export function daysUntil(dateStr: string): number {
+export function daysUntil(dateStr: string, now: number = Date.now()): number {
   const { y, m, d } = parseDate(dateStr)
   if (!y || !m || !d) return Number.NaN
 
   const target = new Date(y, m - 1, d)
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const base = new Date(now)
+  const today = new Date(base.getFullYear(), base.getMonth(), base.getDate())
 
-  const MS_PER_DAY = 24 * 60 * 60 * 1000
   return Math.round((target.getTime() - today.getTime()) / MS_PER_DAY)
 }
 
@@ -28,6 +29,13 @@ export function formatDate(dateStr: string): string {
   const { y, m, d } = parseDate(dateStr)
   if (!y || !m || !d) return dateStr
   return `${dateStr} ${WEEKDAYS[new Date(y, m - 1, d).getDay()]}`
+}
+
+/** 2026-11-01 → 11月1日 周日。任务行空间小，不带年份 */
+export function formatDateCn(dateStr: string): string {
+  const { y, m, d } = parseDate(dateStr)
+  if (!y || !m || !d) return dateStr
+  return `${m}月${d}日 ${WEEKDAYS[new Date(y, m - 1, d).getDay()]}`
 }
 
 /** 剩余天数 → 给人看的一句话 */
@@ -103,6 +111,13 @@ export function formatUpdatedAt(ts: number): string {
 export function dayKey(ts: number = Date.now()): string {
   const d = new Date(ts)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** 从某个日期键往前 / 往后挪几天，负数往前。日期框的「今天 / 明天 / 后天」用它算 */
+export function dayKeyOffset(key: string, days: number): string {
+  const { y, m, d } = parseDate(key)
+  if (!y || !m || !d) return key
+  return dayKey(new Date(y, m - 1, d + days).getTime())
 }
 
 /**

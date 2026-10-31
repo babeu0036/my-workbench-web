@@ -25,7 +25,15 @@ export function normalizeTodo(raw: unknown, index = 0): Todo | null {
     // 老数据里已经完成的任务，不知道是哪天完成的 —— 留空，不算进「本周完成」，
     // 宁可少算也不伪造时间
     doneAt: typeof item.doneAt === 'number' ? item.doneAt : undefined,
+    // 加日期之前建的任务没有截止日期：就让它没有，不去拿创建时间冒充，
+    // 否则一堆早就做完的旧任务会突然全部变成「逾期」
+    dueDate: isDateKey(item.dueDate) ? item.dueDate : undefined,
   }
+}
+
+/** 只认 2026-11-03 这种本地日期键，别的一律当没设 */
+function isDateKey(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
 }
 
 /** 把一个数组整体补成新形状；坏条目（没有文本的）会被丢掉 */
@@ -73,16 +81,23 @@ export function nextId(list: Todo[], now: number = Date.now()): number {
   return now > max ? now : max + 1
 }
 
-/** 加一条。subjectId 由调用方决定（科目页带当前科目，首页带未分类） */
+/**
+ * 加一条。subjectId 由调用方决定（科目页带当前科目，首页带选中的科目）；
+ * dueDate 是必填的截止日期（2026-11-03）。缺任何一项都不加，返回原数组。
+ */
 export function addTodo(
   list: Todo[],
   text: string,
   subjectId: string,
+  dueDate: string,
   now: number = Date.now(),
 ): Todo[] {
   const value = text.trim()
-  if (!value) return list
-  return [...list, { id: nextId(list, now), text: value, done: false, subjectId, createdAt: now }]
+  if (!value || !dueDate) return list
+  return [
+    ...list,
+    { id: nextId(list, now), text: value, done: false, subjectId, createdAt: now, dueDate },
+  ]
 }
 
 /** 勾选 / 撤销。完成时写 doneAt，撤销时清掉，绝不留旧时间 */

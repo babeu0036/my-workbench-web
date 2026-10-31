@@ -4,6 +4,8 @@ import type { PlanSegment, ReviewBlock, Route, Subject } from '../lib/types'
 type Props = {
   route: Route
   subjects: Subject[]
+  /** 到期提醒的条数，挂在「首页」右边当角标；0 就不显示 */
+  dueCount: number
   /** 手机端抽屉是否打开；桌面端由 CSS 忽略这个值 */
   open: boolean
   onNavigate: (route: Route) => void
@@ -54,7 +56,7 @@ function useIsNarrow() {
   return narrow
 }
 
-export default function Sidebar({ route, subjects, open, onNavigate, onClose }: Props) {
+export default function Sidebar({ route, subjects, dueCount, open, onNavigate, onClose }: Props) {
   // 当前所属的一级项：科目页的一级 key 叫 subjects，其余跟 page 同名
   const activeGroup = route.page === 'subject' ? 'subjects' : route.page
 
@@ -180,6 +182,11 @@ export default function Sidebar({ route, subjects, open, onNavigate, onClose }: 
               >
                 <Icon name={group.icon} />
                 <span className="nav__label">{group.label}</span>
+                {group.key === 'home' && dueCount > 0 && (
+                  <span className="nav__badge" aria-label={`${dueCount} 件任务临近截止`}>
+                    {dueCount}
+                  </span>
+                )}
               </button>
 
               {group.children.length > 0 && (

@@ -8,6 +8,11 @@ export type Todo = {
   createdAt: number
   /** 完成时间戳。没完成时没有，撤销完成时要清掉 */
   doneAt?: number
+  /**
+   * 截止日期，形如 2026-11-03（本地日期，不是时间戳）。
+   * 新任务必填；改造前的老任务没有这一项，就不提醒，也不编一个假日期出来。
+   */
+  dueDate?: string
 }
 
 export type Deadline = {

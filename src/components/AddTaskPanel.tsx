@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import DuePicker from './DuePicker'
+import { dayKey } from '../lib/date'
 import type { Subject } from '../lib/types'
 
 type Props = {
@@ -7,12 +9,13 @@ type Props = {
   /** 上次选中的科目；没有或不合法时传 ''，进来就是没选的状态 */
   defaultSubjectId: string
   onClose: () => void
-  onAdd: (text: string, subjectId: string) => void
+  onAdd: (text: string, subjectId: string, dueDate: string) => void
 }
 
 /**
- * 首页的添加面板：一行输入 + 科目胶囊 + 添加。
- * 科目必选：没选时「添加」是禁用的，所以从这儿加的任务一定有归属。
+ * 首页的添加面板：一行输入 + 科目胶囊 + 截止日期 + 添加。
+ * 科目和日期都必选：没选时「添加」是禁用的，所以从这儿加的任务
+ * 一定有归属、也一定能被提醒到。
  *
  * 打开时才挂载（父层条件渲染），所以草稿和选中科目不用 effect 去重置，
  * 直接用初始值就行 —— 每次打开都是干净的。
@@ -20,6 +23,8 @@ type Props = {
 export default function AddTaskPanel({ subjects, defaultSubjectId, onClose, onAdd }: Props) {
   const [text, setText] = useState('')
   const [subjectId, setSubjectId] = useState(defaultSubjectId)
+  // 默认就是今天：绝大多数任务都是当天的事，不改也能直接加
+  const [dueDate, setDueDate] = useState(dayKey())
   const inputRef = useRef<HTMLInputElement>(null)
 
   // 挂载后把焦点放进输入框，省一次点击
@@ -37,11 +42,11 @@ export default function AddTaskPanel({ subjects, defaultSubjectId, onClose, onAd
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
-  const canSubmit = text.trim().length > 0 && subjectId !== ''
+  const canSubmit = text.trim().length > 0 && subjectId !== '' && dueDate !== ''
 
   function submit() {
     if (!canSubmit) return
-    onAdd(text.trim(), subjectId)
+    onAdd(text.trim(), subjectId, dueDate)
   }
 
   return (
@@ -86,7 +91,10 @@ export default function AddTaskPanel({ subjects, defaultSubjectId, onClose, onAd
           })}
         </div>
 
+        <DuePicker value={dueDate} onChange={setDueDate} />
+
         {subjectId === '' && <p className="sheet__hint">先选一个科目，再添加</p>}
+        {dueDate === '' && <p className="sheet__hint">再选一个截止日期，到期前三天会提醒你</p>}
 
         <button
           type="button"

@@ -173,6 +173,21 @@ input {
   min-width: 0;
 }
 
+/* 「首页」右边的到期条数角标 */
+.nav__badge {
+  flex: none;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
 .nav__children {
   display: none;
   flex-direction: column;
@@ -256,6 +271,25 @@ input {
   color: var(--text-h);
   font-size: 16px;
   font-weight: 600;
+}
+
+/* 手机顶栏右侧的角标，点一下回首页 */
+.topbar__badge {
+  margin-left: auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 22px;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .drawer-mask {
@@ -372,6 +406,116 @@ input {
   font-size: 13px;
 }
 
+/* ---------- 到期提醒卡 ---------- */
+
+.alert {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+/* 有今天到期或逾期的，左侧竖条和标题换成警示色，扫一眼就知道要动手
+   （不铺满红底：整块染色太重，像报错） */
+.alert--urgent {
+  border-left-color: var(--danger);
+}
+
+.alert--urgent .alert__title {
+  color: var(--danger);
+}
+
+.alert__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.alert__title {
+  color: var(--text-h);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.alert__count {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.alert--urgent .alert__count {
+  background: var(--danger);
+  color: #fff;
+}
+
+.alert__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alert__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.alert__list li:first-child .alert__row {
+  border-top: 0;
+}
+
+.alert__row:hover .alert__text {
+  color: var(--accent);
+}
+
+.alert__subject {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.alert__text {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-h);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+.alert__foot {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 /* ---------- 科目页 ---------- */
 
 .subject__head {
@@ -397,16 +541,58 @@ input {
   white-space: nowrap;
 }
 
-/* 底部输入条：排在列表后面，不吸底（吸底会和手机键盘、safe-area 打架） */
+/* 底部输入条：文字一行、日期一行，排在列表后面不吸底
+   （吸底会和手机键盘、safe-area 打架） */
 .composer {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   margin-top: 4px;
-  padding: 8px;
+  padding: 10px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: var(--shadow);
+}
+
+.composer__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 输入条里的日期胶囊比面板里紧一点，别把卡片撑高 */
+.composer .choice {
+  padding: 5px 11px;
+  font-size: 13px;
+}
+
+/* ---------- 截止日期选择 ---------- */
+
+.due-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.due-picker__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.due-picker__label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.input--date {
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 14px;
 }
 
 /* ---------- 右下角「+」与添加面板 ---------- */
@@ -830,6 +1016,25 @@ input {
   color: var(--muted);
 }
 
+/* 任务行副行：按紧急程度变色，完成的任务不走这些类，保持灰色 */
+.row__date--late {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.row__date--today {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.row__date--soon {
+  color: var(--warn);
+}
+
+.row__date--later {
+  color: var(--muted);
+}
+
 .row__actions {
   display: flex;
   gap: 2px;
@@ -872,6 +1077,12 @@ input {
   color: var(--muted);
 }
 
+/* 逾期：实心红，比「今天到期」更重一档 */
+.pill--late {
+  background: var(--danger);
+  color: #fff;
+}
+
 .pill--today {
   background: var(--danger-soft);
   color: var(--danger);
@@ -880,6 +1091,11 @@ input {
 .pill--soon {
   background: var(--warn-soft);
   color: var(--warn);
+}
+
+.pill--later {
+  background: var(--surface-2);
+  color: var(--muted);
 }
 
 .pill--normal {

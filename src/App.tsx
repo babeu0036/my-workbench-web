@@ -7,6 +7,7 @@ import Review from './pages/Review'
 import Settings from './pages/Settings'
 import { KEYS, useStoredState } from './lib/storage'
 import { DEFAULT_SUBJECTS } from './lib/seed'
+import { pendingReminders } from './lib/due'
 import { normalizeGoals } from './lib/goals'
 import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, normalizeTodos } from './lib/todos'
 import type { Deadline, Goal, Route, Subject, Todo } from './lib/types'
@@ -43,6 +44,9 @@ export default function App() {
     ? [...DEFAULT_SUBJECTS, { id: UNCATEGORIZED_ID, name: UNCATEGORIZED_NAME }]
     : DEFAULT_SUBJECTS
 
+  // 到期提醒只算一次，首页卡片和侧边栏角标共用，数字不会对不上
+  const dueItems = pendingReminders(todos)
+
   const navigate = (next: Route) => {
     setRoute(next)
     // 手机上点完任意一项就把抽屉收起来
@@ -54,6 +58,7 @@ export default function App() {
       <Sidebar
         route={route}
         subjects={subjects}
+        dueCount={dueItems.length}
         open={drawerOpen}
         onNavigate={navigate}
         onClose={() => setDrawerOpen(false)}
@@ -84,11 +89,29 @@ export default function App() {
             </svg>
           </button>
           <span className="topbar__title">{titleOf(route, subjects)}</span>
+
+          {/* 手机上侧边栏是收起来的，顶栏留一个角标，在别的页面也知道该回去处理 */}
+          {route.page !== 'home' && dueItems.length > 0 && (
+            <button
+              type="button"
+              className="topbar__badge"
+              onClick={() => navigate({ page: 'home' })}
+              aria-label={`${dueItems.length} 件任务临近截止，回首页查看`}
+            >
+              {dueItems.length}
+            </button>
+          )}
         </header>
 
         <main className="app__main">
           {route.page === 'home' && (
-            <Home todos={todos} setTodos={setTodos} subjects={subjects} />
+            <Home
+              todos={todos}
+              setTodos={setTodos}
+              subjects={subjects}
+              dueItems={dueItems}
+              onOpenSubject={id => navigate({ page: 'subject', id, seg: 'tasks' })}
+            />
           )}
 
           {route.page === 'plan' && (
