@@ -1,11 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import CourseDayList from '../components/CourseDayList'
 import CourseDetail from '../components/CourseDetail'
 import CourseForm from '../components/CourseForm'
 import CourseGrid from '../components/CourseGrid'
 import CourseImport from '../components/CourseImport'
-import { MAX_WEEK, addCourse, isActiveInWeek, removeCourse, weekNumberOf } from '../lib/courses'
+import {
+  MAX_WEEK,
+  addCourse,
+  isActiveInWeek,
+  removeCourse,
+  updateCourse,
+  weekNumberOf,
+} from '../lib/courses'
 import { formatWeekRange, weekKeyOffset, weekKeyOf, weekdayOf } from '../lib/date'
 import { useIsWide } from '../lib/media'
 import { UNCATEGORIZED_ID } from '../lib/todos'
@@ -48,6 +55,14 @@ export default function PlanCourses({
   const [detailId, setDetailId] = useState<number | null>(null)
   // 翻到第几周；null = 跟着今天走（也就是「本周」）
   const [viewWeek, setViewWeek] = useState<number | null>(null)
+  // 保存后的轻提示，3 秒自己消失
+  const [toast, setToast] = useState('')
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = window.setTimeout(() => setToast(''), 3000)
+    return () => window.clearTimeout(timer)
+  }, [toast])
 
   const wide = useIsWide()
   const today = weekdayOf()
@@ -93,6 +108,21 @@ export default function PlanCourses({
 
   function addDrafts(drafts: Omit<Course, 'id'>[]) {
     setCourses(list => drafts.reduce((acc, draft) => addCourse(acc, draft), list))
+  }
+
+  /**
+   * 保存编辑。落盘范围交给 updateCourse：名称/地点/科目连同同名课程一起改，
+   * 周几/节次/周次只改这一条。页面只负责把结果说清楚。
+   */
+  function saveDetail(id: number, draft: Omit<Course, 'id'>) {
+    const result = updateCourse(courses, id, draft)
+    setCourses(result.list)
+    setDetailId(null)
+    setToast(
+      result.shared && result.synced > 1
+        ? `已同步更新 ${result.synced} 条同名课程`
+        : '已更新这一条',
+    )
   }
 
   /** 点空白格子 / 某天的 + ：预填位置再打开表单 */
@@ -273,16 +303,24 @@ export default function PlanCourses({
 
       {detail && (
         <CourseDetail
+          key={detail.id}
           course={detail}
           weekNo={showWeek}
           isCurrentWeek={isCurrentWeek}
           subjects={pickable}
           onClose={() => setDetailId(null)}
+          onSave={draft => saveDetail(detail.id, draft)}
           onRemove={() => {
             setCourses(list => removeCourse(list, detail.id))
             setDetailId(null)
           }}
         />
+      )}
+
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
       )}
     </>
   )

@@ -188,6 +188,110 @@ export function removeCourse(list: Course[], id: number): Course[] {
   return list.filter(course => course.id !== id)
 }
 
+/** 编辑面板交上来的一整份字段；id 由列表决定，不由用户填 */
+export type CoursePatch = Omit<Course, 'id'>
+
+export type UpdateResult = {
+  list: Course[]
+  /** 一起改掉的条数（含正在改的这一条）；1 表示只有它自己 */
+  synced: number
+  /** 名称 / 地点 / 科目里有没有真的变过 —— 决定提示说「同步」还是「只更新这一条」 */
+  shared: boolean
+}
+
+/** 地点和科目是可选字段：清空时要真的不留这个键，不能写成 '' */
+function optionals(source: CoursePatch): Pick<Course, 'location' | 'subjectId'> {
+  const out: Pick<Course, 'location' | 'subjectId'> = {}
+  if (source.location) out.location = source.location
+  if (source.subjectId) out.subjectId = source.subjectId
+  return out
+}
+
+/** 同名课程共有的那三个字段 */
+function applyShared(base: Course, patch: CoursePatch): Course {
+  return {
+    id: base.id,
+    name: patch.name,
+    weekday: base.weekday,
+    startPeriod: base.startPeriod,
+    endPeriod: base.endPeriod,
+    weeks: base.weeks,
+    weekStart: base.weekStart,
+    weekEnd: base.weekEnd,
+    ...optionals(patch),
+  }
+}
+
+/** 全部字段都换掉，只留 id。可选字段同样走 optionals，别留 location: undefined */
+function applyAll(base: Course, patch: CoursePatch): Course {
+  return {
+    id: base.id,
+    name: patch.name,
+    weekday: patch.weekday,
+    startPeriod: patch.startPeriod,
+    endPeriod: patch.endPeriod,
+    weeks: patch.weeks,
+    weekStart: patch.weekStart,
+    weekEnd: patch.weekEnd,
+    ...optionals(patch),
+  }
+}
+
+/**
+ * 编辑一门课。影响范围按字段分：
+ *
+ * - 名称 / 地点 / 科目 → 同一门课常常拆成好几条（不同周次段、不同日子），
+ *   这三样对它们来说是同一件事，所以整组一起改
+ * - 周几 / 节次 / 周次范围 / 单双周 → 每条都可能不一样，只改当前这一条
+ *
+ * 分组用的是「改之前」的名字：先按旧名字认出同组，再统一改名。
+ * 反过来先改名就找不回原来的兄弟了。
+ *
+ * 改名撞上已有的同名课程时不做合并 —— 从这一刻起它们就是同一组，
+ * 下次再编辑其中任意一条，会一起带上（用户拍板的「按新名字一起归类」）。
+ */
+export function updateCourse(list: Course[], id: number, patch: CoursePatch): UpdateResult {
+  const target = list.find(course => course.id === id)
+  if (!target) return { list, synced: 0, shared: false }
+
+  const groupName = target.name
+  const shared =
+    patch.name !== target.name ||
+    (patch.location ?? '') !== (target.location ?? '') ||
+    (patch.subjectId ?? '') !== (target.subjectId ?? '')
+
+  let synced = 0
+  const next = list.map(course => {
+    if (course.id === id) {
+      synced += 1
+      return applyAll(course, patch)
+    }
+    // 同名的兄弟只跟着改名称/地点/科目，各自的时间保持原样
+    if (course.name === groupName) {
+      synced += 1
+      return applyShared(course, patch)
+    }
+    return course
+  })
+
+  return { list: next, synced, shared }
+}
+
+/** 交上来的字段和原来的是不是一模一样，决定保存按钮亮不亮 */
+export function isCourseChanged(course: Course, patch: CoursePatch): boolean {
+  return (
+    patch.name !== course.name ||
+    patch.weekday !== course.weekday ||
+    patch.startPeriod !== course.startPeriod ||
+    patch.endPeriod !== course.endPeriod ||
+    patch.weeks !== course.weeks ||
+    patch.weekStart !== course.weekStart ||
+    patch.weekEnd !== course.weekEnd ||
+    (patch.location ?? '') !== (course.location ?? '') ||
+    (patch.subjectId ?? '') !== (course.subjectId ?? '')
+  )
+}
+
 /**
  * 存在性判断，导入去重和测试都会用。
  *
