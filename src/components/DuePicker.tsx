@@ -11,23 +11,25 @@ type Props = {
   /** 2026-11-03 形式的本地日期；空字符串 = 还没选 */
   value: string
   onChange: (value: string) => void
+  /** 左边的说明文字。任务的语义是「截止」，比赛的语义是「报名截止」 */
+  label?: string
 }
 
 /**
  * 截止日期选择：三个快捷胶囊 + 原生日期框，两者改的是同一个值。
- * 首页添加面板和科目页输入条共用这一份，样式和行为不会走偏。
+ * 首页添加面板、科目页输入条、比赛表单共用这一份，样式和行为不会走偏。
  *
  * 不做自己的日历弹层：原生 input[type=date] 在手机上直接唤起系统选择器，
  * 又轻又不会挡键盘。
  */
-export default function DuePicker({ value, onChange }: Props) {
+export default function DuePicker({ value, onChange, label = '截止' }: Props) {
   const today = dayKey()
   const quick = QUICK.map(item => ({ ...item, key: dayKeyOffset(today, item.days) }))
 
   return (
     <div className="due-picker">
-      <div className="due-picker__row" role="group" aria-label="截止日期快捷选择">
-        <span className="due-picker__label">截止</span>
+      <div className="due-picker__row" role="group" aria-label={`${label}快捷选择`}>
+        <span className="due-picker__label">{label}</span>
         {quick.map(item => (
           <button
             key={item.days}
@@ -46,7 +48,7 @@ export default function DuePicker({ value, onChange }: Props) {
         type="date"
         value={value}
         onChange={e => onChange(e.target.value)}
-        aria-label="截止日期"
+        aria-label={label}
       />
     </div>
   )

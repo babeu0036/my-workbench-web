@@ -7,6 +7,7 @@ import Review from './pages/Review'
 import Settings from './pages/Settings'
 import { KEYS, useStoredState } from './lib/storage'
 import { DEFAULT_SUBJECTS } from './lib/seed'
+import { normalizeDeadlines } from './lib/deadlines'
 import { pendingReminders } from './lib/due'
 import { normalizeGoals } from './lib/goals'
 import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, normalizeTodos } from './lib/todos'
@@ -35,7 +36,12 @@ export default function App() {
   // 数据仍然放在最外层：切页会卸载页面组件，数据留在这里才不会反复读盘。
   // todos 读盘时补一遍字段：老数据没有 subjectId 的归到「未分类」，不丢。
   const [todos, setTodos] = useStoredState<Todo[]>(KEYS.todos, [], normalizeTodos)
-  const [deadlines, setDeadlines] = useStoredState<Deadline[]>(KEYS.deadlines, [])
+  // deadlines 读盘时把老的 `date` 搬成「报名截止」，老条目一条都不丢
+  const [deadlines, setDeadlines] = useStoredState<Deadline[]>(
+    KEYS.deadlines,
+    [],
+    normalizeDeadlines,
+  )
   const [goals, setGoals] = useStoredState<Goal[]>(KEYS.goals, [], normalizeGoals)
 
   // 科目暂时是三份写死的种子数据；有未分类任务时才在「科目」下多挂一项

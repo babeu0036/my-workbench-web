@@ -38,21 +38,6 @@ export function formatDateCn(dateStr: string): string {
   return `${m}月${d}日 ${WEEKDAYS[new Date(y, m - 1, d).getDay()]}`
 }
 
-/** 剩余天数 → 给人看的一句话 */
-export function daysLabel(days: number): string {
-  if (Number.isNaN(days)) return '日期无效'
-  if (days < 0) return '已结束'
-  return `还剩 ${days} 天`
-}
-
-/** 剩余天数 → 颜色档位，给列表上的小胶囊用 */
-export function daysTone(days: number): 'over' | 'today' | 'soon' | 'normal' {
-  if (Number.isNaN(days) || days < 0) return 'over'
-  if (days === 0) return 'today'
-  if (days <= 3) return 'soon'
-  return 'normal'
-}
-
 /** 今天写成 10月27日 周二 */
 export function todayLabel(): string {
   const now = new Date()

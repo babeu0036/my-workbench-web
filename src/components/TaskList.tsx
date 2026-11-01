@@ -27,11 +27,7 @@ export default function TaskList({ todos, empty, onToggle, onRemove }: Props) {
       {todos.map(todo => {
         const days = dueDays(todo)
         // 老任务没有 dueDate，这一行就不显示，不硬塞一个「无日期」
-        const meta = todo.dueDate
-          ? todo.done
-            ? formatDateCn(todo.dueDate)
-            : `${formatDateCn(todo.dueDate)} · ${dueLabel(days)}`
-          : ''
+        const dateText = todo.dueDate ? formatDateCn(todo.dueDate) : ''
 
         return (
           <li key={todo.id} className="row row--todo">
@@ -49,13 +45,19 @@ export default function TaskList({ todos, empty, onToggle, onRemove }: Props) {
               <span className={todo.done ? 'row__text row__text--done' : 'row__text'}>
                 {todo.text}
               </span>
-              {meta && (
+              {dateText && (
                 <span
                   className={
                     todo.done ? 'row__date' : `row__date row__date--${dueTone(days)}`
                   }
                 >
-                  {meta}
+                  {dateText}
+                  {!todo.done && (
+                    <>
+                      {' · '}
+                      <span className="nowrap">{dueLabel(days)}</span>
+                    </>
+                  )}
                 </span>
               )}
             </span>

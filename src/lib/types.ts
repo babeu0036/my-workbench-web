@@ -18,8 +18,11 @@ export type Todo = {
 export type Deadline = {
   id: number
   name: string
-  /** 形如 2026-11-01 */
-  date: string
+  /** 报名截止，必填。形如 2026-11-01 */
+  signupEnd: string
+  /** 比赛开始 / 结束，都是可选的 */
+  startDate?: string
+  endDate?: string
 }
 
 export type Note = {

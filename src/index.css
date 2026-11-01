@@ -578,9 +578,11 @@ input {
 
 .due-picker__row {
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .due-picker__label {
@@ -588,11 +590,22 @@ input {
   font-size: 13px;
 }
 
+/* 日期框单独占一行：窄屏扛不住时不会被挤成一个只有图标的方框 */
+.due-picker .input--date {
+  flex: 1 1 100%;
+  width: 100%;
+}
+
 .input--date {
   flex: 1 1 140px;
   min-width: 0;
   padding: 8px 10px;
   font-size: 14px;
+}
+
+/* 「还剩 2 天」「距开赛 4 天」这种短句整体换行，别被从中间劈开 */
+.nowrap {
+  white-space: nowrap;
 }
 
 /* ---------- 右下角「+」与添加面板 ---------- */
@@ -849,7 +862,28 @@ input {
 
 .field-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+/* 带小标题的输入块（比赛开始 / 结束） */
+.field {
+  display: flex;
+  flex: 1 1 140px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.field__label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* 原生日期框在列方向里别被 flex 撑高 */
+.field .input--date {
+  flex: none;
+  width: 100%;
 }
 
 .input {
@@ -877,6 +911,12 @@ input {
   margin: 0;
   color: var(--danger);
   font-size: 13px;
+}
+
+.form__submit {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 15px;
 }
 
 /* ---------- 按钮 ---------- */
@@ -968,8 +1008,10 @@ input {
   border-bottom: 0;
 }
 
-.row--over {
-  opacity: 0.55;
+/* 报名截止已过的比赛：文字全部转灰，按钮保持可点（还能删） */
+.row--closed .row__text,
+.row--closed .row__date {
+  color: var(--muted);
 }
 
 /* 待办行：勾选圈和按钮都对齐到第一行文字，长文字换行时不会飘到中间 */
@@ -1027,6 +1069,12 @@ input {
   font-weight: 600;
 }
 
+/* 比赛行：报名截止进入前三天，和「今天到期」同一个红 */
+.row__date--alert {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .row__date--soon {
   color: var(--warn);
 }
@@ -1072,11 +1120,6 @@ input {
   white-space: nowrap;
 }
 
-.pill--over {
-  background: var(--surface-2);
-  color: var(--muted);
-}
-
 /* 逾期：实心红，比「今天到期」更重一档 */
 .pill--late {
   background: var(--danger);
@@ -1098,9 +1141,18 @@ input {
   color: var(--muted);
 }
 
-.pill--normal {
-  background: var(--accent-soft);
-  color: var(--accent);
+/* 状态标签（比赛的「已截止」）：比胶囊更安静，不抢标题 */
+.status {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.status--closed {
+  background: var(--surface-2);
+  color: var(--muted);
 }
 
 .empty {
