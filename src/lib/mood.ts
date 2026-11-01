@@ -1,4 +1,4 @@
-import { dayKey, dayKeyOffset } from './date'
+import { dayKey, dayKeyOffset, weekKeyOf } from './date'
 import type { Mood } from './types'
 
 /**
@@ -14,11 +14,11 @@ import type { Mood } from './types'
 
 export const MOOD_KEEP_DAYS = 90
 
-/** 三个选项，顺序就是按钮从左到右的顺序 */
+/** 三个选项，顺序就是按钮从左到右的顺序。short 是统计行里用的短词 */
 export const MOOD_OPTIONS = [
-  { value: 'good', emoji: '😄', label: '不错' },
-  { value: 'ok', emoji: '😐', label: '一般' },
-  { value: 'tired', emoji: '😮‍💨', label: '有点累' },
+  { value: 'good', emoji: '😄', label: '不错', short: '不错' },
+  { value: 'ok', emoji: '😐', label: '一般', short: '一般' },
+  { value: 'tired', emoji: '😮‍💨', label: '有点累', short: '累' },
 ] as const
 
 const VALID: readonly string[] = ['good', 'ok', 'tired']
@@ -56,4 +56,32 @@ export function moodOf(map: MoodMap, key: string): Mood | null {
 /** 记 / 改某天的状态。只动这一天，别的日期原样留着 */
 export function setMood(map: MoodMap, key: string, mood: Mood): MoodMap {
   return { ...map, [key]: mood }
+}
+
+export type WeekMoodCounts = {
+  good: number
+  ok: number
+  tired: number
+  /** 本周一共记了几天，复盘页用它判断「这周还没记状态」 */
+  total: number
+}
+
+/**
+ * 本周（周一到周日）每种状态各几天。
+ *
+ * 起点必须是本周一 —— 和「本周完成」的 weekTotals 用同一个周一，
+ * 不然（比如用最近 7 天）两个数字会差一天，看着像对不上。
+ * 只数这 7 个日期键；同一案只留一条，所以天数不会超过 7。
+ */
+export function weekMoodCounts(map: MoodMap, now: number = Date.now()): WeekMoodCounts {
+  const start = weekKeyOf(now)
+  const counts: WeekMoodCounts = { good: 0, ok: 0, tired: 0, total: 0 }
+
+  for (let i = 0; i < 7; i += 1) {
+    const mood = moodOf(map, dayKeyOffset(start, i))
+    if (!mood) continue
+    counts[mood] += 1
+    counts.total += 1
+  }
+  return counts
 }

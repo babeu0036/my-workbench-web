@@ -12,6 +12,8 @@ import { normalizeCourses } from './lib/courses'
 import { normalizeDeadlines } from './lib/deadlines'
 import { pendingReminders } from './lib/due'
 import { normalizeGoals } from './lib/goals'
+import { normalizeMoods } from './lib/mood'
+import type { MoodMap } from './lib/mood'
 import { startSync } from './lib/sync'
 import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, normalizeTodos } from './lib/todos'
 import type { Course, Deadline, Goal, Route, Subject, Todo } from './lib/types'
@@ -54,6 +56,8 @@ export default function App() {
   // 课程表：课程数组 + 学期第 1 周的周一（决定「现在是第几周」，进而决定单双周和灰色）
   const [courses, setCourses] = useStoredState<Course[]>(KEYS.courses, [], normalizeCourses)
   const [semesterStart, setSemesterStart] = useStoredState<string>(KEYS.semesterStart, '')
+  // 今日状态：首页写、复盘页读，所以放在最外层，两边看到的是同一份
+  const [moods, setMoods] = useStoredState<MoodMap>(KEYS.mood, {}, normalizeMoods)
 
   // 科目暂时是三份写死的种子数据；有未分类任务时才在「科目」下多挂一项
   // （琐事的 subjectId 也是空的，但它不属于「未分类」，别让侧边栏为它多出一项）
@@ -131,6 +135,8 @@ export default function App() {
               goals={goals}
               courses={courses}
               semesterStart={semesterStart}
+              moods={moods}
+              setMoods={setMoods}
               onOpenSubject={id => navigate({ page: 'subject', id, seg: 'tasks' })}
               onOpenGoal={() => navigate({ page: 'review', block: 'goal' })}
             />
@@ -162,7 +168,9 @@ export default function App() {
           )}
 
           {/* 复盘拆成两个独立页面：数据只看统计，目标只管目标 */}
-          {route.page === 'review' && route.block === 'data' && <ReviewData todos={todos} />}
+          {route.page === 'review' && route.block === 'data' && (
+            <ReviewData todos={todos} moods={moods} />
+          )}
 
           {route.page === 'review' && route.block === 'goal' && (
             <ReviewGoal goals={goals} setGoals={setGoals} />

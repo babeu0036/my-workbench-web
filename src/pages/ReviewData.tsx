@@ -1,20 +1,26 @@
 import { formatWeekRange, weekKeyOf } from '../lib/date'
+import { MOOD_OPTIONS, weekMoodCounts } from '../lib/mood'
+import type { MoodMap } from '../lib/mood'
 import { activeDays, dailyCounts, streak, weekTotals } from '../lib/stats'
 import type { Todo } from '../lib/types'
 
 type Props = {
   todos: Todo[]
+  /** 今日状态按日期键存的那张表，App 传进来 */
+  moods: MoodMap
 }
 
 /**
  * 复盘 · 数据。只放统计，完全不碰目标 ——
  * 目标和它是两个独立页面，改一边的排版不会牵连另一边。
  */
-export default function ReviewData({ todos }: Props) {
+export default function ReviewData({ todos, moods }: Props) {
   const totals = weekTotals(todos)
   const active = activeDays(todos)
   const days = streak(todos)
   const daily = dailyCounts(todos)
+  // 和上面那组一样是「本周一到周日」，所以两个数字放在一起不会打架
+  const moodWeek = weekMoodCounts(moods)
 
   // 最高那天决定柱子满格多高；全是 0 时 peak = 0，下面的除法要绕开
   const peak = daily.reduce((acc, day) => (day.count > acc ? day.count : acc), 0)
@@ -63,6 +69,31 @@ export default function ReviewData({ todos }: Props) {
       {totals.total === 0 && (
         <p className="meta">本周还没有任务。去首页加一条，这里就有数了。</p>
       )}
+
+      <section className="card moodstat" aria-labelledby="moodstat-title">
+        <div className="card__head">
+          <span className="card__title" id="moodstat-title">
+            状态分布
+          </span>
+          <span className="card__note">本周 {formatWeekRange(weekKeyOf())}</span>
+        </div>
+
+        {moodWeek.total === 0 ? (
+          <p className="card__empty">这周还没记状态</p>
+        ) : (
+          <ul className="moodstat__list">
+            {MOOD_OPTIONS.map(option => (
+              <li key={option.value} className="moodstat__row">
+                <span className="moodstat__emoji" aria-hidden="true">
+                  {option.emoji}
+                </span>
+                <span className="moodstat__label">{option.short}</span>
+                <span className="moodstat__days">{moodWeek[option.value]} 天</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="card days" aria-labelledby="days-title">
         <div className="days__head">

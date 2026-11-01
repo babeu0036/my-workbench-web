@@ -10,7 +10,7 @@ import TodayCourses from '../components/TodayCourses'
 import { todayCourses } from '../lib/courses'
 import { dayKey, todayLabel, weekKeyOf } from '../lib/date'
 import { goalOf } from '../lib/goals'
-import { moodOf, normalizeMoods, setMood } from '../lib/mood'
+import { moodOf, setMood } from '../lib/mood'
 import type { MoodMap } from '../lib/mood'
 import { streak, todayTasks, todayTotals } from '../lib/stats'
 import { KEYS, useStoredState } from '../lib/storage'
@@ -34,6 +34,9 @@ type Props = {
   courses: Course[]
   /** 学期第 1 周的周一，决定「今天有课」里的课这周上不上 */
   semesterStart: string
+  /** 今日状态：存在 App 里，复盘页读的是同一份 */
+  moods: MoodMap
+  setMoods: Dispatch<SetStateAction<MoodMap>>
   onOpenSubject: (subjectId: string) => void
   onOpenGoal: () => void
 }
@@ -55,14 +58,14 @@ export default function Home({
   goals,
   courses,
   semesterStart,
+  moods,
+  setMoods,
   onOpenSubject,
   onOpenGoal,
 }: Props) {
   const [panelOpen, setPanelOpen] = useState(false)
   // 记住上次选的科目，下次打开面板直接站在那个科目上
   const [lastSubjectId, setLastSubjectId] = useStoredState<string>(KEYS.lastSubject, '')
-  // 今日状态按日期键存一份，一天一条；页面重新挂载时从盘里读回来
-  const [moods, setMoods] = useStoredState<MoodMap>(KEYS.mood, {}, normalizeMoods)
 
   // 面板里只列真科目；未分类是历史数据的归宿，不是可选项
   const pickable = subjects.filter(subject => subject.id !== UNCATEGORIZED_ID)
