@@ -10,20 +10,22 @@ type Props = {
   onImport: (drafts: Omit<Course, 'id'>[]) => void
 }
 
-const PLACEHOLDER = `一行一门课，顺序是：名称 周几 节次 周次 地点
+const PLACEHOLDER = `一行一门课，顺序随便 —— 按内容认
 
 高数 周一 1-2 1-16 3-201
-C语言 周二 3-4 1-16单 机房
+机房 C语言 1-16单 周二 3-4
 英语 周三 5-6 1-16双 A-101
+大学物理 周四 7-8 2-16双 实验楼
 
-列之间空格、Tab 都行，地点可以省略`
+没写周次按 1-16 每周；地点可以不写`
 
 /**
  * 粘贴导入。
  *
- * 点「导入」之后：解析成功的立刻进课表，失败的和重复的留在文本框里，
- * 逐行说清楚为什么没进去。这样改完能再点一次，也不会把已经成功的那些
- * 重复导一遍。一行问题都没有就自动收起面板。
+ * 一行按空格 / Tab 切开，逐段按内容认（周几、节次、周次、地点、课名），
+ * 顺序随便写。点「导入」之后：解析成功的立刻进课表，失败的和重复的留在
+ * 文本框里，逐行说清楚为什么没进去。这样改完能再点一次，也不会把已经
+ * 成功的那些重复导一遍。一行问题都没有就自动收起面板。
  */
 export default function CourseImport({ existing, onClose, onImport }: Props) {
   const [text, setText] = useState('')
@@ -103,7 +105,9 @@ export default function CourseImport({ existing, onClose, onImport }: Props) {
         />
 
         <p className="sheet__hint">
-          列之间空格或 Tab 都行；周次支持 1-16 / 1-16单 / 1-16双；地点可以省略，带空格也行。
+          列之间空格或 Tab 都行，顺序不用管：认得出周几、节次、周次、地点和课名就行。
+          周次可写 1-16 / 1-16单 / 1-16双 / 单周 / 双周；没写周次按 1-16 每周，
+          没写节次按第 1-2 节，地点可以省略。
         </p>
 
         {done > 0 && <p className="import__ok">已导入 {done} 门</p>}
