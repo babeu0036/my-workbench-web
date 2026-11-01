@@ -13,7 +13,10 @@ type Props = {
 const PLACEHOLDER = `一行一门课，顺序是：名称 周几 节次 周次 地点
 
 高数 周一 1-2 1-16 3-201
-C语言 周二 3-4 1-16单 机房`
+C语言 周二 3-4 1-16单 机房
+英语 周三 5-6 1-16双 A-101
+
+列之间空格、Tab 都行，地点可以省略`
 
 /**
  * 粘贴导入。
@@ -97,7 +100,7 @@ export default function CourseImport({ existing, onClose, onImport }: Props) {
         />
 
         <p className="sheet__hint">
-          周次支持 1-16 / 1-16单 / 1-16双；地点可以省略，带空格也行。
+          列之间空格或 Tab 都行；周次支持 1-16 / 1-16单 / 1-16双；地点可以省略，带空格也行。
         </p>
 
         {done > 0 && <p className="import__ok">已导入 {done} 门</p>}

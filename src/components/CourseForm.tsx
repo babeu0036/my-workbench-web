@@ -12,6 +12,11 @@ type Props = {
   subjects: Subject[]
   /** 今天周几，1-7。新建时默认落在今天 */
   today: number
+  /**
+   * 从网格的空格子点进来时带的预填值：周几和那一节。
+   * 没带（右下角 + 打开）就落在今天、第 1-2 节。
+   */
+  seed?: { weekday: number; startPeriod: number }
   onClose: () => void
   onAdd: (draft: Omit<Course, 'id'>) => void
 }
@@ -29,11 +34,12 @@ const WEEK_OPTIONS: { value: CourseWeeks; label: string }[] = [
  * 课程名 + 周几 + 节次是必填的，周次范围默认 1-16（改错了会提示），
  * 地点和科目可以不填 —— 一节「自习」也能排进表里。
  */
-export default function CourseForm({ subjects, today, onClose, onAdd }: Props) {
+export default function CourseForm({ subjects, today, seed, onClose, onAdd }: Props) {
   const [name, setName] = useState('')
-  const [weekday, setWeekday] = useState(today)
-  const [startPeriod, setStartPeriod] = useState(1)
-  const [endPeriod, setEndPeriod] = useState(2)
+  const [weekday, setWeekday] = useState(seed?.weekday ?? today)
+  const [startPeriod, setStartPeriod] = useState(seed?.startPeriod ?? 1)
+  // 从格子进来时先按单节填，连堂课把结束节往下拉一格就行
+  const [endPeriod, setEndPeriod] = useState(seed?.startPeriod ?? 2)
   const [weeks, setWeeks] = useState<CourseWeeks>('all')
   // 周次存成字符串再解析：清空输入框时不会立刻变成 0 把提示顶出来
   const [weekStartText, setWeekStartText] = useState(String(DEFAULT_WEEK_START))

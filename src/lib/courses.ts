@@ -249,12 +249,18 @@ function parseWeeks(token: string): { start: number; end: number; weeks: CourseW
 
 /**
  * 一行一门课：名称 周几 节次 周次 [地点]
+ *
+ * 列之间空格和 Tab 都算分隔（\s 本来就包含它们，也包含全角空格），
+ * 中文输入法打出来的全角空格照样能切开。
+ *
  * 地点放最后，是因为它最可能带空格（「3-201 机房」）；
  * 名称、周几、节次、周次都不能带空格，切出来正好四段。
  */
 function parseLine(line: string): Omit<Course, 'id'> | string {
   const parts = line.split(/\s+/)
-  if (parts.length < 4) return '至少要有「名称 周几 节次 周次」四项'
+  if (parts.length < 4) {
+    return `至少有四项（名称 周几 节次 周次），这行切出 ${parts.length} 项 —— 列之间用空格或 Tab 隔开`
+  }
 
   const [name, weekdayText, periodText, weekText] = parts
   const location = parts.slice(4).join(' ')
@@ -283,6 +289,7 @@ function parseLine(line: string): Omit<Course, 'id'> | string {
 /**
  * 粘贴文本 → 课程列表。
  * 空行跳过（不算错）；解析失败的行一律记下来，带行号，不静默丢。
+ * 行号按原文算（从 1 开始），空行也占一个号 —— 跟用户在编辑器里数的一致。
  */
 export function parseCourseText(text: string): ParseResult {
   const courses: Omit<Course, 'id'>[] = []
@@ -294,7 +301,7 @@ export function parseCourseText(text: string): ParseResult {
 
     const parsed = parseLine(line)
     if (typeof parsed === 'string') {
-      errors.push({ line: index + 1, message: `第 ${index + 1} 行格式不对：${parsed}` })
+      errors.push({ line: index + 1, message: `第 ${index + 1} 行没看懂：${parsed}` })
       return
     }
     courses.push(parsed)

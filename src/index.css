@@ -1660,6 +1660,47 @@ textarea {
   pointer-events: none;
 }
 
+/* 空位层：每格一个透明按钮，hover / 按下才露出 +。
+   opacity 0 也照样能点，所以空格子的可点区域就是整格。 */
+.grid__cell {
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.12s;
+}
+
+.grid__cell:hover,
+.grid__cell:active {
+  background: var(--accent-soft);
+}
+
+.grid__cell-plus {
+  color: var(--accent);
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+/* 鼠标一进表格就把所有空格子的 + 淡淡显出来，不然完全看不出哪里能点；
+   指到具体某格再变实。触屏没有 hover，保持干净。 */
+.grid:hover .grid__cell-plus {
+  opacity: 0.3;
+}
+
+.grid__cell:hover .grid__cell-plus {
+  opacity: 1;
+}
+
 /* 一个时间段：可能有好几门课（单周课和双周课撞在一起），竖着排 */
 .grid__slot {
   z-index: 1;
@@ -1763,6 +1804,33 @@ textarea {
   color: #fff;
   font-size: 11px;
   font-weight: 600;
+}
+
+/* 窄屏「在这一天加课」的入口，对应宽屏的点空格子 */
+.day-block__add {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.day-block__add:hover,
+.day-block__add:active {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .day-block__empty {

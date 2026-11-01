@@ -12,6 +12,8 @@ type Props = {
   weekNo: number | null
   today: number
   onSelect: (course: Course) => void
+  /** 点某天右边的 + ：按那天打开加课表单 */
+  onCreate: (weekday: number, period: number) => void
 }
 
 /**
@@ -20,8 +22,11 @@ type Props = {
  *
  * 非本周的课照样显示（只是变灰），不然单双周一切换课程就凭空消失，
  * 容易让人以为课丢了。
+ *
+ * 每段标题右边的 + 是对应宽屏「点空格子」的入口 —— 窄屏没有格子，
+ * 但同样能「在这一天加课」，预填的节次是第 1 节，进去再改。
  */
-export default function CourseDayList({ courses, weekNo, today, onSelect }: Props) {
+export default function CourseDayList({ courses, weekNo, today, onSelect, onCreate }: Props) {
   return (
     <div className="day-list">
       {WEEKDAY_OPTIONS.map(day => {
@@ -35,8 +40,16 @@ export default function CourseDayList({ courses, weekNo, today, onSelect }: Prop
             aria-label={day.label}
           >
             <h3 className="day-block__title">
-              {day.label}
+              <span>{day.label}</span>
               {isToday && <span className="day-block__tag">今天</span>}
+              <button
+                type="button"
+                className="day-block__add"
+                onClick={() => onCreate(day.value, 1)}
+                aria-label={`在${day.label}加课`}
+              >
+                <span aria-hidden="true">+</span>
+              </button>
             </h3>
 
             {list.length === 0 ? (

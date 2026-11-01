@@ -38,6 +38,8 @@ export default function PlanCourses({
   subjects,
 }: Props) {
   const [formOpen, setFormOpen] = useState(false)
+  // 从格子点进来时带上那一格的位置；右下角 + 打开时是 null
+  const [seed, setSeed] = useState<{ weekday: number; startPeriod: number } | null>(null)
   const [importOpen, setImportOpen] = useState(false)
   const [settingOpen, setSettingOpen] = useState(false)
   const [detailId, setDetailId] = useState<number | null>(null)
@@ -61,6 +63,18 @@ export default function PlanCourses({
 
   function addDrafts(drafts: Omit<Course, 'id'>[]) {
     setCourses(list => drafts.reduce((acc, draft) => addCourse(acc, draft), list))
+  }
+
+  /** 点空白格子 / 某天的 + ：预填位置再打开表单 */
+  function openCreate(weekday: number, period: number) {
+    setSeed({ weekday, startPeriod: period })
+    setFormOpen(true)
+  }
+
+  /** 右下角 + ：不预填，表单自己落在今天 */
+  function openBlankForm() {
+    setSeed(null)
+    setFormOpen(true)
   }
 
   return (
@@ -121,38 +135,40 @@ export default function PlanCourses({
         {courses.length === 0 ? (
           <div className="empty-block">
             <p className="empty">课表还是空的</p>
-            <p className="meta">点右下角 + 加一门，或者用右上角「导入」一次粘贴整张课表</p>
+            <p className="meta">
+              右上角「导入」可以一次粘贴整张课表；也可以点右下角 +，或者直接点下面表格里的空格子
+            </p>
           </div>
         ) : (
-          <>
-            <p className="page__hint">
-              共 {courses.length} 门课
-              {weekNo !== null && weekNo >= 1 && `，这周上 ${activeCount} 门`}
-            </p>
+          <p className="page__hint">
+            共 {courses.length} 门课
+            {weekNo !== null && weekNo >= 1 && `，这周上 ${activeCount} 门`}
+          </p>
+        )}
 
-            {wide ? (
-              <CourseGrid
-                courses={courses}
-                weekNo={weekNo}
-                today={today}
-                onSelect={course => setDetailId(course.id)}
-              />
-            ) : (
-              <CourseDayList
-                courses={courses}
-                weekNo={weekNo}
-                today={today}
-                onSelect={course => setDetailId(course.id)}
-              />
-            )}
-          </>
+        {wide ? (
+          <CourseGrid
+            courses={courses}
+            weekNo={weekNo}
+            today={today}
+            onSelect={course => setDetailId(course.id)}
+            onCreate={openCreate}
+          />
+        ) : (
+          <CourseDayList
+            courses={courses}
+            weekNo={weekNo}
+            today={today}
+            onSelect={course => setDetailId(course.id)}
+            onCreate={openCreate}
+          />
         )}
       </div>
 
       <button
         type="button"
         className="fab"
-        onClick={() => setFormOpen(true)}
+        onClick={openBlankForm}
         aria-label="添加课程"
         aria-haspopup="dialog"
         aria-expanded={formOpen}
@@ -172,6 +188,7 @@ export default function PlanCourses({
         <CourseForm
           subjects={pickable}
           today={today}
+          seed={seed ?? undefined}
           onClose={() => setFormOpen(false)}
           onAdd={draft => {
             addDrafts([draft])
