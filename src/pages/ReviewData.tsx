@@ -1,5 +1,5 @@
 import { formatWeekRange, weekKeyOf } from '../lib/date'
-import { MOOD_OPTIONS, weekMoodCounts } from '../lib/mood'
+import { MOOD_OPTIONS, moodEmoji, moodOf, weekMoodCounts } from '../lib/mood'
 import type { MoodMap } from '../lib/mood'
 import { activeDays, dailyCounts, streak, weekTotals } from '../lib/stats'
 import type { Todo } from '../lib/types'
@@ -107,18 +107,31 @@ export default function ReviewData({ todos, moods }: Props) {
           {daily.map(day => {
             // 有完成的至少给 12% 高，否则 1 件和 5 件在低分辨率下看不出区别
             const height = day.count === 0 ? 0 : Math.max(12, Math.round((day.count / peak) * 100))
-            const barClass =
-              day.count === 0
-                ? 'day__bar day__bar--zero'
-                : day.isToday
-                  ? 'day__bar day__bar--today'
-                  : 'day__bar'
+            // 那天记了心情就给颗 emoji，顺便把柱子染成对应颜色；没记就两样都不加
+            const mood = moodOf(moods, day.key)
+            const moodFace = moodEmoji(mood)
+            const barClass = [
+              'day__bar',
+              day.count === 0 ? 'day__bar--zero' : '',
+              mood ? `day__bar--${mood}` : '',
+              day.isToday ? 'day__bar--today' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')
 
             return (
-              <div key={day.key} className={day.isToday ? 'day day--today' : 'day'}>
+              <div
+                key={day.key}
+                className={day.isToday ? 'day day--today' : 'day'}
+                aria-label={`${day.weekday} 完成 ${day.count} 件${mood ? `，状态${MOOD_OPTIONS.find(item => item.value === mood)?.label}` : ''}`}
+              >
                 <span className="day__num">{day.count === 0 ? '' : day.count}</span>
                 <span className="day__track">
                   <span className={barClass} style={{ height: `${height}%` }} />
+                </span>
+                {/* 没记心情时不画空框也不留符号，但这一格照旧占位 —— 7 个星期几要对齐 */}
+                <span className="day__mood" aria-hidden="true">
+                  {moodFace}
                 </span>
                 <span className="day__label">{day.weekday}</span>
               </div>

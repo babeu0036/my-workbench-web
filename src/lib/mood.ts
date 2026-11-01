@@ -53,6 +53,17 @@ export function moodOf(map: MoodMap, key: string): Mood | null {
   return isMood(value) ? value : null
 }
 
+/**
+ * 心情对应哪个 emoji；没记、或者是从盘里读出来的怪值，都给空串。
+ *
+ * 页面靠这个空串决定「不画」。映射只在这里写一份 —— 首页选择器、复盘统计、
+ * 柱状图下面那个 emoji 用的都是同一张表，改 emoji 不用满项目找。
+ */
+export function moodEmoji(mood: Mood | null): string {
+  if (!mood) return ''
+  return MOOD_OPTIONS.find(option => option.value === mood)?.emoji ?? ''
+}
+
 /** 记 / 改某天的状态。只动这一天，别的日期原样留着 */
 export function setMood(map: MoodMap, key: string, mood: Mood): MoodMap {
   return { ...map, [key]: mood }

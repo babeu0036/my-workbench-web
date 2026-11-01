@@ -1446,6 +1446,28 @@ textarea {
   opacity: 1;
 }
 
+/* 柱子跟着心情走：不错=绿、一般=黄、累=灰。没记心情的保持主题紫。
+   今天那根靠「不透明 + 标签变紫」区分，所以照旧是 opacity 1，颜色不参与强调 */
+.day__bar--good {
+  background: var(--done);
+}
+
+.day__bar--ok {
+  background: var(--warn);
+}
+
+.day__bar--tired {
+  background: var(--muted);
+}
+
+/* 柱子下面、星期几上面那颗 emoji。没记心情的那天这里是空的，
+   但高度照留 —— 7 个星期几才会在同一水平线上 */
+.day__mood {
+  height: 17px;
+  font-size: 14px;
+  line-height: 17px;
+}
+
 .day__label {
   color: var(--muted);
   font-size: 11px;
@@ -1556,6 +1578,12 @@ textarea {
 
   .days__chart {
     gap: 4px;
+  }
+
+  .day__mood {
+    height: 16px;
+    font-size: 13px;
+    line-height: 16px;
   }
 
   .goal__actions .btn {
