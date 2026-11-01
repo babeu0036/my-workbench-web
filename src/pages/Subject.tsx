@@ -74,7 +74,9 @@ export default function SubjectPage({ subject, seg, todos, setTodos, onSegChange
           <TaskInput
             placeholder={isUnclassified ? '写一件要做的事…' : `写一件${subject.name}要做的事…`}
             label={`添加${subject.name}任务`}
-            onAdd={(text, dueDate) => setTodos(list => addTodo(list, text, subject.id, dueDate))}
+            onAdd={(text, dueDate) =>
+              setTodos(list => addTodo(list, text, subject.id, dueDate, 'study'))
+            }
           />
         </>
       ) : (

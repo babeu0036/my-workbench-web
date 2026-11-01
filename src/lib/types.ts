@@ -1,9 +1,17 @@
+/**
+ * 任务的类型：学习任务要有科目，琐事不需要科目。
+ * 老数据没有这个字段，迁移时一律算 study。
+ */
+export type TodoKind = 'study' | 'chore'
+
 export type Todo = {
   id: number
   text: string
   done: boolean
-  /** 属于哪个科目；空字符串 = 未分类（老数据全落在这里） */
+  /** 属于哪个科目；空字符串 = 没有科目（老数据、或者琐事） */
   subjectId: string
+  /** 学习 / 琐事。琐事的 subjectId 一定是空的 */
+  kind: TodoKind
   /** 创建时间戳。老数据没有这个字段，迁移时拿它原来的 id 顶上 */
   createdAt: number
   /** 完成时间戳。没完成时没有，撤销完成时要清掉 */
@@ -51,7 +59,7 @@ export type Goal = {
   settled: boolean
 }
 
-export type PlanSegment = 'week' | 'deadlines'
+export type PlanSegment = 'courses' | 'tasks' | 'deadlines'
 export type SubjectSegment = 'tasks' | 'mistakes'
 export type ReviewBlock = 'data' | 'goal'
 

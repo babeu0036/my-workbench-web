@@ -130,3 +130,13 @@ export function formatWeekRange(key: string): string {
   const md = (dt: Date) => `${pad(dt.getMonth() + 1)}.${pad(dt.getDate())}`
   return `${md(start)} - ${md(end)}`
 }
+
+/**
+ * 日期键（2026-11-03）落不落在本周。
+ * 截止日期是日期字符串而不是时间戳，这里也用日期键比较：
+ * 两个都是 10 个字符，字符串比大小就等于比日期，不用来回转换。
+ */
+export function isDateKeyInWeek(dateKey: string, now: number = Date.now()): boolean {
+  const key = weekKeyOf(now)
+  return dateKey >= key && dateKey < weekKeyOffset(key, 1)
+}

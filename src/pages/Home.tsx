@@ -6,7 +6,7 @@ import TaskList from '../components/TaskList'
 import { todayLabel } from '../lib/date'
 import { KEYS, useStoredState } from '../lib/storage'
 import { UNCATEGORIZED_ID, addTodo, clearDone, removeTodo, toggleTodo } from '../lib/todos'
-import type { Subject, Todo } from '../lib/types'
+import type { Subject, Todo, TodoKind } from '../lib/types'
 
 type Props = {
   todos: Todo[]
@@ -36,9 +36,10 @@ export default function Home({ todos, setTodos, subjects, dueItems, onOpenSubjec
 
   const doneCount = todos.filter(todo => todo.done).length
 
-  function handleAdd(text: string, subjectId: string, dueDate: string) {
-    setTodos(list => addTodo(list, text, subjectId, dueDate))
-    setLastSubjectId(subjectId)
+  function handleAdd(text: string, subjectId: string, dueDate: string, kind: TodoKind) {
+    setTodos(list => addTodo(list, text, subjectId, dueDate, kind))
+    // 琐事不归属科目，别把「上次选的科目」覆盖成空的
+    if (kind === 'study') setLastSubjectId(subjectId)
     setPanelOpen(false)
   }
 

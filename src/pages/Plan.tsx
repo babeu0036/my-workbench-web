@@ -1,51 +1,39 @@
 import type { Dispatch, SetStateAction } from 'react'
 import Deadlines from './Deadlines'
-import type { Deadline, PlanSegment } from '../lib/types'
+import PlanCourses from './PlanCourses'
+import PlanTasks from './PlanTasks'
+import type { Deadline, PlanSegment, Subject, Todo } from '../lib/types'
 
-const SEGMENTS: { key: PlanSegment; label: string }[] = [
-  { key: 'week', label: '本周' },
-  { key: 'deadlines', label: '比赛' },
-]
+const TITLES: Record<PlanSegment, string> = {
+  courses: '课程表',
+  tasks: '任务',
+  deadlines: '比赛',
+}
 
 type Props = {
   seg: PlanSegment
-  onSegChange: (seg: PlanSegment) => void
+  todos: Todo[]
+  setTodos: Dispatch<SetStateAction<Todo[]>>
+  subjects: Subject[]
   deadlines: Deadline[]
   setDeadlines: Dispatch<SetStateAction<Deadline[]>>
 }
 
 /**
- * 计划页两个分段：本周 / 比赛。
- * 今日任务只在首页，这里不重复放一份；本周是「按周看」的视角。
- * 「本周」的课程表和本周任务在第 4 步接进来，比赛直接复用原来的组件。
+ * 计划页只是个壳：标题 + 三块内容。
+ * 切换交给侧边栏的二级项（课程表 / 任务 / 比赛），页面里不再放一条 seg ——
+ * 两套切换会打架，复盘拆成两页之后也是这个做法。
  */
-export default function Plan({ seg, onSegChange, deadlines, setDeadlines }: Props) {
+export default function Plan({ seg, todos, setTodos, subjects, deadlines, setDeadlines }: Props) {
   return (
     <div className="plan">
-      <h2 className="page__title">计划</h2>
+      <h2 className="page__title">{TITLES[seg]}</h2>
 
-      <div className="seg" role="group" aria-label="计划分类">
-        {SEGMENTS.map(item => (
-          <button
-            key={item.key}
-            type="button"
-            aria-pressed={item.key === seg}
-            className={item.key === seg ? 'seg__btn seg__btn--active' : 'seg__btn'}
-            onClick={() => onSegChange(item.key)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      {seg === 'courses' && <PlanCourses />}
 
-      {seg === 'week' ? (
-        <div className="empty-block">
-          <p className="empty">周一到周日的课程表在第 4 步接进来</p>
-          <p className="meta">本周任务和「添加课程」也在那一步一起做</p>
-        </div>
-      ) : (
-        <Deadlines deadlines={deadlines} setDeadlines={setDeadlines} />
-      )}
+      {seg === 'tasks' && <PlanTasks todos={todos} setTodos={setTodos} subjects={subjects} />}
+
+      {seg === 'deadlines' && <Deadlines deadlines={deadlines} setDeadlines={setDeadlines} />}
     </div>
   )
 }

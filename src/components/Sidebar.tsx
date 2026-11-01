@@ -97,7 +97,8 @@ export default function Sidebar({ route, subjects, dueCount, open, onNavigate, o
 
   const planChildren: Leaf[] = (
     [
-      { key: 'week', label: '本周' },
+      { key: 'courses', label: '课程表' },
+      { key: 'tasks', label: '任务' },
       { key: 'deadlines', label: '比赛' },
     ] as { key: PlanSegment; label: string }[]
   ).map(item => ({
@@ -138,7 +139,7 @@ export default function Sidebar({ route, subjects, dueCount, open, onNavigate, o
       key: 'plan',
       label: '计划',
       icon: 'plan',
-      route: { page: 'plan', seg: 'week' },
+      route: { page: 'plan', seg: 'courses' },
       children: planChildren,
     },
     {

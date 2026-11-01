@@ -1,5 +1,5 @@
-import { isThisWeek } from './date'
-import type { Todo } from './types'
+import { isDateKeyInWeek, isThisWeek, weekKeyOf } from './date'
+import type { Todo, TodoKind } from './types'
 
 /** 未分类科目的 id。老数据没有 subjectId，全归到这里，不丢 */
 export const UNCATEGORIZED_ID = ''
@@ -20,6 +20,9 @@ export function normalizeTodo(raw: unknown, index = 0): Todo | null {
     text,
     done: Boolean(item.done),
     subjectId: typeof item.subjectId === 'string' ? item.subjectId : UNCATEGORIZED_ID,
+    // 老数据没有 kind：一律算学习任务，不擅自把历史任务改判成「琐事」。
+    // 代价是老的「未分类」任务会出现在「学习」筛选里，但它本来也不该被当成家务事
+    kind: item.kind === 'chore' ? 'chore' : 'study',
     // 老版本的 id 就是 Date.now()，直接拿来当创建时间，不编一个新时间
     createdAt: typeof item.createdAt === 'number' ? item.createdAt : id,
     // 老数据里已经完成的任务，不知道是哪天完成的 —— 留空，不算进「本周完成」，
@@ -44,9 +47,13 @@ export function normalizeTodos(list: unknown): Todo[] {
     .filter((item): item is Todo => item !== null)
 }
 
-/** 某个科目的任务（未分类传 UNCATEGORIZED_ID 即可） */
+/** 某个科目的任务（未分类传 UNCATEGORIZED_ID 即可；琐事不属于任何科目，不混进未分类页） */
 export function forSubject(todos: Todo[], subjectId: string): Todo[] {
-  return todos.filter(todo => todo.subjectId === subjectId)
+  return todos.filter(
+    todo =>
+      todo.subjectId === subjectId &&
+      (subjectId !== UNCATEGORIZED_ID || todo.kind !== 'chore'),
+  )
 }
 
 /**
@@ -88,21 +95,31 @@ export function nextId(list: Todo[], now: number = Date.now()): number {
 }
 
 /**
- * 加一条。subjectId 由调用方决定（科目页带当前科目，首页带选中的科目）；
- * dueDate 是必填的截止日期（2026-11-03）。缺任何一项都不加，返回原数组。
+ * 加一条。subjectId 由调用方决定（科目页带当前科目，首页带选中的科目，
+ * 琐事传空字符串）；dueDate 是必填的截止日期（2026-11-03）。缺任何一项都不加。
  */
 export function addTodo(
   list: Todo[],
   text: string,
   subjectId: string,
   dueDate: string,
+  kind: TodoKind = 'study',
   now: number = Date.now(),
 ): Todo[] {
   const value = text.trim()
   if (!value || !dueDate) return list
   return [
     ...list,
-    { id: nextId(list, now), text: value, done: false, subjectId, createdAt: now, dueDate },
+    {
+      id: nextId(list, now),
+      text: value,
+      done: false,
+      // 琐事不归属任何科目，就算调用方传了也按空处理，别留一个半吊子状态
+      subjectId: kind === 'chore' ? UNCATEGORIZED_ID : subjectId,
+      kind,
+      createdAt: now,
+      dueDate,
+    },
   ]
 }
 
@@ -123,4 +140,46 @@ export function removeTodo(list: Todo[], id: number): Todo[] {
 
 export function clearDone(list: Todo[]): Todo[] {
   return list.filter(todo => !todo.done)
+}
+
+/** 计划页任务列表的筛选值：全部 / 只学习 / 只琐事 */
+export type KindFilter = 'all' | TodoKind
+
+export function byKind(list: Todo[], filter: KindFilter): Todo[] {
+  return filter === 'all' ? list : list.filter(todo => todo.kind === filter)
+}
+
+/**
+ * 计划页「任务」的范围 = 这周要处理的，四类都收：
+ * 1. 本周完成的 —— 勾完不能立刻从列表里消失，否则像被误删；
+ * 2. 截止日期在本周的，不管做没做；
+ * 3. 过期还没做的 —— 欠着的账不能藏起来，逾期本来就要看见；
+ * 4. 没设日期的老任务：只收还没做的，免得几年前做完的一堆把列表堆满。
+ */
+export function weekTasks(list: Todo[], now: number = Date.now()): Todo[] {
+  return list.filter(todo => {
+    if (isThisWeek(todo.doneAt, now)) return true
+    if (!todo.dueDate) return !todo.done
+    if (isDateKeyInWeek(todo.dueDate, now)) return true
+    return !todo.done && todo.dueDate < weekKeyOf(now)
+  })
+}
+
+/**
+ * 计划页排序：按截止日期从近到远，没日期的排最后，已完成的一律沉底。
+ * 不改原数组。同一天的按创建时间，早的在前，顺序稳定不会来回跳。
+ * 日期都是 10 个字符的日期键，直接字符串比大小。
+ */
+export function sortForPlan(list: Todo[]): Todo[] {
+  return [...list].sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1
+
+    const aHas = Boolean(a.dueDate)
+    const bHas = Boolean(b.dueDate)
+    if (aHas !== bHas) return aHas ? -1 : 1
+    if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) {
+      return a.dueDate < b.dueDate ? -1 : 1
+    }
+    return a.createdAt - b.createdAt
+  })
 }

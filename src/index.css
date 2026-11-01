@@ -670,6 +670,11 @@ input {
   background: var(--surface);
   border-radius: 18px 18px 0 0;
   box-shadow: 0 -8px 32px -12px rgba(20, 18, 28, 0.32);
+  /* 里面有输入框、类型、科目、日期、提示五行，矮屏上会顶出屏幕 ——
+     限个高度自己滚，「添加」按钮就不会被挤到看不见的地方 */
+  max-height: 86vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .sheet__head {

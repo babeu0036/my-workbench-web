@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Sidebar from './components/Sidebar'
 import Home from './pages/Home'
 import Plan from './pages/Plan'
@@ -11,6 +11,7 @@ import { DEFAULT_SUBJECTS } from './lib/seed'
 import { normalizeDeadlines } from './lib/deadlines'
 import { pendingReminders } from './lib/due'
 import { normalizeGoals } from './lib/goals'
+import { startSync } from './lib/sync'
 import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, normalizeTodos } from './lib/todos'
 import type { Deadline, Goal, Route, Subject, Todo } from './lib/types'
 
@@ -32,6 +33,11 @@ function titleOf(route: Route, subjects: Subject[]): string {
 
 export default function App() {
   const [route, setRoute] = useState<Route>({ page: 'home' })
+
+  // 打开页面就接上云同步：云端有新数据会拉下来，本地改动会自动推上去
+  useEffect(() => {
+    startSync()
+  }, [])
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   // 数据仍然放在最外层：切页会卸载页面组件，数据留在这里才不会反复读盘。
@@ -46,7 +52,8 @@ export default function App() {
   const [goals, setGoals] = useStoredState<Goal[]>(KEYS.goals, [], normalizeGoals)
 
   // 科目暂时是三份写死的种子数据；有未分类任务时才在「科目」下多挂一项
-  const hasUnclassified = todos.some(todo => !todo.subjectId)
+  // （琐事的 subjectId 也是空的，但它不属于「未分类」，别让侧边栏为它多出一项）
+  const hasUnclassified = todos.some(todo => !todo.subjectId && todo.kind !== 'chore')
   const subjects: Subject[] = hasUnclassified
     ? [...DEFAULT_SUBJECTS, { id: UNCATEGORIZED_ID, name: UNCATEGORIZED_NAME }]
     : DEFAULT_SUBJECTS
@@ -124,7 +131,9 @@ export default function App() {
           {route.page === 'plan' && (
             <Plan
               seg={route.seg}
-              onSegChange={seg => setRoute({ page: 'plan', seg })}
+              todos={todos}
+              setTodos={setTodos}
+              subjects={subjects}
               deadlines={deadlines}
               setDeadlines={setDeadlines}
             />
