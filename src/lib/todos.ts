@@ -1,4 +1,4 @@
-import { isDateKeyInWeek, isThisWeek, weekKeyOf } from './date'
+import { dayKey, dayKeyOffset, isDateKeyInWeek, isThisWeek, weekKeyOf } from './date'
 import type { Todo, TodoKind } from './types'
 
 /** 未分类科目的 id。老数据没有 subjectId，全归到这里，不丢 */
@@ -182,4 +182,18 @@ export function sortForPlan(list: Todo[]): Todo[] {
     }
     return a.createdAt - b.createdAt
   })
+}
+
+/**
+ * 明天到期的任务，按截止排序。首页「明天」区块用它。
+ *
+ * **只给没做完的**：明天的事今天提前做完了，就没必要再占着「明天」这块，
+ * 列出来会让「明天还剩几件」这件事看不准。
+ *
+ * 这批任务的 dueDate 全都一样，所以 sortForPlan 实际落到按创建时间，
+ * 顺序稳定，不会每刷新一次就换个排法。
+ */
+export function tomorrowTasks(list: Todo[], now: number = Date.now()): Todo[] {
+  const target = dayKeyOffset(dayKey(now), 1)
+  return sortForPlan(list.filter(todo => todo.dueDate === target && !todo.done))
 }

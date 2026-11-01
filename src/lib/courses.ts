@@ -344,6 +344,29 @@ export function todayCourses(
   return coursesOfDay(list, weekdayOf(now)).filter(course => isActiveInWeek(course, weekNo))
 }
 
+/** 明天零点的时间戳。用年月日往后挪一天，跨月、跨年都不会偏 */
+function tomorrowAt(now: number): number {
+  const d = new Date(now)
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime()
+}
+
+/**
+ * 明天上什么，按起始节排序。首页「明天」区块用它。
+ *
+ * 和 todayCourses 的差别不只是「换一天」：**周次要按明天算**。
+ * 今天周日时明天是下周一，学期周次正好 +1，单双周会翻面 ——
+ * 沿用今天的周次判断，跨周那天就会把「明天上不上」说错。
+ */
+export function tomorrowCourses(
+  list: Course[],
+  semesterStart: string,
+  now: number = Date.now(),
+): Course[] {
+  const at = tomorrowAt(now)
+  const weekNo = weekNumberOf(semesterStart, at)
+  return coursesOfDay(list, weekdayOf(at)).filter(course => isActiveInWeek(course, weekNo))
+}
+
 export type ParseError = { line: number; message: string }
 export type ParseResult = { courses: Omit<Course, 'id'>[]; errors: ParseError[] }
 

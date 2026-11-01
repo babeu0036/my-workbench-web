@@ -139,6 +139,7 @@ export default function App() {
               setMoods={setMoods}
               onOpenSubject={id => navigate({ page: 'subject', id, seg: 'tasks' })}
               onOpenGoal={() => navigate({ page: 'review', block: 'goal' })}
+              onOpenPlan={() => navigate({ page: 'plan', seg: 'tasks' })}
             />
           )}
 

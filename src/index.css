@@ -2164,6 +2164,10 @@ textarea {
 }
 
 .today-class__place {
+  /* 地点不参与压缩：它是短信息（裕实楼102），课名才是长的那头。
+     之前两者都可压，课名一长地点就被挤成「裕…」，等于丢信息 */
+  flex: 0 0 auto;
+  max-width: 45%;
   color: var(--muted);
   font-size: 13px;
 }
@@ -2395,4 +2399,86 @@ textarea {
   .toast {
     top: 64px;
   }
+}
+
+/* ---------- 首页「明天」区块 ---------- */
+
+/* 比 card__title 大一号：这块的标题带日期，是整块的主语，不该比「本周目标」还弱 */
+.tomorrow__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-h);
+  letter-spacing: 0.2px;
+}
+
+.tomorrow__empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+/* 「有课」「要交」两段各带一个小标题，课和任务不会看串 */
+.tomorrow__block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tomorrow__block + .tomorrow__block {
+  margin-top: 4px;
+}
+
+.tomorrow__label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+
+.tomorrow__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 整行可点，但不是「勾选」，所以不加勾选框的圆形/方块控件感 */
+.tomorrow__task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tomorrow__task:hover .tomorrow__text {
+  color: var(--accent);
+}
+
+/* 空方框用 CSS 画，比字符 ☐ 在不同字体下更稳 */
+.tomorrow__box {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+}
+
+.tomorrow__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-h);
+  font-size: 15px;
+  transition: color 0.15s ease;
 }

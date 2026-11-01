@@ -7,7 +7,8 @@ import HomeStats from '../components/HomeStats'
 import MoodPicker from '../components/MoodPicker'
 import TaskList from '../components/TaskList'
 import TodayCourses from '../components/TodayCourses'
-import { todayCourses } from '../lib/courses'
+import TomorrowBlock from '../components/TomorrowBlock'
+import { todayCourses, tomorrowCourses } from '../lib/courses'
 import { dayKey, todayLabel, weekKeyOf } from '../lib/date'
 import { goalOf } from '../lib/goals'
 import { moodOf, setMood } from '../lib/mood'
@@ -20,6 +21,7 @@ import {
   clearDone,
   removeTodo,
   sortForPlan,
+  tomorrowTasks,
   toggleTodo,
 } from '../lib/todos'
 import type { Course, Goal, Subject, Todo, TodoKind } from '../lib/types'
@@ -39,16 +41,20 @@ type Props = {
   setMoods: Dispatch<SetStateAction<MoodMap>>
   onOpenSubject: (subjectId: string) => void
   onOpenGoal: () => void
+  /** 「明天」里的任务只能看不能勾，点了统一跳计划页 */
+  onOpenPlan: () => void
 }
 
 /**
- * 首页。从上到下：本周目标 → 到期提醒 → 今天有课 → 今日进度 → 今天的任务 → 今日状态。
+ * 首页。从上到下：本周目标 → 到期提醒 → 今天有课 → 今日进度 → 今天的任务
+ * → 明天 → 今日状态。
  *
  * 任务列表只放「今天到期 + 逾期」：标题写「今天的任务」就得真只放今天的。
  * 没截止日期的老任务不在这儿（在计划页和科目页里还在），所以列表底部留了一句话说明去处。
  *
  * 页面本身只排版，判断全在 lib 里：目标用 goalOf、今天的课用 todayCourses、
- * 完成环用 todayTotals、连续天数用 streak —— 都有纯函数测试撑着。
+ * 明天用 tomorrowCourses / tomorrowTasks、完成环用 todayTotals、连续天数用 streak
+ * —— 都有纯函数测试撑着。
  */
 export default function Home({
   todos,
@@ -62,6 +68,7 @@ export default function Home({
   setMoods,
   onOpenSubject,
   onOpenGoal,
+  onOpenPlan,
 }: Props) {
   const [panelOpen, setPanelOpen] = useState(false)
   // 记住上次选的科目，下次打开面板直接站在那个科目上
@@ -81,6 +88,9 @@ export default function Home({
   const days = streak(todos)
   const todayList = sortForPlan(todayTasks(todos))
   const doneCount = todayList.filter(todo => todo.done).length
+  // 明天：课按明天的学期周次筛（跨周时单双周会翻面），任务只要没做完的
+  const classesTomorrow = tomorrowCourses(courses, semesterStart)
+  const tasksTomorrow = tomorrowTasks(todos)
 
   function handleAdd(text: string, subjectId: string, dueDate: string, kind: TodoKind) {
     setTodos(list => addTodo(list, text, subjectId, dueDate, kind))
@@ -129,6 +139,12 @@ export default function Home({
         <p className="meta">
           只显示今天到期和逾期的任务；没日期的旧任务、下周的活都在「计划 · 任务」里。
         </p>
+
+        <TomorrowBlock
+          courses={classesTomorrow}
+          tasks={tasksTomorrow}
+          onOpenPlan={onOpenPlan}
+        />
 
         <MoodPicker value={mood} onPick={value => setMoods(list => setMood(list, today, value))} />
       </div>
