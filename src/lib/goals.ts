@@ -51,21 +51,6 @@ export function goalOf(list: Goal[], weekKey: string): Goal | undefined {
 }
 
 /**
- * 复盘页要展示的「上一条目标」：所有早于本周的目标里，周次最大的那条。
- * 上周没设过就往前顺延，卡片上会写它真实的周区间，不假装它是上周。
- */
-export function lastTarget(list: Goal[], thisWeekKey: string): Goal | undefined {
-  let best: Goal | undefined
-  for (const goal of list) {
-    if (goal.weekKey >= thisWeekKey) continue
-    if (!best || goal.weekKey > best.weekKey || (goal.weekKey === best.weekKey && goal.id > best.id)) {
-      best = goal
-    }
-  }
-  return best
-}
-
-/**
  * 结算某一条。done 由按钮决定，settled 一置 true 就不再改回去 ——
  * 这是这一周的历史记录，改判会让复盘的结论失去意义。
  */

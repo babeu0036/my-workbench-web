@@ -1,0 +1,104 @@
+import { formatWeekRange, weekKeyOf } from '../lib/date'
+import { activeDays, dailyCounts, streak, weekTotals } from '../lib/stats'
+import type { Todo } from '../lib/types'
+
+type Props = {
+  todos: Todo[]
+}
+
+/**
+ * 复盘 · 数据。只放统计，完全不碰目标 ——
+ * 目标和它是两个独立页面，改一边的排版不会牵连另一边。
+ */
+export default function ReviewData({ todos }: Props) {
+  const totals = weekTotals(todos)
+  const active = activeDays(todos)
+  const days = streak(todos)
+  const daily = dailyCounts(todos)
+
+  // 最高那天决定柱子满格多高；全是 0 时 peak = 0，下面的除法要绕开
+  const peak = daily.reduce((acc, day) => (day.count > acc ? day.count : acc), 0)
+  const weekSum = daily.reduce((acc, day) => acc + day.count, 0)
+
+  return (
+    <div className="page">
+      <h2 className="page__title">数据</h2>
+      <p className="page__hint">本周 {formatWeekRange(weekKeyOf())}</p>
+
+      <div className="stat-grid">
+        <div className="stat stat--wide">
+          <div className="stat__row">
+            <span className="stat__num">
+              {totals.done}
+              <span className="stat__sep">/</span>
+              {totals.total}
+            </span>
+            <span className="stat__pct">{totals.percent}%</span>
+          </div>
+          <span className="stat__label">本周完成</span>
+          {/* 进度条只是把百分比画出来，读屏仍然读上面那句 */}
+          <div
+            className="meter"
+            role="img"
+            aria-label={`本周完成 ${totals.done} 件，共 ${totals.total} 件，百分之 ${totals.percent}`}
+          >
+            <div className="meter__fill" style={{ width: `${totals.percent}%` }} />
+          </div>
+        </div>
+
+        <div className="stat">
+          <span className="stat__num">
+            {active}
+            <span className="stat__sep">/</span>7
+          </span>
+          <span className="stat__label">本周活跃天数</span>
+        </div>
+
+        <div className="stat">
+          <span className="stat__num">{days}</span>
+          <span className="stat__label">连续天数</span>
+        </div>
+      </div>
+
+      {totals.total === 0 && (
+        <p className="meta">本周还没有任务。去首页加一条，这里就有数了。</p>
+      )}
+
+      <section className="card days" aria-labelledby="days-title">
+        <div className="days__head">
+          <span className="card__title" id="days-title">
+            最近 7 天
+          </span>
+          <span className="days__sum">共 {weekSum} 件</span>
+        </div>
+
+        <div className="days__chart">
+          {daily.map(day => {
+            // 有完成的至少给 12% 高，否则 1 件和 5 件在低分辨率下看不出区别
+            const height = day.count === 0 ? 0 : Math.max(12, Math.round((day.count / peak) * 100))
+            const barClass =
+              day.count === 0
+                ? 'day__bar day__bar--zero'
+                : day.isToday
+                  ? 'day__bar day__bar--today'
+                  : 'day__bar'
+
+            return (
+              <div key={day.key} className={day.isToday ? 'day day--today' : 'day'}>
+                <span className="day__num">{day.count === 0 ? '' : day.count}</span>
+                <span className="day__track">
+                  <span className={barClass} style={{ height: `${height}%` }} />
+                </span>
+                <span className="day__label">{day.weekday}</span>
+              </div>
+            )
+          })}
+        </div>
+
+        <p className="meta">
+          滚动的 7 天，可能跨周，所以和上面「本周完成」不一定对得上；只认完成时间，撤销完成就不算了。
+        </p>
+      </section>
+    </div>
+  )
+}

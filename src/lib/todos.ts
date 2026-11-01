@@ -56,14 +56,20 @@ export function forSubject(todos: Todo[], subjectId: string): Todo[] {
  * 科目页传单科目的任务，复盘页传全部任务 —— 两边口径必须是同一份，
  * 所以这里只认「一组任务」，不再重复实现。
  */
-export function weekTotals(
-  list: Todo[],
-  now: number = Date.now(),
-): { done: number; total: number } {
+export type WeekTotals = {
+  done: number
+  total: number
+  /** 完成率，0-100 的整数。total 为 0 时给 0，不让 0/0 显示成 100% */
+  percent: number
+}
+
+export function weekTotals(list: Todo[], now: number = Date.now()): WeekTotals {
   const finished = list.filter(todo => isThisWeek(todo.doneAt, now))
   const created = list.filter(todo => isThisWeek(todo.createdAt, now))
   const total = new Set([...created, ...finished].map(todo => todo.id)).size
-  return { done: finished.length, total }
+  // 百分比和 x/y 在同一处算，界面上不会出现「0/0 却 100%」这种对不上的数
+  const percent = total === 0 ? 0 : Math.round((finished.length / total) * 100)
+  return { done: finished.length, total, percent }
 }
 
 /** 某个科目的本周统计 */
@@ -71,7 +77,7 @@ export function weekStats(
   todos: Todo[],
   subjectId: string,
   now: number = Date.now(),
-): { done: number; total: number } {
+): WeekTotals {
   return weekTotals(forSubject(todos, subjectId), now)
 }
 

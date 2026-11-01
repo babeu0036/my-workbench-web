@@ -1299,28 +1299,31 @@ input {
   }
 }
 
-/* ---------- 复盘：数据 / 目标 ---------- */
+/* ---------- 复盘：数据 / 目标（两个独立页面） ---------- */
 
-.review__section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  /* 手机顶栏是 sticky 的，滚动定位时给它让位 */
-  scroll-margin-top: 66px;
-}
-
-.review__h2 {
-  margin: 4px 2px 0;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.6px;
-}
-
+/* 数据页的第一张卡独占一行（大数字 + 百分比 + 进度条），下面两张对半分 */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
+}
+
+.stat--wide {
+  grid-column: 1 / -1;
+}
+
+.stat__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stat__pct {
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat {
@@ -1353,6 +1356,93 @@ input {
 .stat__label {
   color: var(--muted);
   font-size: 12px;
+}
+
+/* 本周完成的进度条：细一条就够，别抢大数字的戏 */
+.meter {
+  height: 6px;
+  margin-top: 8px;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: 999px;
+}
+
+.meter__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.18s ease;
+}
+
+/* 最近 7 天：一天一根柱子，没有完成的那天留空槽，一眼看出断在哪 */
+.days {
+  gap: 10px;
+}
+
+.days__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.days__sum {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.days__chart {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.day__num {
+  min-height: 15px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.day__track {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 64px;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+
+.day__bar {
+  width: 100%;
+  border-radius: 6px;
+  background: var(--accent);
+  opacity: 0.45;
+}
+
+.day__bar--today {
+  opacity: 1;
+}
+
+.day__label {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.day--today .day__num,
+.day--today .day__label {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .goal {
@@ -1400,7 +1490,11 @@ input {
 }
 
 .goal__btn {
-  flex: 1;
+  flex: 1 1 0;
+  /* 桌面卡片宽，别让两个按钮各拉 260px */
+  max-width: 200px;
+  /* 没选中的那个也要看得出是个按钮，不能只剩一行灰字 */
+  border-color: var(--border);
 }
 
 /* 结算后按钮锁定，只把选中的那个留下来；透明度不降到看不清 */
@@ -1410,6 +1504,7 @@ input {
 
 .goal__btn--on {
   background: var(--accent-soft);
+  border-color: transparent;
   color: var(--accent);
 }
 
@@ -1430,12 +1525,6 @@ input {
   font-size: 13px;
 }
 
-@media (min-width: 900px) {
-  .review__section {
-    scroll-margin-top: 12px;
-  }
-}
-
 @media (max-width: 380px) {
   .stat {
     padding: 12px 10px 10px;
@@ -1443,6 +1532,18 @@ input {
 
   .stat__num {
     font-size: 22px;
+  }
+
+  .stat__pct {
+    font-size: 17px;
+  }
+
+  .day__track {
+    height: 54px;
+  }
+
+  .days__chart {
+    gap: 4px;
   }
 
   .goal__actions .btn {

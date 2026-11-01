@@ -3,7 +3,7 @@ import { weekTotals } from './todos'
 import type { Todo } from './types'
 
 /**
- * 复盘的三个只读指标。
+ * 复盘「数据」页的只读指标。
  * 都接受 now，方便固定时间做测试；也都不改数据，删掉的任务自然不再计入。
  */
 export { weekTotals }
@@ -51,4 +51,47 @@ export function streak(todos: Todo[], now: number = Date.now()): number {
     cursor -= 1
   }
   return count
+}
+
+/** 柱状图上写一个字就够，两个字的「周一」在 360px 下会挤 */
+const WEEKDAY_CHARS = ['日', '一', '二', '三', '四', '五', '六']
+
+export type DayCount = {
+  /** 本地日期键，当 key 用 */
+  key: string
+  /** 日 / 一 / 二 …，柱子下面那一行 */
+  weekday: string
+  count: number
+  /** 今天那根柱子要高亮 */
+  isToday: boolean
+}
+
+/**
+ * 最近 N 天每天完成了几条，按日期升序，最后一项是今天。
+ *
+ * 这是「滚动 7 天」而不是「本周 7 天」：周日看它就是上周一到今天，
+ * 所以数字可能和「本周完成」对不上，两者本来就在回答不同的问题。
+ */
+export function dailyCounts(todos: Todo[], now: number = Date.now(), days = 7): DayCount[] {
+  const counter = new Map<string, number>()
+  for (const ts of doneTimes(todos)) {
+    const key = dayKey(ts)
+    counter.set(key, (counter.get(key) ?? 0) + 1)
+  }
+
+  const base = new Date(now)
+  const todayKey = dayKey(now)
+  const out: DayCount[] = []
+  for (let i = days - 1; i >= 0; i -= 1) {
+    // 用年月日回退，跨月、跨年都不会偏
+    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() - i)
+    const key = dayKey(d.getTime())
+    out.push({
+      key,
+      weekday: WEEKDAY_CHARS[d.getDay()],
+      count: counter.get(key) ?? 0,
+      isToday: key === todayKey,
+    })
+  }
+  return out
 }

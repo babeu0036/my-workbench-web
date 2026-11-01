@@ -3,7 +3,8 @@ import Sidebar from './components/Sidebar'
 import Home from './pages/Home'
 import Plan from './pages/Plan'
 import SubjectPage from './pages/Subject'
-import Review from './pages/Review'
+import ReviewData from './pages/ReviewData'
+import ReviewGoal from './pages/ReviewGoal'
 import Settings from './pages/Settings'
 import { KEYS, useStoredState } from './lib/storage'
 import { DEFAULT_SUBJECTS } from './lib/seed'
@@ -139,13 +140,11 @@ export default function App() {
             />
           )}
 
-          {route.page === 'review' && (
-            <Review
-              block={route.block}
-              todos={todos}
-              goals={goals}
-              setGoals={setGoals}
-            />
+          {/* 复盘拆成两个独立页面：数据只看统计，目标只管目标 */}
+          {route.page === 'review' && route.block === 'data' && <ReviewData todos={todos} />}
+
+          {route.page === 'review' && route.block === 'goal' && (
+            <ReviewGoal goals={goals} setGoals={setGoals} />
           )}
 
           {route.page === 'settings' && <Settings />}
