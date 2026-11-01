@@ -5,8 +5,8 @@ type Props = {
   courses: Course[]
   /** null = 还没设学期开始，这时所有课都按「上」显示 */
   weekNo: number | null
-  /** 今天周几，1-7 */
-  today: number
+  /** 今天周几，1-7；null = 看的不是本周，不收今天的高亮 */
+  today: number | null
   onSelect: (course: Course) => void
   /** 点空格子：带着那一格的位置去开门表单 */
   onCreate: (weekday: number, period: number) => void
@@ -22,6 +22,9 @@ type Props = {
  *
  * 每个格子底下都铺了一个透明的「空位」按钮：有课的地方被课程块盖住
  * （课程块 z-index 更高），没课的地方点一下就按那一格加课。
+ *
+ * today 传 null 表示「现在看的不是本周」（翻周了），这时不收今天的高亮 ——
+ * 第 12 周的表里亮着今天那一列，等于告诉人今天是第 12 周的哪天。
  */
 export default function CourseGrid({ courses, weekNo, today, onSelect, onCreate }: Props) {
   // 同一时间段的多门课归到一组：key 用「周几-起始节-结束节」
@@ -45,7 +48,7 @@ export default function CourseGrid({ courses, weekNo, today, onSelect, onCreate 
 
   return (
     <div className="grid-wrap">
-      <div className="grid" role="table" aria-label="本周课程表">
+      <div className="grid" role="table" aria-label={weekNo === null ? '课程表' : `第 ${weekNo} 周课程表`}>
         <div className="grid__corner" role="columnheader" aria-label="节次" />
 
         {WEEKDAY_OPTIONS.map(day => (
@@ -59,12 +62,14 @@ export default function CourseGrid({ courses, weekNo, today, onSelect, onCreate 
           </div>
         ))}
 
-        {/* 今天整列铺一层底色，压在课程块下面 */}
-        <div
-          className="grid__today"
-          style={{ gridColumn: today + 1, gridRow: `2 / span ${MAX_PERIOD}` }}
-          aria-hidden="true"
-        />
+        {/* 今天整列铺一层底色，压在课程块下面；翻周时没有「今天」可铺 */}
+        {today !== null && (
+          <div
+            className="grid__today"
+            style={{ gridColumn: today + 1, gridRow: `2 / span ${MAX_PERIOD}` }}
+            aria-hidden="true"
+          />
+        )}
 
         {Array.from({ length: MAX_PERIOD }, (_, i) => i + 1).map(period => (
           <div

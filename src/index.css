@@ -1560,12 +1560,65 @@ textarea {
 
 /* ---------- 计划 · 课程表 ---------- */
 
-/* 周次 + 导入的工具条 */
+/* 周次 + 导入的工具条。窄屏放不下时让「导入 / 回到本周」换到第二行 */
 .courses__bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+/* ‹ 第 9 周 10.26-11.01 › */
+.courses__weekbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* 翻周的左右箭头。禁用时淡下去，一眼看出到头了 */
+.courses__nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-h);
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.courses__nav:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+.courses__nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* 非本周时右边多出「回到本周」，把它和「导入」一起靠右 */
+.courses__tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* 翻到别的周时提醒一句：现在看的不是本周，点一下回去 */
+.courses__now {
+  border-color: var(--accent);
+  color: var(--accent);
+  white-space: nowrap;
 }
 
 .courses__week {

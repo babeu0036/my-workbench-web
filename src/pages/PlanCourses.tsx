@@ -5,8 +5,8 @@ import CourseDetail from '../components/CourseDetail'
 import CourseForm from '../components/CourseForm'
 import CourseGrid from '../components/CourseGrid'
 import CourseImport from '../components/CourseImport'
-import { addCourse, isActiveInWeek, removeCourse, weekNumberOf } from '../lib/courses'
-import { formatWeekRange, weekKeyOf, weekdayOf } from '../lib/date'
+import { MAX_WEEK, addCourse, isActiveInWeek, removeCourse, weekNumberOf } from '../lib/courses'
+import { formatWeekRange, weekKeyOffset, weekKeyOf, weekdayOf } from '../lib/date'
 import { useIsWide } from '../lib/media'
 import { UNCATEGORIZED_ID } from '../lib/todos'
 import type { Course, Subject } from '../lib/types'
@@ -29,6 +29,9 @@ type Props = {
  * 「今天」和「这周上不上」是两件事：今天那一列永远高亮；
  * 是否变灰看学期第几周 —— 周次范围外、单双周对不上就灰着，但仍然显示，
  * 不然单双周一切换课就凭空消失。
+ *
+ * 翻周之后看的不是今天这周：周次、周区间、灰不灰、统计里的门数都跟着变，
+ * 但「今天」高亮要收起来 —— 不然第 12 周的表里还亮着今天那一列，很误导。
  */
 export default function PlanCourses({
   courses,
@@ -43,23 +46,50 @@ export default function PlanCourses({
   const [importOpen, setImportOpen] = useState(false)
   const [settingOpen, setSettingOpen] = useState(false)
   const [detailId, setDetailId] = useState<number | null>(null)
+  // 翻到第几周；null = 跟着今天走（也就是「本周」）
+  const [viewWeek, setViewWeek] = useState<number | null>(null)
 
   const wide = useIsWide()
   const today = weekdayOf()
   const weekNo = weekNumberOf(semesterStart)
+  // 页面上实际看的周次：翻过周就是 viewWeek，没翻过就是今天所在的周
+  const showWeek = weekNo === null ? null : (viewWeek ?? weekNo)
+  const isCurrentWeek = viewWeek === null || viewWeek === weekNo
   const detail = detailId === null ? null : (courses.find(item => item.id === detailId) ?? null)
+
+  // 第 0 周、第 21 周都不是能上课的周，翻到 1 和 MAX_WEEK 就到头
+  const canPrev = showWeek !== null && showWeek > 1
+  const canNext = showWeek !== null && showWeek < MAX_WEEK
 
   // 课程能关联的只有真科目，未分类那一项是给任务用的
   const pickable = subjects.filter(subject => subject.id !== UNCATEGORIZED_ID)
   const activeCount =
-    weekNo === null ? courses.length : courses.filter(item => isActiveInWeek(item, weekNo)).length
+    showWeek === null ? courses.length : courses.filter(item => isActiveInWeek(item, showWeek)).length
 
   const weekText =
     weekNo === null
       ? '设置学期开始'
-      : weekNo < 1
-        ? `还没开学 · 第 ${weekNo} 周`
-        : `第 ${weekNo} 周`
+      : isCurrentWeek
+        ? weekNo < 1
+          ? `还没开学 · 第 ${weekNo} 周`
+          : `第 ${weekNo} 周`
+        : `第 ${showWeek} 周`
+
+  // 区间跟着翻：从本周的周一往后推 (showWeek - weekNo) 周
+  const weekRange =
+    showWeek === null || weekNo === null
+      ? ''
+      : formatWeekRange(weekKeyOffset(weekKeyOf(), showWeek - weekNo))
+
+  /**
+   * 翻一周。夹在 1~MAX_WEEK：翻回今天所在的周时顺手把 viewWeek 清成 null，
+   * 这样「回到本周」按钮自己就消失了，不用两处各判一次。
+   */
+  function stepWeek(delta: number) {
+    if (showWeek === null) return
+    const next = Math.min(MAX_WEEK, Math.max(1, showWeek + delta))
+    setViewWeek(next === weekNo ? null : next)
+  }
 
   function addDrafts(drafts: Omit<Course, 'id'>[]) {
     setCourses(list => drafts.reduce((acc, draft) => addCourse(acc, draft), list))
@@ -81,22 +111,54 @@ export default function PlanCourses({
     <>
       <div className="page page--fab">
         <div className="courses__bar">
-          <button
-            type="button"
-            className={weekNo === null ? 'courses__week courses__week--unset' : 'courses__week'}
-            onClick={() => setSettingOpen(open => !open)}
-            aria-expanded={settingOpen}
-            aria-label="设置学期开始日期"
-          >
-            <span className="courses__weekno">{weekText}</span>
-            {weekNo !== null && (
-              <span className="courses__range">{formatWeekRange(weekKeyOf())}</span>
-            )}
-          </button>
+          <div className="courses__weekbar">
+            <button
+              type="button"
+              className="courses__nav"
+              onClick={() => stepWeek(-1)}
+              disabled={!canPrev}
+              aria-label="上一周"
+            >
+              ‹
+            </button>
 
-          <button type="button" className="btn btn--ghost" onClick={() => setImportOpen(true)}>
-            导入
-          </button>
+            <button
+              type="button"
+              className={weekNo === null ? 'courses__week courses__week--unset' : 'courses__week'}
+              onClick={() => setSettingOpen(open => !open)}
+              aria-expanded={settingOpen}
+              aria-label="设置学期开始日期"
+            >
+              <span className="courses__weekno">{weekText}</span>
+              {weekRange && <span className="courses__range">{weekRange}</span>}
+            </button>
+
+            <button
+              type="button"
+              className="courses__nav"
+              onClick={() => stepWeek(1)}
+              disabled={!canNext}
+              aria-label="下一周"
+            >
+              ›
+            </button>
+          </div>
+
+          <div className="courses__tools">
+            {!isCurrentWeek && (
+              <button
+                type="button"
+                className="btn btn--ghost courses__now"
+                onClick={() => setViewWeek(null)}
+              >
+                回到本周
+              </button>
+            )}
+
+            <button type="button" className="btn btn--ghost" onClick={() => setImportOpen(true)}>
+              导入
+            </button>
+          </div>
         </div>
 
         {settingOpen && (
@@ -142,23 +204,27 @@ export default function PlanCourses({
         ) : (
           <p className="page__hint">
             共 {courses.length} 门课
-            {weekNo !== null && weekNo >= 1 && `，这周上 ${activeCount} 门`}
+            {showWeek !== null &&
+              showWeek >= 1 &&
+              (isCurrentWeek
+                ? `，这周上 ${activeCount} 门`
+                : `，第 ${showWeek} 周上 ${activeCount} 门`)}
           </p>
         )}
 
         {wide ? (
           <CourseGrid
             courses={courses}
-            weekNo={weekNo}
-            today={today}
+            weekNo={showWeek}
+            today={isCurrentWeek ? today : null}
             onSelect={course => setDetailId(course.id)}
             onCreate={openCreate}
           />
         ) : (
           <CourseDayList
             courses={courses}
-            weekNo={weekNo}
-            today={today}
+            weekNo={showWeek}
+            today={isCurrentWeek ? today : null}
             onSelect={course => setDetailId(course.id)}
             onCreate={openCreate}
           />
@@ -208,7 +274,8 @@ export default function PlanCourses({
       {detail && (
         <CourseDetail
           course={detail}
-          weekNo={weekNo}
+          weekNo={showWeek}
+          isCurrentWeek={isCurrentWeek}
           subjects={pickable}
           onClose={() => setDetailId(null)}
           onRemove={() => {

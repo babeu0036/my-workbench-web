@@ -10,7 +10,8 @@ import type { Course } from '../lib/types'
 type Props = {
   courses: Course[]
   weekNo: number | null
-  today: number
+  /** 今天周几，1-7；null = 看的不是本周，不挂「今天」标记 */
+  today: number | null
   onSelect: (course: Course) => void
   /** 点某天右边的 + ：按那天打开加课表单 */
   onCreate: (weekday: number, period: number) => void
@@ -25,6 +26,8 @@ type Props = {
  *
  * 每段标题右边的 + 是对应宽屏「点空格子」的入口 —— 窄屏没有格子，
  * 但同样能「在这一天加课」，预填的节次是第 1 节，进去再改。
+ *
+ * 翻周后 today 传 null：那天不是「今天」了，描边和「今天」小标签都得收。
  */
 export default function CourseDayList({ courses, weekNo, today, onSelect, onCreate }: Props) {
   return (

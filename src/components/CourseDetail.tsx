@@ -4,16 +4,28 @@ import type { Course, Subject } from '../lib/types'
 
 type Props = {
   course: Course
+  /** 页面上看的是第几周（可能是翻出来的），「上不上」按这个算 */
   weekNo: number | null
+  /** 看的是不是今天这周，只影响「这周不上」这句的措辞 */
+  isCurrentWeek: boolean
   subjects: Subject[]
   onClose: () => void
   onRemove: () => void
 }
 
 /** 点课程弹出的详情。只有删除是破坏性操作，所以复用 ConfirmDelete 的两步确认 */
-export default function CourseDetail({ course, weekNo, subjects, onClose, onRemove }: Props) {
+export default function CourseDetail({
+  course,
+  weekNo,
+  isCurrentWeek,
+  subjects,
+  onClose,
+  onRemove,
+}: Props) {
   const reason = inactiveReason(course, weekNo)
   const subject = subjects.find(item => item.id === course.subjectId)
+  // 翻到别的周时不能再说「这周」—— 说的明明是第 12 周
+  const when = isCurrentWeek ? '这周' : `第 ${weekNo} 周`
 
   return (
     <div className="sheet-layer">
@@ -52,7 +64,11 @@ export default function CourseDetail({ course, weekNo, subjects, onClose, onRemo
           )}
         </dl>
 
-        {reason && <p className="detail__off">{reason}，这周不上</p>}
+        {reason && (
+          <p className="detail__off">
+            {reason}，{when}不上
+          </p>
+        )}
 
         <div className="detail__actions">
           <ConfirmDelete label="删除这门课" onConfirm={onRemove} />
