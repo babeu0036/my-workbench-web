@@ -8,12 +8,13 @@ import ReviewGoal from './pages/ReviewGoal'
 import Settings from './pages/Settings'
 import { KEYS, useStoredState } from './lib/storage'
 import { DEFAULT_SUBJECTS } from './lib/seed'
+import { normalizeCourses } from './lib/courses'
 import { normalizeDeadlines } from './lib/deadlines'
 import { pendingReminders } from './lib/due'
 import { normalizeGoals } from './lib/goals'
 import { startSync } from './lib/sync'
 import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, normalizeTodos } from './lib/todos'
-import type { Deadline, Goal, Route, Subject, Todo } from './lib/types'
+import type { Course, Deadline, Goal, Route, Subject, Todo } from './lib/types'
 
 /** 手机顶栏显示当前页名，省得用户不知道自己点进来了哪 */
 function titleOf(route: Route, subjects: Subject[]): string {
@@ -50,6 +51,9 @@ export default function App() {
     normalizeDeadlines,
   )
   const [goals, setGoals] = useStoredState<Goal[]>(KEYS.goals, [], normalizeGoals)
+  // 课程表：课程数组 + 学期第 1 周的周一（决定「现在是第几周」，进而决定单双周和灰色）
+  const [courses, setCourses] = useStoredState<Course[]>(KEYS.courses, [], normalizeCourses)
+  const [semesterStart, setSemesterStart] = useStoredState<string>(KEYS.semesterStart, '')
 
   // 科目暂时是三份写死的种子数据；有未分类任务时才在「科目」下多挂一项
   // （琐事的 subjectId 也是空的，但它不属于「未分类」，别让侧边栏为它多出一项）
@@ -136,6 +140,10 @@ export default function App() {
               subjects={subjects}
               deadlines={deadlines}
               setDeadlines={setDeadlines}
+              courses={courses}
+              setCourses={setCourses}
+              semesterStart={semesterStart}
+              setSemesterStart={setSemesterStart}
             />
           )}
 

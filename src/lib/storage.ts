@@ -10,6 +10,10 @@ export const KEYS = {
   goals: 'workbench.goals',
   /** 首页添加面板上次选的科目，只有一个字符串 */
   lastSubject: 'workbench.lastSubject',
+  /** 课程表：课程数组 */
+  courses: 'workbench.courses',
+  /** 学期第 1 周的周一，形如 2026-09-01。没设就一直是 ''，单双周算不出来 */
+  semesterStart: 'workbench.semesterStart',
 } as const
 
 /** 读一个 key，读不出来（没有 / 坏了）就返回兜底值 */
@@ -27,6 +31,8 @@ export function readKey<T>(key: string, fallback: T): T {
 export function writeKey<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value))
+    // 通知云同步：本地变了，稍后推一次
+    window.dispatchEvent(new Event('workbench:change'))
   } catch {
     // 隐私模式 / 空间不足：忽略即可，页面照常可用
   }

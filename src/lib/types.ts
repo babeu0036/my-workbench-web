@@ -59,6 +59,26 @@ export type Goal = {
   settled: boolean
 }
 
+/** 单双周：每周都上 / 只单周 / 只双周。按「学期第几周」判断，不是日历周 */
+export type CourseWeeks = 'all' | 'odd' | 'even'
+
+export type Course = {
+  id: number
+  name: string
+  /** 关联科目，可选；没有就是 '' 或不填，课程表不依赖它 */
+  subjectId?: string
+  /** 1 = 周一 … 7 = 周日 */
+  weekday: number
+  /** 第几节开始 / 结束，都是 1-12 */
+  startPeriod: number
+  endPeriod: number
+  weeks: CourseWeeks
+  /** 学期第几周开始 / 结束，如 1 / 16 */
+  weekStart: number
+  weekEnd: number
+  location?: string
+}
+
 export type PlanSegment = 'courses' | 'tasks' | 'deadlines'
 export type SubjectSegment = 'tasks' | 'mistakes'
 export type ReviewBlock = 'data' | 'goal'

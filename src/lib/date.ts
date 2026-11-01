@@ -60,6 +60,11 @@ export function weekEnd(now: number = Date.now()): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7).getTime()
 }
 
+/** 今天是周几，1 = 周一 … 7 = 周日。课程表高亮今天那一列用它 */
+export function weekdayOf(now: number = Date.now()): number {
+  return ((new Date(now).getDay() + 6) % 7) + 1
+}
+
 /** 这个时间戳是不是落在本周（周一 00:00 起，到下周一 00:00 止） */
 export function isThisWeek(ts: number | undefined, now: number = Date.now()): boolean {
   if (typeof ts !== 'number' || Number.isNaN(ts)) return false

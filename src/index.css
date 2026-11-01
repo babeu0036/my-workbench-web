@@ -54,7 +54,9 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
@@ -1554,4 +1556,357 @@ input {
   .goal__actions .btn {
     padding: 8px 4px;
   }
+}
+
+/* ---------- 计划 · 课程表 ---------- */
+
+/* 周次 + 导入的工具条 */
+.courses__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.courses__week {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-h);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.courses__week:hover {
+  border-color: var(--muted);
+}
+
+/* 还没设学期开始时，这个按钮是页面上唯一该点的地方，得有点颜色 */
+.courses__week--unset {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.courses__range {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.courses__notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 13px;
+}
+
+/* 宽屏网格：左边节次列 + 7 天 */
+.grid-wrap {
+  overflow-x: auto;
+  /* iOS 上滚到边界不要连着整页一起弹 */
+  overscroll-behavior-x: contain;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 38px repeat(7, minmax(72px, 1fr));
+  grid-template-rows: 30px repeat(12, 52px);
+  gap: 3px;
+  min-width: 560px;
+}
+
+.grid__head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.grid__head--today {
+  background: var(--accent);
+  color: #fff;
+}
+
+.grid__period {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* 今天整列的底色，铺在课程块下面，不挡点击 */
+.grid__today {
+  z-index: 0;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+
+/* 一个时间段：可能有好几门课（单周课和双周课撞在一起），竖着排 */
+.grid__slot {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+}
+
+.course {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-height: 0;
+  padding: 3px 5px;
+  border: 0;
+  border-left: 3px solid var(--accent);
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.25;
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.course:hover {
+  filter: brightness(0.98);
+}
+
+.course__name {
+  display: -webkit-box;
+  overflow: hidden;
+  font-weight: 600;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.course__loc {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 10px;
+  opacity: 0.75;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 这周不上：仍占位，只是灰掉，免得让人以为课丢了 */
+.course--off {
+  border-left-color: var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.course--off .course__loc {
+  color: var(--muted);
+}
+
+/* 窄屏：按天列 */
+.day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.day-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.day-block--today {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.day-block__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-h);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.day-block__tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.day-block__empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.course-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.course-row__period {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.course-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.course-row__name {
+  color: var(--text-h);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.course-row__meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.course-row--off {
+  border-left-color: var(--border);
+  background: var(--surface-2);
+}
+
+.course-row--off .course-row__period,
+.course-row--off .course-row__name,
+.course-row--off .course-row__meta {
+  color: var(--muted);
+}
+
+/* 课程详情 */
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.detail__row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.detail__row dt {
+  flex: 0 0 36px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.detail__row dd {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 14px;
+}
+
+.detail__off {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.detail__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.detail__actions .btn {
+  flex: 1;
+}
+
+.detail__actions .confirm {
+  flex: 1;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* 粘贴导入 */
+.input--area {
+  flex: none;
+  width: 100%;
+  min-height: 132px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.import__ok {
+  margin: 0;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.import__errors {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+  list-style: none;
+}
+
+/* 周一…周日七个胶囊等分一行：窄屏下也不会被挤成 6+1 两行 */
+.sheet__pills--week .choice {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 7px 0;
+  text-align: center;
 }
