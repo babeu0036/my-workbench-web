@@ -184,14 +184,23 @@ export function removeCourse(list: Course[], id: number): Course[] {
   return list.filter(course => course.id !== id)
 }
 
-/** 存在性判断，导入去重和测试都会用 */
+/**
+ * 存在性判断，导入去重和测试都会用。
+ *
+ * 五项全一样才算重复：名称、周几、节次（起 + 止）、周次范围、单双周。
+ * 周次必须算进去 —— 同一门课常常拆成两段上（前 1-4 周、后 5-16 周），
+ * 只比名称和周几节次的话，后一段会被当成重复丢掉。
+ */
 export function hasSameCourse(list: Course[], draft: Omit<Course, 'id'>): boolean {
   return list.some(
     course =>
       course.name === draft.name &&
       course.weekday === draft.weekday &&
       course.startPeriod === draft.startPeriod &&
-      course.endPeriod === draft.endPeriod,
+      course.endPeriod === draft.endPeriod &&
+      course.weekStart === draft.weekStart &&
+      course.weekEnd === draft.weekEnd &&
+      course.weeks === draft.weeks,
   )
 }
 

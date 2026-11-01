@@ -55,7 +55,10 @@ export default function CourseImport({ existing, onClose, onImport }: Props) {
     result.courses.forEach((draft, index) => {
       const source = okLines[index]
       if (hasSameCourse(known, draft)) {
-        problems.push({ line: source.no, message: `第 ${source.no} 行和已有的课重复，没有导入` })
+        problems.push({
+          line: source.no,
+          message: `第 ${source.no} 行和已有的课重复（名称、周几、节次、周次都一样），没有导入`,
+        })
         kept.push({ no: source.no, text: source.text })
         return
       }
