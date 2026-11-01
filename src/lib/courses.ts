@@ -1,3 +1,4 @@
+import { weekdayOf } from './date'
 import type { Course, CourseWeeks } from './types'
 
 /** 课程表一共 12 节 */
@@ -221,6 +222,22 @@ export function sortCourses(list: Course[]): Course[] {
 /** 某一天有哪些课，已排好序 */
 export function coursesOfDay(list: Course[], weekday: number): Course[] {
   return sortCourses(list.filter(course => course.weekday === weekday))
+}
+
+/**
+ * 今天上什么，按起始节排序。首页「今天有课」用它。
+ *
+ * 除了「今天是周几」，还要过一遍这门课这周上不上：今天第 9 周，
+ * 双周的课就不该出现在首页 —— 首页不是课程表，没必要把不上的课也列出来。
+ * 没设学期开始时 weekNo 是 null，isActiveInWeek 一律返回 true，跟课程表一致。
+ */
+export function todayCourses(
+  list: Course[],
+  semesterStart: string,
+  now: number = Date.now(),
+): Course[] {
+  const weekNo = weekNumberOf(semesterStart, now)
+  return coursesOfDay(list, weekdayOf(now)).filter(course => isActiveInWeek(course, weekNo))
 }
 
 export type ParseError = { line: number; message: string }

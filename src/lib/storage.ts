@@ -14,6 +14,8 @@ export const KEYS = {
   courses: 'workbench.courses',
   /** 学期第 1 周的周一，形如 2026-09-01。没设就一直是 ''，单双周算不出来 */
   semesterStart: 'workbench.semesterStart',
+  /** 今日状态，按日期键存一份：{ '2026-11-01': 'good' } */
+  mood: 'workbench.mood',
 } as const
 
 /** 读一个 key，读不出来（没有 / 坏了）就返回兜底值 */

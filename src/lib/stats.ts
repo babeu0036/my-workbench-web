@@ -53,6 +53,38 @@ export function streak(todos: Todo[], now: number = Date.now()): number {
   return count
 }
 
+/**
+ * 今天该做的事：今天到期的 + 逾期还没做的 + 今天补完的逾期任务。
+ *
+ * 只认有截止日期的任务 —— 老任务没有日期，它们不归「今天」，留在计划页里。
+ * 逾期那条做完之后不能凭空消失：它算今天的一份成绩，否则勾完环反而掉一格。
+ */
+export function todayTasks(list: Todo[], now: number = Date.now()): Todo[] {
+  const today = dayKey(now)
+  return list.filter(todo => {
+    if (!todo.dueDate) return false
+    if (todo.dueDate === today) return true
+    if (todo.dueDate > today) return false
+    if (!todo.done) return true
+    return todo.doneAt !== undefined && dayKey(todo.doneAt) === today
+  })
+}
+
+export type TodayTotals = {
+  done: number
+  total: number
+  /** 0-100 的整数，total 为 0 时给 0，不让空的一天显示成 100% */
+  percent: number
+}
+
+/** 首页完成环用：今天完成几件 / 今天一共几件 */
+export function todayTotals(list: Todo[], now: number = Date.now()): TodayTotals {
+  const items = todayTasks(list, now)
+  const done = items.filter(todo => todo.done).length
+  const total = items.length
+  return { done, total, percent: total === 0 ? 0 : Math.round((done / total) * 100) }
+}
+
 /** 柱状图上写一个字就够，两个字的「周一」在 360px 下会挤 */
 const WEEKDAY_CHARS = ['日', '一', '二', '三', '四', '五', '六']
 

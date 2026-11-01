@@ -128,7 +128,11 @@ export default function App() {
               setTodos={setTodos}
               subjects={subjects}
               dueItems={dueItems}
+              goals={goals}
+              courses={courses}
+              semesterStart={semesterStart}
               onOpenSubject={id => navigate({ page: 'subject', id, seg: 'tasks' })}
+              onOpenGoal={() => navigate({ page: 'review', block: 'goal' })}
             />
           )}
 

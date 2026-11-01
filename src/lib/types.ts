@@ -59,6 +59,12 @@ export type Goal = {
   settled: boolean
 }
 
+/**
+ * 今日状态：😄 不错 / 😐 一般 / 😮‍💨 有点累。
+ * 一天记一次，可以改，按日期键存（2026-11-01 → 'good'）。
+ */
+export type Mood = 'good' | 'ok' | 'tired'
+
 /** 单双周：每周都上 / 只单周 / 只双周。按「学期第几周」判断，不是日历周 */
 export type CourseWeeks = 'all' | 'odd' | 'even'
 

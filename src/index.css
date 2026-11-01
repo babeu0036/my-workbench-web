@@ -12,6 +12,9 @@
   --danger-soft: rgba(200, 50, 74, 0.1);
   --warn: #b4670a;
   --warn-soft: rgba(217, 119, 6, 0.14);
+  /* 「已完成」用的绿。只给状态标签用，不参与任务勾选的强调色 */
+  --done: #16794a;
+  --done-soft: rgba(22, 121, 74, 0.12);
   --shadow: 0 1px 2px rgba(20, 18, 28, 0.04), 0 8px 24px -12px rgba(20, 18, 28, 0.16);
 
   --sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Roboto, sans-serif;
@@ -39,6 +42,8 @@
     --danger-soft: rgba(242, 112, 138, 0.14);
     --warn: #e0a44a;
     --warn-soft: rgba(224, 164, 74, 0.16);
+    --done: #5ad39a;
+    --done-soft: rgba(90, 211, 154, 0.16);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
   }
 }
@@ -2030,4 +2035,240 @@ textarea {
   min-width: 0;
   padding: 7px 0;
   text-align: center;
+}
+
+/* ---------- 首页卡片：本周目标 / 今天有课 / 今日进度 / 今日状态 ---------- */
+
+/* 卡片头右边的小字（周区间、「3 门」、「再点一下能改」） */
+.card__note {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* 状态标签：进行中 / 已完成。和比赛的「已截止」同一套，只是多个色 */
+.status--running {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.status--done {
+  background: var(--done-soft);
+  color: var(--done);
+}
+
+.home-goal__text {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 16px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.home-goal__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.home-goal__empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+/* 按钮不铺满整行，卡片里的小动作不需要那么大 */
+.home-goal__more {
+  align-self: flex-start;
+  padding: 5px 12px;
+  font-size: 13px;
+}
+
+.home-goal__foot .home-goal__more {
+  align-self: center;
+}
+
+.today-class__list {
+  display: flex;
+  flex-direction: column;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.today-class__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 0;
+}
+
+.today-class__row + .today-class__row {
+  border-top: 1px solid var(--border);
+}
+
+.today-class__period {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 课名和地点都允许被挤压省略：360px 下长课名 + 长教室号不能把行撑破 */
+.today-class__name,
+.today-class__place {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.today-class__name {
+  flex-grow: 1;
+  color: var(--text-h);
+  font-size: 15px;
+}
+
+.today-class__place {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* 完成环：卡片转成一行，左边圆右边数字 */
+.home-stats {
+  flex-direction: row;
+  align-items: center;
+  gap: 18px;
+}
+
+.home-stats__ring {
+  position: relative;
+  flex: 0 0 auto;
+  width: 76px;
+  height: 76px;
+}
+
+.home-stats__ring svg {
+  display: block;
+}
+
+.ring__track {
+  stroke: var(--surface-2);
+}
+
+.ring__fill {
+  stroke: var(--accent);
+  transition: stroke-dashoffset 0.35s ease;
+}
+
+/* 百分比压在圆心上：绝对定位盖住整个圆，flex 居中 */
+.home-stats__pct {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-h);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-stats__side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.home-stats__label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.home-stats__num {
+  color: var(--text-h);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-stats__sep {
+  margin: 0 2px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* 🔥 连续天数：用警示色，比正文重一点但不抢眼 */
+.home-stats__streak {
+  margin-top: 2px;
+  color: var(--warn);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mood__row {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.mood__btn {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.mood__btn:hover {
+  border-color: var(--accent);
+}
+
+.mood__btn--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text-h);
+}
+
+.mood__emoji {
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.mood__label {
+  font-size: 13px;
+}
+
+/* 360px 上「有点累」三个字占位最多，缩小一点免得挤成两行 */
+@media (max-width: 380px) {
+  .mood__label {
+    font-size: 12px;
+  }
+
+  .home-stats {
+    gap: 14px;
+  }
+}
+
+/* 右下角的 + 是固定定位，会压在页面右下角：底部工具条给它让出一块，
+   不然「清空已完成」会被盖住一半（宽屏和 360px 都会） */
+.page--fab .footer-bar {
+  padding-right: 60px;
 }
