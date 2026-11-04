@@ -2482,3 +2482,39 @@ textarea {
   font-size: 15px;
   transition: color 0.15s ease;
 }
+
+/* ---------- 科目筛选条 / 占位页空状态 ---------- */
+
+/* 筛选项从 3 个变成 5~6 个：5 个在 360px 仍是一行，6 个（多一个「未分类」）才折行。
+   不改成横向滚动，因为藏起来的胶囊没人知道能滑 */
+.seg--wrap {
+  flex-wrap: wrap;
+}
+
+.seg--wrap .seg__btn {
+  flex: 1 1 auto;
+  min-width: 54px;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+/* 还没做内容的页面：一个虚线框，明确是「空着的占位」而不是加载失败 */
+.placeholder__note {
+  margin: 18px 2px;
+  padding: 26px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  color: var(--muted);
+  font-size: 15px;
+  text-align: center;
+}
+
+/* 360px 上 6 个胶囊（多一个「未分类」）摆一行差几像素，
+   收一点字号和内边距就够，比折成「5 + 1」那种孤零零的第二行好看 */
+@media (max-width: 400px) {
+  .seg--wrap .seg__btn {
+    min-width: 46px;
+    padding: 8px 6px;
+    font-size: 13px;
+  }
+}

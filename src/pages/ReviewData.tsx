@@ -28,7 +28,7 @@ export default function ReviewData({ todos, moods }: Props) {
 
   return (
     <div className="page">
-      <h2 className="page__title">数据</h2>
+      <h2 className="page__title">复盘</h2>
       <p className="page__hint">本周 {formatWeekRange(weekKeyOf())}</p>
 
       <div className="stat-grid">

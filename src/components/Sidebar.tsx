@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import type { PlanSegment, ReviewBlock, Route, Subject } from '../lib/types'
+import type { PlanSegment, Route } from '../lib/types'
 
 type Props = {
   route: Route
-  subjects: Subject[]
   /** 到期提醒的条数，挂在「首页」右边当角标；0 就不显示 */
   dueCount: number
   /** 手机端抽屉是否打开；桌面端由 CSS 忽略这个值 */
@@ -12,13 +11,17 @@ type Props = {
   onClose: () => void
 }
 
-type IconName = 'home' | 'plan' | 'subject' | 'review' | 'settings'
+type IconName = 'home' | 'plan' | 'goal' | 'knowledge' | 'review' | 'settings'
 
 /** 16×16 的线框图标，不引第三方图标库，省一个依赖 */
 const ICONS: Record<IconName, string> = {
   home: 'M3 7.6 8 3.2l5 4.4V13H3zM6.4 13V9.4h3.2V13',
   plan: 'M3 5.4h10V13H3zM3 8.2h10M6 3.4v3M10 3.4v3',
-  subject: 'M3 3.6h3.4a1.6 1.6 0 0 1 1.6 1.6V13a1.4 1.4 0 0 0-1.4-1.2H3zM13 3.6H9.6A1.6 1.6 0 0 0 8 5.2V13a1.4 1.4 0 0 1 1.4-1.2H13z',
+  // 准星：外圈 + 内圈，两个整圆用 arc 拼出来
+  goal: 'M13.4 8A5.4 5.4 0 1 1 2.6 8A5.4 5.4 0 1 1 13.4 8M10.4 8A2.4 2.4 0 1 1 5.6 8A2.4 2.4 0 1 1 10.4 8',
+  // 书本：原来「科目」那个图标，挪给知识库
+  knowledge:
+    'M3 3.6h3.4a1.6 1.6 0 0 1 1.6 1.6V13a1.4 1.4 0 0 0-1.4-1.2H3zM13 3.6H9.6A1.6 1.6 0 0 0 8 5.2V13a1.4 1.4 0 0 1 1.4-1.2H13z',
   review: 'M3 12.6V9M8 12.6V4.2M13 12.6V6.8',
   settings: 'M3 5.6h10M3 10.4h10M6.2 4.2v2.8M10.2 9v2.8',
 }
@@ -56,9 +59,15 @@ function useIsNarrow() {
   return narrow
 }
 
-export default function Sidebar({ route, subjects, dueCount, open, onNavigate, onClose }: Props) {
-  // 当前所属的一级项：科目页的一级 key 叫 subjects，其余跟 page 同名
-  const activeGroup = route.page === 'subject' ? 'subjects' : route.page
+/**
+ * 侧边栏。一级项六项：首页 / 计划 / 目标 / 知识库 / 复盘 / 设置。
+ *
+ * 只有「计划」带二级（课程表 / 任务 / 比赛）；其余点一下直接跳页。
+ * 「科目」一级项已经去掉，科目页本身还留着，但这里没有入口。
+ */
+export default function Sidebar({ route, dueCount, open, onNavigate, onClose }: Props) {
+  // 当前所在的一级项，跟 route.page 同名
+  const activeGroup = route.page
 
   const isNarrow = useIsNarrow()
 
@@ -108,25 +117,6 @@ export default function Sidebar({ route, subjects, dueCount, open, onNavigate, o
     active: route.page === 'plan' && route.seg === item.key,
   }))
 
-  const subjectChildren: Leaf[] = subjects.map(subject => ({
-    key: subject.id,
-    label: subject.name,
-    route: { page: 'subject', id: subject.id, seg: 'tasks' },
-    active: route.page === 'subject' && route.id === subject.id,
-  }))
-
-  const reviewChildren: Leaf[] = (
-    [
-      { key: 'data', label: '数据' },
-      { key: 'goal', label: '目标' },
-    ] as { key: ReviewBlock; label: string }[]
-  ).map(item => ({
-    key: item.key,
-    label: item.label,
-    route: { page: 'review', block: item.key },
-    active: route.page === 'review' && route.block === item.key,
-  }))
-
   const groups: {
     key: string
     label: string
@@ -142,20 +132,15 @@ export default function Sidebar({ route, subjects, dueCount, open, onNavigate, o
       route: { page: 'plan', seg: 'courses' },
       children: planChildren,
     },
+    { key: 'goal', label: '目标', icon: 'goal', route: { page: 'goal' }, children: [] },
     {
-      key: 'subjects',
-      label: '科目',
-      icon: 'subject',
-      route: subjectChildren[0]?.route ?? { page: 'home' },
-      children: subjectChildren,
+      key: 'knowledge',
+      label: '知识库',
+      icon: 'knowledge',
+      route: { page: 'knowledge' },
+      children: [],
     },
-    {
-      key: 'review',
-      label: '复盘',
-      icon: 'review',
-      route: { page: 'review', block: 'data' },
-      children: reviewChildren,
-    },
+    { key: 'review', label: '复盘', icon: 'review', route: { page: 'review' }, children: [] },
     { key: 'settings', label: '设置', icon: 'settings', route: { page: 'settings' }, children: [] },
   ]
 

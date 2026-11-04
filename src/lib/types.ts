@@ -87,12 +87,22 @@ export type Course = {
 
 export type PlanSegment = 'courses' | 'tasks' | 'deadlines'
 export type SubjectSegment = 'tasks' | 'mistakes'
-export type ReviewBlock = 'data' | 'goal'
 
-/** 侧边栏能去的地方，一个对象就是当前所在位置 */
+/**
+ * 侧边栏能去的地方，一个对象就是当前所在位置。
+ *
+ * 一级项是六个：首页 / 计划 / 目标 / 知识库 / 复盘 / 设置。
+ * 只有「计划」带二级（课程表 / 任务 / 比赛），复盘不再是二级结构，
+ * 直接就是「数据」那一页。
+ *
+ * `subject`（科目页）暂时没有入口 —— 侧边栏去掉了科目一级项，
+ * 但路由和页面都留着，首页到期提醒里点科目名还能进来。
+ */
 export type Route =
   | { page: 'home' }
   | { page: 'plan'; seg: PlanSegment }
+  | { page: 'goal' }
+  | { page: 'knowledge' }
   | { page: 'subject'; id: string; seg: SubjectSegment }
-  | { page: 'review'; block: ReviewBlock }
+  | { page: 'review' }
   | { page: 'settings' }

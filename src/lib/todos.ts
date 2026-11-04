@@ -142,11 +142,20 @@ export function clearDone(list: Todo[]): Todo[] {
   return list.filter(todo => !todo.done)
 }
 
-/** 计划页任务列表的筛选值：全部 / 只学习 / 只琐事 */
-export type KindFilter = 'all' | TodoKind
+/**
+ * 计划页的筛选：全部 / 某个科目 / 琐事 / 未分类。
+ *
+ * 'chore' 和 'none' 是保留值，不会和科目 id 撞 —— 科目 id 是
+ * english / math / clang 这种固定字符串（见 lib/seed.ts）。
+ * 'none' 是「没科目的学习任务」，老数据都在这儿。
+ */
+export type TaskFilter = 'all' | 'chore' | 'none' | (string & {})
 
-export function byKind(list: Todo[], filter: KindFilter): Todo[] {
-  return filter === 'all' ? list : list.filter(todo => todo.kind === filter)
+export function byFilter(list: Todo[], filter: TaskFilter): Todo[] {
+  if (filter === 'all') return list
+  if (filter === 'chore') return list.filter(todo => todo.kind === 'chore')
+  if (filter === 'none') return list.filter(todo => todo.kind !== 'chore' && !todo.subjectId)
+  return list.filter(todo => todo.kind !== 'chore' && todo.subjectId === filter)
 }
 
 /**

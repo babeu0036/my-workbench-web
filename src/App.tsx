@@ -4,8 +4,10 @@ import Home from './pages/Home'
 import Plan from './pages/Plan'
 import SubjectPage from './pages/Subject'
 import ReviewData from './pages/ReviewData'
-import ReviewGoal from './pages/ReviewGoal'
 import Settings from './pages/Settings'
+// 页面组件叫 GoalPage，避开 lib/types 里那个 Goal 类型
+import GoalPage from './pages/Goal'
+import Knowledge from './pages/Knowledge'
 import { KEYS, useStoredState } from './lib/storage'
 import { DEFAULT_SUBJECTS } from './lib/seed'
 import { normalizeCourses } from './lib/courses'
@@ -25,6 +27,11 @@ function titleOf(route: Route, subjects: Subject[]): string {
       return '首页'
     case 'plan':
       return '计划'
+    case 'goal':
+      return '目标'
+    case 'knowledge':
+      return '知识库'
+    // 科目页暂时没有侧边栏入口，只剩首页提醒卡点科目名能进来
     case 'subject':
       return subjects.find(item => item.id === route.id)?.name ?? '科目'
     case 'review':
@@ -52,7 +59,8 @@ export default function App() {
     [],
     normalizeDeadlines,
   )
-  const [goals, setGoals] = useStoredState<Goal[]>(KEYS.goals, [], normalizeGoals)
+  // 目标：首页那张「本周目标」卡只读它；写入在「目标」页接上之前用不到 setter
+  const [goals] = useStoredState<Goal[]>(KEYS.goals, [], normalizeGoals)
   // 课程表：课程数组 + 学期第 1 周的周一（决定「现在是第几周」，进而决定单双周和灰色）
   const [courses, setCourses] = useStoredState<Course[]>(KEYS.courses, [], normalizeCourses)
   const [semesterStart, setSemesterStart] = useStoredState<string>(KEYS.semesterStart, '')
@@ -79,7 +87,6 @@ export default function App() {
     <div className="app">
       <Sidebar
         route={route}
-        subjects={subjects}
         dueCount={dueItems.length}
         open={drawerOpen}
         onNavigate={navigate}
@@ -138,7 +145,7 @@ export default function App() {
               moods={moods}
               setMoods={setMoods}
               onOpenSubject={id => navigate({ page: 'subject', id, seg: 'tasks' })}
-              onOpenGoal={() => navigate({ page: 'review', block: 'goal' })}
+              onOpenGoal={() => navigate({ page: 'goal' })}
               onOpenPlan={() => navigate({ page: 'plan', seg: 'tasks' })}
             />
           )}
@@ -168,14 +175,12 @@ export default function App() {
             />
           )}
 
-          {/* 复盘拆成两个独立页面：数据只看统计，目标只管目标 */}
-          {route.page === 'review' && route.block === 'data' && (
-            <ReviewData todos={todos} moods={moods} />
-          )}
+          {/* 复盘只剩一页（原来的「数据」），不再有二级结构 */}
+          {route.page === 'review' && <ReviewData todos={todos} moods={moods} />}
 
-          {route.page === 'review' && route.block === 'goal' && (
-            <ReviewGoal goals={goals} setGoals={setGoals} />
-          )}
+          {/* 新立起来的两个一级项，内容还没做 */}
+          {route.page === 'goal' && <GoalPage />}
+          {route.page === 'knowledge' && <Knowledge />}
 
           {route.page === 'settings' && <Settings />}
         </main>
