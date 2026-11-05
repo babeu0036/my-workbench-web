@@ -2518,3 +2518,206 @@ textarea {
     font-size: 13px;
   }
 }
+
+/* ---------- 目标 · 最终目标 / 成就 ---------- */
+
+/* 最终目标只占一行：写长了出省略号，点一下原地变成输入框 */
+.final {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.final__label {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.final__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-h);
+  font-size: 15px;
+  line-height: 1.4;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+}
+
+.final__text--empty {
+  color: var(--muted);
+}
+
+.final__edit {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.final__edit .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ach {
+  gap: 10px;
+}
+
+.ach__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ach__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text-h);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.ach__badge {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ach__badge--running {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* 已点亮的绿跟完成环、心情柱是同一个 --done */
+.ach__badge--lit {
+  background: var(--done-soft);
+  color: var(--done);
+}
+
+/* 卡片头上的删除按钮：默认那档按钮在卡片里偏大，收一点 */
+.ach__remove {
+  flex: none;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+.ach__note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.ach__lit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--done);
+  font-size: 13px;
+}
+
+.ach__dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--done);
+}
+
+/* 未开始的空状态：虚线框，点它把焦点送进下面的输入条，光标是文字光标 */
+.ach__empty {
+  width: 100%;
+  padding: 14px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: none;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  cursor: text;
+}
+
+.ach__empty:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 有任务以后，输入条默认收着，只留一行「+ 加任务」—— 每条成就都挂一个
+   日期选择器的话，两三条就把页面撑得没法看 */
+.ach__add {
+  align-self: flex-start;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ach__add:hover {
+  text-decoration: underline;
+}
+
+.ach__progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ach__bar {
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.ach__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+
+.ach--lit .ach__bar-fill {
+  background: var(--done);
+}
+
+.ach__count {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* 卡片里嵌的列表和输入条不要再画一层卡片：外面已经是 .card 了 */
+.ach .list,
+.ach .composer {
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}

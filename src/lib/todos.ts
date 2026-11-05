@@ -31,6 +31,11 @@ export function normalizeTodo(raw: unknown, index = 0): Todo | null {
     // 加日期之前建的任务没有截止日期：就让它没有，不去拿创建时间冒充，
     // 否则一堆早就做完的旧任务会突然全部变成「逾期」
     dueDate: isDateKey(item.dueDate) ? item.dueDate : undefined,
+    // 目标页的成就任务；老数据没有这一项，就是普通任务
+    achievementId:
+      typeof item.achievementId === 'number' && Number.isFinite(item.achievementId)
+        ? item.achievementId
+        : undefined,
   }
 }
 
@@ -54,6 +59,17 @@ export function forSubject(todos: Todo[], subjectId: string): Todo[] {
       todo.subjectId === subjectId &&
       (subjectId !== UNCATEGORIZED_ID || todo.kind !== 'chore'),
   )
+}
+
+/**
+ * 去掉挂在成就下的任务。
+ *
+ * 成就任务是「目标页的东西」，不该在计划·任务里当未分类再列一遍，
+ * 也不该混进首页今日任务、复盘的本周完成率和活跃天数。
+ * App 里算一份 mainTodos 传给这三个页面，四处口径就是同一个。
+ */
+export function withoutAchievement(list: Todo[]): Todo[] {
+  return list.filter(todo => todo.achievementId === undefined)
 }
 
 /**
@@ -119,6 +135,34 @@ export function addTodo(
       kind,
       createdAt: now,
       dueDate,
+    },
+  ]
+}
+
+/**
+ * 给成就加一条任务。科目恒为空（成就任务不进科目页、也不算未分类），
+ * kind 恒为 study，只多挂一个 achievementId；截止日期照旧必填。
+ */
+export function addAchievementTodo(
+  list: Todo[],
+  text: string,
+  achievementId: number,
+  dueDate: string,
+  now: number = Date.now(),
+): Todo[] {
+  const value = text.trim()
+  if (!value || !dueDate) return list
+  return [
+    ...list,
+    {
+      id: nextId(list, now),
+      text: value,
+      done: false,
+      subjectId: UNCATEGORIZED_ID,
+      kind: 'study',
+      createdAt: now,
+      dueDate,
+      achievementId,
     },
   ]
 }

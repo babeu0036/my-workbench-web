@@ -16,6 +16,10 @@ export const KEYS = {
   semesterStart: 'workbench.semesterStart',
   /** 今日状态，按日期键存一份：{ '2026-11-01': 'good' } */
   mood: 'workbench.mood',
+  /** 成就（目标页），数组 */
+  achievements: 'workbench.achievements',
+  /** 目标页最上面那行「最终目标」，只有一个字符串 */
+  finalGoal: 'workbench.finalGoal',
 } as const
 
 /** 读一个 key，读不出来（没有 / 坏了）就返回兜底值 */

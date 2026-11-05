@@ -21,6 +21,27 @@ export type Todo = {
    * 新任务必填；改造前的老任务没有这一项，就不提醒，也不编一个假日期出来。
    */
   dueDate?: string
+  /**
+   * 挂在哪个成就下。有值 = 目标页的任务，只在目标页出现 ——
+   * 计划·任务、首页、复盘统计都按 `withoutAchievement` 把它们排除掉，
+   * 免得同一件事在三个地方各算一遍。
+   */
+  achievementId?: number
+}
+
+/**
+ * 一条成就（目标页上的大块）。下面的任务通过 `Todo.achievementId` 挂过来。
+ *
+ * `doneAt` 有值 = 已点亮。它没有手动按钮：某个成就的任务数 ≥ 1 且全部完成时
+ * 自动写时间戳，有任务被取消勾选就删掉这个键（见 lib/achievements.ts）。
+ */
+export type Achievement = {
+  id: number
+  title: string
+  /** 备注，可选。空字符串按没有处理 */
+  note?: string
+  /** 点亮时间戳。清掉时删键，不置 null */
+  doneAt?: number
 }
 
 export type Deadline = {

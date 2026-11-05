@@ -14,11 +14,12 @@ import { normalizeCourses } from './lib/courses'
 import { normalizeDeadlines } from './lib/deadlines'
 import { pendingReminders } from './lib/due'
 import { normalizeGoals } from './lib/goals'
+import { normalizeAchievements, withLitState } from './lib/achievements'
 import { normalizeMoods } from './lib/mood'
 import type { MoodMap } from './lib/mood'
 import { startSync } from './lib/sync'
-import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, normalizeTodos } from './lib/todos'
-import type { Course, Deadline, Goal, Route, Subject, Todo } from './lib/types'
+import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, normalizeTodos, withoutAchievement } from './lib/todos'
+import type { Achievement, Course, Deadline, Goal, Route, Subject, Todo } from './lib/types'
 
 /** 手机顶栏显示当前页名，省得用户不知道自己点进来了哪 */
 function titleOf(route: Route, subjects: Subject[]): string {
@@ -60,22 +61,41 @@ export default function App() {
     normalizeDeadlines,
   )
   // 目标：首页那张「本周目标」卡只读它；写入在「目标」页接上之前用不到 setter
-  const [goals] = useStoredState<Goal[]>(KEYS.goals, [], normalizeGoals)
+  const [goals, setGoals] = useStoredState<Goal[]>(KEYS.goals, [], normalizeGoals)
+  // 目标页：成就 + 最上面那行最终目标
+  const [achievements, setAchievements] = useStoredState<Achievement[]>(
+    KEYS.achievements,
+    [],
+    normalizeAchievements,
+  )
+  const [finalGoal, setFinalGoal] = useStoredState<string>(KEYS.finalGoal, '', value =>
+    typeof value === 'string' ? value : '',
+  )
   // 课程表：课程数组 + 学期第 1 周的周一（决定「现在是第几周」，进而决定单双周和灰色）
   const [courses, setCourses] = useStoredState<Course[]>(KEYS.courses, [], normalizeCourses)
   const [semesterStart, setSemesterStart] = useStoredState<string>(KEYS.semesterStart, '')
   // 今日状态：首页写、复盘页读，所以放在最外层，两边看到的是同一份
   const [moods, setMoods] = useStoredState<MoodMap>(KEYS.mood, {}, normalizeMoods)
 
-  // 科目暂时是三份写死的种子数据；有未分类任务时才在「科目」下多挂一项
-  // （琐事的 subjectId 也是空的，但它不属于「未分类」，别让侧边栏为它多出一项）
-  const hasUnclassified = todos.some(todo => !todo.subjectId && todo.kind !== 'chore')
+  // 成就任务只活在目标页：计划·任务、首页、复盘统计都只算这一份，
+  // 否则同一件事会在三处各算一遍，数字还对不上
+  const mainTodos = withoutAchievement(todos)
+
+  // 自动点亮 / 熄灭。withLitState 没有变化时返回原数组，setState 一比较就跳过，
+  // 所以这里不会自己触发自己
+  useEffect(() => {
+    setAchievements(list => withLitState(list, todos))
+  }, [todos, setAchievements])
+
+  // 科目暂时是三份写死的种子数据；有未分类任务时科目筛选条才多挂一项
+  // （琐事的 subjectId 也是空的，但它不属于「未分类」，别为它多出一个胶囊）
+  const hasUnclassified = mainTodos.some(todo => !todo.subjectId && todo.kind !== 'chore')
   const subjects: Subject[] = hasUnclassified
     ? [...DEFAULT_SUBJECTS, { id: UNCATEGORIZED_ID, name: UNCATEGORIZED_NAME }]
     : DEFAULT_SUBJECTS
 
   // 到期提醒只算一次，首页卡片和侧边栏角标共用，数字不会对不上
-  const dueItems = pendingReminders(todos)
+  const dueItems = pendingReminders(mainTodos)
 
   const navigate = (next: Route) => {
     setRoute(next)
@@ -135,7 +155,7 @@ export default function App() {
         <main className="app__main">
           {route.page === 'home' && (
             <Home
-              todos={todos}
+              todos={mainTodos}
               setTodos={setTodos}
               subjects={subjects}
               dueItems={dueItems}
@@ -153,7 +173,7 @@ export default function App() {
           {route.page === 'plan' && (
             <Plan
               seg={route.seg}
-              todos={todos}
+              todos={mainTodos}
               setTodos={setTodos}
               subjects={subjects}
               deadlines={deadlines}
@@ -169,17 +189,28 @@ export default function App() {
             <SubjectPage
               subject={subjects.find(item => item.id === route.id)}
               seg={route.seg}
-              todos={todos}
+              todos={mainTodos}
               setTodos={setTodos}
               onSegChange={seg => setRoute({ page: 'subject', id: route.id, seg })}
             />
           )}
 
           {/* 复盘只剩一页（原来的「数据」），不再有二级结构 */}
-          {route.page === 'review' && <ReviewData todos={todos} moods={moods} />}
+          {route.page === 'review' && <ReviewData todos={mainTodos} moods={moods} />}
 
-          {/* 新立起来的两个一级项，内容还没做 */}
-          {route.page === 'goal' && <GoalPage />}
+          {/* 目标页：最终目标 → 成就列表 → 本周目标；成就下的任务只在这一页出现 */}
+          {route.page === 'goal' && (
+            <GoalPage
+              todos={todos}
+              setTodos={setTodos}
+              achievements={achievements}
+              setAchievements={setAchievements}
+              finalGoal={finalGoal}
+              setFinalGoal={setFinalGoal}
+              goals={goals}
+              setGoals={setGoals}
+            />
+          )}
           {route.page === 'knowledge' && <Knowledge />}
 
           {route.page === 'settings' && <Settings />}
