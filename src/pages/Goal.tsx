@@ -2,14 +2,13 @@ import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import AchievementCard from '../components/AchievementCard'
 import AchievementForm from '../components/AchievementForm'
+import ReviewGoal from '../components/ReviewGoal'
 import {
   addAchievement,
   detachTasks,
   forAchievement,
   removeAchievement,
 } from '../lib/achievements'
-import { formatWeekRange, weekKeyOf, weekKeyOffset } from '../lib/date'
-import { goalOf, saveGoal, settleGoal } from '../lib/goals'
 import { addAchievementTodo, removeTodo, toggleTodo, updateTodo } from '../lib/todos'
 import type { Achievement, Goal as GoalItem, Todo } from '../lib/types'
 
@@ -20,8 +19,8 @@ type Props = {
   achievements: Achievement[]
   setAchievements: Dispatch<SetStateAction<Achievement[]>>
   /** 最上面那行最终目标，空字符串 = 还没写 */
-  finalGoal: string
-  setFinalGoal: Dispatch<SetStateAction<string>>
+  vision: string
+  setVision: Dispatch<SetStateAction<string>>
   goals: GoalItem[]
   setGoals: Dispatch<SetStateAction<GoalItem[]>>
 }
@@ -33,37 +32,31 @@ type Props = {
  * 成就下面的任务只在这一页出现，计划·任务和首页都不收（见 withoutAchievement），
  * 所以这里拿到的是完整的 todos，别的页面拿的是剔过的那份。
  *
- * 本周目标这一段是从原来的「复盘 · 目标」整段搬过来的，时间关系没变：
- * 卡片上是本周目标（随时能点完成 / 没完成，点了锁定），下面输入框写的是下周。
+ * 本周目标那一段直接引用 ReviewGoal（原来是「复盘 · 目标」页），
+ * 时间关系和结算规则都留在那个组件里，这里不重复一份。
  */
 export default function Goal({
   todos,
   setTodos,
   achievements,
   setAchievements,
-  finalGoal,
-  setFinalGoal,
+  vision,
+  setVision,
   goals,
   setGoals,
 }: Props) {
   const [formOpen, setFormOpen] = useState(false)
-  const [editingFinal, setEditingFinal] = useState(false)
-  const [finalDraft, setFinalDraft] = useState('')
-  const [draft, setDraft] = useState('')
+  const [editingVision, setEditingVision] = useState(false)
+  const [visionDraft, setVisionDraft] = useState('')
 
-  const thisWeekKey = weekKeyOf()
-  const nextWeekKey = weekKeyOffset(thisWeekKey, 1)
-  const current = goalOf(goals, thisWeekKey)
-  const next = goalOf(goals, nextWeekKey)
-
-  function startEditFinal() {
-    setFinalDraft(finalGoal)
-    setEditingFinal(true)
+  function startEditVision() {
+    setVisionDraft(vision)
+    setEditingVision(true)
   }
 
-  function commitFinal() {
-    setFinalGoal(finalDraft.trim())
-    setEditingFinal(false)
+  function commitVision() {
+    setVision(visionDraft.trim())
+    setEditingVision(false)
   }
 
   function addNew(title: string, note: string) {
@@ -77,20 +70,6 @@ export default function Goal({
     setTodos(list => detachTasks(list, id))
   }
 
-  function settle(id: number, done: boolean) {
-    setGoals(list => settleGoal(list, id, done))
-  }
-
-  function save() {
-    const value = draft.trim()
-    if (!value) return
-    // settleBefore 用本周：只收掉更早的旧目标，本周那条留给上面的按钮
-    setGoals(list =>
-      saveGoal(list, { text: value, weekKey: nextWeekKey, settleBefore: thisWeekKey }),
-    )
-    setDraft('')
-  }
-
   return (
     <>
       <div className="page page--fab">
@@ -98,33 +77,35 @@ export default function Goal({
 
         <section className="final" aria-label="最终目标">
           <span className="final__label">最终目标</span>
-          {editingFinal ? (
+
+          {editingVision ? (
             <span className="final__edit">
               <input
-                className="input"
-                value={finalDraft}
-                onChange={event => setFinalDraft(event.target.value)}
+                className="input final__input"
+                value={visionDraft}
+                onChange={event => setVisionDraft(event.target.value)}
                 onKeyDown={event => {
-                  if (event.key === 'Enter') commitFinal()
-                  if (event.key === 'Escape') setEditingFinal(false)
+                  if (event.key === 'Enter') commitVision()
+                  if (event.key === 'Escape') setEditingVision(false)
                 }}
                 placeholder="想做成的那件大事…"
                 aria-label="最终目标"
                 maxLength={120}
                 autoFocus
               />
-              <button type="button" className="btn btn--primary" onClick={commitFinal}>
+              <button type="button" className="btn btn--primary final__save" onClick={commitVision}>
                 保存
               </button>
             </span>
           ) : (
-            <button
-              type="button"
-              className={finalGoal ? 'final__text' : 'final__text final__text--empty'}
-              onClick={startEditFinal}
-            >
-              {finalGoal || '还没写最终目标，点这里写'}
-            </button>
+            <>
+              <span className={vision ? 'final__text' : 'final__text final__text--empty'}>
+                {vision || '还没写最终目标'}
+              </span>
+              <button type="button" className="btn btn--ghost final__btn" onClick={startEditVision}>
+                编辑
+              </button>
+            </>
           )}
         </section>
 
@@ -149,93 +130,7 @@ export default function Goal({
           ))
         )}
 
-        <div className="card goal">
-          <div className="goal__head">
-            <span className="goal__week">本周目标 · {formatWeekRange(thisWeekKey)}</span>
-            {current?.settled && (
-              <span className={current.done ? 'goal__state goal__state--done' : 'goal__state'}>
-                已记录 · {current.done ? '完成' : '没完成'}
-              </span>
-            )}
-          </div>
-
-          {current ? (
-            <>
-              <p className="goal__text">{current.text}</p>
-
-              <div className="goal__actions">
-                <button
-                  type="button"
-                  className={
-                    current.settled && current.done
-                      ? 'btn btn--ghost goal__btn goal__btn--on'
-                      : 'btn btn--ghost goal__btn'
-                  }
-                  disabled={current.settled}
-                  onClick={() => settle(current.id, true)}
-                >
-                  ☑ 完成
-                </button>
-                <button
-                  type="button"
-                  className={
-                    current.settled && !current.done
-                      ? 'btn btn--ghost goal__btn goal__btn--on'
-                      : 'btn btn--ghost goal__btn'
-                  }
-                  disabled={current.settled}
-                  onClick={() => settle(current.id, false)}
-                >
-                  ☐ 没完成
-                </button>
-              </div>
-
-              <p className="meta">
-                {current.settled
-                  ? '这周的目标已经记录，不再改判。'
-                  : '点了就锁定，这周不再改判。'}
-              </p>
-            </>
-          ) : (
-            <p className="goal__empty">
-              这周还没写目标。可以在下面写一条下周的，从下周一开始生效。
-            </p>
-          )}
-        </div>
-
-        <label className="goal__label" htmlFor="goal-input">
-          下周目标 · {formatWeekRange(nextWeekKey)}
-        </label>
-
-        <div className="composer">
-          <div className="composer__row">
-            <input
-              id="goal-input"
-              className="input"
-              value={draft}
-              onChange={event => setDraft(event.target.value)}
-              onKeyDown={event => {
-                if (event.key === 'Enter') save()
-              }}
-              placeholder="下周想完成什么…"
-              maxLength={120}
-            />
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={save}
-              disabled={!draft.trim()}
-            >
-              保存
-            </button>
-          </div>
-        </div>
-
-        <p className="meta">
-          {next
-            ? `下周已记下：${next.text}（再保存会覆盖这条）`
-            : '一周只留一条目标；保存时会把更早、还没结算的目标一起结掉。'}
-        </p>
+        <ReviewGoal goals={goals} setGoals={setGoals} />
       </div>
 
       <button

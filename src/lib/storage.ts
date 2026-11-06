@@ -18,9 +18,12 @@ export const KEYS = {
   mood: 'workbench.mood',
   /** 成就（目标页），数组 */
   achievements: 'workbench.achievements',
-  /** 目标页最上面那行「最终目标」，只有一个字符串 */
-  finalGoal: 'workbench.finalGoal',
+  /** 目标页最上面那行「最终目标」（vision），只有一个字符串 */
+  vision: 'workbench.vision',
 } as const
+
+/** 旧版的最终目标键，只在迁移时读一次，搬完保留不删 */
+const LEGACY_VISION_KEY = 'workbench.finalGoal'
 
 /** 读一个 key，读不出来（没有 / 坏了）就返回兜底值 */
 export function readKey<T>(key: string, fallback: T): T {
@@ -70,10 +73,27 @@ export function useStoredState<T>(
 }
 
 /**
+ * 最终目标从 `workbench.finalGoal` 改成 `workbench.vision`。
+ * 只在 vision 还空着的时候搬一次，老键保留不删 —— 跟 todos 那次一个规矩，
+ * 用户已经写过的那句话不会因为换个键名就消失。
+ */
+function migrateLegacyVision(): void {
+  const legacy = readKey<unknown>(LEGACY_VISION_KEY, '')
+  if (typeof legacy !== 'string' || !legacy.trim()) return
+
+  const current = readKey<unknown>(KEYS.vision, '')
+  if (typeof current === 'string' && current.trim()) return
+
+  writeKey(KEYS.vision, legacy)
+}
+
+/**
  * 老版本的待办存在 'todos' 里，这里搬到 'workbench.todos'，
  * 保证改造前加的待办不会丢。老 key 保留不删。
  */
 export function migrateLegacyStorage(): void {
+  migrateLegacyVision()
+
   const legacy = readKey<unknown>('todos', null)
   if (!Array.isArray(legacy)) return
 

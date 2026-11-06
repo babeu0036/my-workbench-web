@@ -68,7 +68,8 @@ export default function App() {
     [],
     normalizeAchievements,
   )
-  const [finalGoal, setFinalGoal] = useStoredState<string>(KEYS.finalGoal, '', value =>
+  // 目标页最上面那行「最终目标」，空字符串 = 还没写
+  const [vision, setVision] = useStoredState<string>(KEYS.vision, '', value =>
     typeof value === 'string' ? value : '',
   )
   // 课程表：课程数组 + 学期第 1 周的周一（决定「现在是第几周」，进而决定单双周和灰色）
@@ -206,8 +207,8 @@ export default function App() {
               setTodos={setTodos}
               achievements={achievements}
               setAchievements={setAchievements}
-              finalGoal={finalGoal}
-              setFinalGoal={setFinalGoal}
+              vision={vision}
+              setVision={setVision}
               goals={goals}
               setGoals={setGoals}
             />

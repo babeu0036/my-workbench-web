@@ -2638,16 +2638,15 @@ textarea {
 
 /* ---------- 目标 · 最终目标 / 成就 ---------- */
 
-/* 最终目标只占一行：写长了出省略号，点一下原地变成输入框 */
+/* 最终目标：标题下面一行小字，右侧一个「编辑」。不占卡片，读起来像副标题；
+   点了「编辑」就地换成输入框，「保存」或回车写回，Esc 放弃 */
 .final {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+  /* 贴紧上面的页面标题，像它的下一行，而不是另起一块 */
+  margin-top: -6px;
+  padding: 0 2px;
 }
 
 .final__label {
@@ -2657,26 +2656,23 @@ textarea {
   letter-spacing: 0.04em;
 }
 
+/* 内容：小号、一行，写长了省略 —— 最终目标是一句话，不是一段话 */
 .final__text {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--text-h);
-  font-size: 15px;
-  line-height: 1.4;
-  text-align: left;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: text;
 }
 
 .final__text--empty {
   color: var(--muted);
 }
 
+/* 编辑态：输入框顶掉内容区，右边那个按钮从「编辑」变「保存」 */
 .final__edit {
   flex: 1 1 auto;
   display: flex;
@@ -2685,9 +2681,28 @@ textarea {
   min-width: 0;
 }
 
-.final__edit .input {
+.final__input {
   flex: 1 1 auto;
   min-width: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+/* 这行的按钮比默认按钮小一号，免得在一行小字旁边显得笨重。
+   「编辑」是白底 + 淡边框的小方块：页面底色是浅灰，白底才看得出是个按钮，
+   光靠边框会跟「最终目标」那几个字糊在一起 */
+.final__btn {
+  flex: none;
+  padding: 3px 10px;
+  font-size: 13px;
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.final__save {
+  flex: none;
+  padding: 5px 12px;
+  font-size: 13px;
 }
 
 .ach {

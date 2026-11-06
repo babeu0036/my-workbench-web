@@ -29,7 +29,7 @@ const STATE_LABEL = {
 /**
  * 一张成就卡，三种状态都由 `achievementState` 算出来：
  *
- * - 未开始：没有任务，一句「还没有任务，点这里加」，点了就地展开输入条；
+ * - 未开始：没有任务，一句「还没有任务，点这里添加」，点了就地展开输入条；
  * - 进行中：完成 x / y 条 + 进度条 + 任务列表，可以直接勾；
  * - 已点亮：任务全部勾完，标题旁挂绿标和达成日期。
  *
@@ -116,7 +116,7 @@ export default function AchievementCard({
         />
       ) : state === 'empty' ? (
         <button type="button" className="ach__empty" onClick={startAdd}>
-          还没有任务，点这里加
+          还没有任务，点这里添加
         </button>
       ) : (
         <button type="button" className="ach__add" onClick={startAdd}>
