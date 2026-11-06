@@ -2355,6 +2355,12 @@ textarea {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* 面板里内容长了自己滚，但这一行要一直贴在最底下看得见 ——
+     矮屏上多一颗科目胶囊（现在四个科目）就可能把「保存」顶出屏幕 */
+  position: sticky;
+  bottom: 0;
+  padding-top: 8px;
+  background: var(--surface);
 }
 
 .sheet__save {
@@ -2485,8 +2491,9 @@ textarea {
 
 /* ---------- 科目筛选条 / 占位页空状态 ---------- */
 
-/* 筛选项从 3 个变成 5~6 个：5 个在 360px 仍是一行，6 个（多一个「未分类」）才折行。
-   不改成横向滚动，因为藏起来的胶囊没人知道能滑 */
+/* 筛选项最多 7 颗（全部 / 四个科目 / 琐事 / 未分类）：长科目在胶囊上用短名
+   （见 lib/seed.ts 的 short），剩下的靠折行。不做横向滚动 ——
+   藏起来的胶囊没人知道能滑 */
 .seg--wrap {
   flex-wrap: wrap;
 }
@@ -2496,6 +2503,82 @@ textarea {
   min-width: 54px;
   padding: 8px 10px;
   white-space: nowrap;
+}
+
+/* 统计行：左边「共 N 条」，右边「隐藏已完成」。数字跟着筛选走，
+   所以数字和下面的列表永远对得上 */
+.tasks__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 2px -2px;
+}
+
+.tasks__count {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tasks__count b {
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+/* 小开关：30 × 18 的轨道 + 12 的拇指。不用原生 checkbox ——
+   它在深色主题下会跑成系统默认样式，跟这套配色对不上 */
+.switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.switch__track {
+  position: relative;
+  display: block;
+  width: 30px;
+  height: 18px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.switch--on {
+  color: var(--accent);
+}
+
+.switch--on .switch__track {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.switch--on .switch__knob {
+  transform: translateX(12px);
+  background: var(--accent);
 }
 
 /* 还没做内容的页面：一个虚线框，明确是「空着的占位」而不是加载失败 */
@@ -2509,13 +2592,23 @@ textarea {
   text-align: center;
 }
 
-/* 360px 上 6 个胶囊（多一个「未分类」）摆一行差几像素，
-   收一点字号和内边距就够，比折成「5 + 1」那种孤零零的第二行好看 */
+/* 360px 上 7 个胶囊本来就得折行，收一点字号和内边距让它折成两排而不是三排 */
 @media (max-width: 400px) {
   .seg--wrap .seg__btn {
     min-width: 46px;
     padding: 8px 6px;
     font-size: 13px;
+  }
+
+  .switch {
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  /* 折行时最后一颗常常独占一排。让它跟着撑满，选中时就是一条通栏高亮，
+     看着像另一个控件；不撑宽则停在左边，跟上面一排的左边缘对齐 */
+  .seg--wrap .seg__btn:last-child {
+    flex-grow: 0;
   }
 }
 

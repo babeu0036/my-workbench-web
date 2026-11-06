@@ -64,6 +64,12 @@ export type Note = {
 export type Subject = {
   id: string
   name: string
+  /**
+   * 筛选胶囊上用的短名。只有名字特别长的科目才给 ——
+   * 计划页的筛选条一共七八颗胶囊，360px 下全用全名会折成三排。
+   * 没有就退回 name，页面上仍然显示全名。
+   */
+  short?: string
 }
 
 /**
