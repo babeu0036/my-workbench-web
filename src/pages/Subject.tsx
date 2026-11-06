@@ -1,11 +1,23 @@
+import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
+import AddTaskPanel from '../components/AddTaskPanel'
 import TaskInput from '../components/TaskInput'
 import TaskList from '../components/TaskList'
-import { UNCATEGORIZED_ID, addTodo, forSubject, removeTodo, toggleTodo, weekStats } from '../lib/todos'
+import {
+  UNCATEGORIZED_ID,
+  addTodo,
+  forSubject,
+  removeTodo,
+  toggleTodo,
+  updateTodo,
+  weekStats,
+} from '../lib/todos'
 import type { Subject, SubjectSegment, Todo } from '../lib/types'
 
 type Props = {
   subject: Subject | undefined
+  /** 编辑任务时面板要列全部真科目：这条本来是英语的，也能改成高数 */
+  subjects: Subject[]
   seg: SubjectSegment
   todos: Todo[]
   setTodos: Dispatch<SetStateAction<Todo[]>>
@@ -17,7 +29,16 @@ type Props = {
  * id 为空的「未分类」也走这一页，逻辑完全一样。
  * 错题段留到第 6 步。
  */
-export default function SubjectPage({ subject, seg, todos, setTodos, onSegChange }: Props) {
+export default function SubjectPage({
+  subject,
+  subjects,
+  seg,
+  todos,
+  setTodos,
+  onSegChange,
+}: Props) {
+  const [editing, setEditing] = useState<Todo | null>(null)
+
   if (!subject) {
     return (
       <div className="page">
@@ -28,6 +49,8 @@ export default function SubjectPage({ subject, seg, todos, setTodos, onSegChange
   }
 
   const mine = forSubject(todos, subject.id)
+  // 未分类不是一个可选科目，编辑面板里不能选它
+  const pickable = subjects.filter(item => item.id !== UNCATEGORIZED_ID)
   const stat = weekStats(todos, subject.id)
   // 「未分类」直接念科目名会读成「写一件未分类要做的事」，单独说人话
   const isUnclassified = subject.id === UNCATEGORIZED_ID
@@ -69,6 +92,7 @@ export default function SubjectPage({ subject, seg, todos, setTodos, onSegChange
             empty={`${subject.name}还没有任务，在下面加一条`}
             onToggle={id => setTodos(list => toggleTodo(list, id))}
             onRemove={id => setTodos(list => removeTodo(list, id))}
+            onEdit={id => setEditing(todos.find(todo => todo.id === id) ?? null)}
           />
 
           <TaskInput
@@ -84,6 +108,18 @@ export default function SubjectPage({ subject, seg, todos, setTodos, onSegChange
           <p className="empty">错题本还没做</p>
           <p className="meta">第 6 步接错题导入和计数，这里先留白</p>
         </div>
+      )}
+
+      {editing && (
+        <AddTaskPanel
+          subjects={pickable}
+          todo={editing}
+          onClose={() => setEditing(null)}
+          onSubmit={(text, subjectId, dueDate, kind) => {
+            setTodos(list => updateTodo(list, editing.id, { text, subjectId, dueDate, kind }))
+            setEditing(null)
+          }}
+        />
       )}
     </div>
   )

@@ -188,6 +188,7 @@ export default function App() {
           {route.page === 'subject' && (
             <SubjectPage
               subject={subjects.find(item => item.id === route.id)}
+              subjects={subjects}
               seg={route.seg}
               todos={mainTodos}
               setTodos={setTodos}

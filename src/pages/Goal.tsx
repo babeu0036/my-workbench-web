@@ -10,7 +10,7 @@ import {
 } from '../lib/achievements'
 import { formatWeekRange, weekKeyOf, weekKeyOffset } from '../lib/date'
 import { goalOf, saveGoal, settleGoal } from '../lib/goals'
-import { addAchievementTodo, removeTodo, toggleTodo } from '../lib/todos'
+import { addAchievementTodo, removeTodo, toggleTodo, updateTodo } from '../lib/todos'
 import type { Achievement, Goal as GoalItem, Todo } from '../lib/types'
 
 type Props = {
@@ -140,6 +140,9 @@ export default function Goal({
               onRemoveTask={id => setTodos(list => removeTodo(list, id))}
               onAddTask={(text, dueDate) =>
                 setTodos(list => addAchievementTodo(list, text, item.id, dueDate))
+              }
+              onEditTask={(id, text, dueDate) =>
+                setTodos(list => updateTodo(list, id, { text, dueDate }))
               }
               onRemove={() => removeOne(item.id)}
             />

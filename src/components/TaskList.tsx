@@ -9,15 +9,17 @@ type Props = {
   empty: string
   onToggle: (id: number) => void
   onRemove: (id: number) => void
+  /** 点行正文进编辑；不传就是只读的行（只有勾选和删除可用） */
+  onEdit?: (id: number) => void
 }
 
 /**
- * 任务列表：勾选圆点负责完成 / 撤销，右侧是删除。
+ * 任务列表：勾选圆点负责完成 / 撤销，点正文进编辑，右侧是删除。
  * 文字下面那行是截止日期和剩余天数 —— 没完成的会按紧急程度变色，
  * 已完成的就只剩一个灰色日期，不再吵人。
  * 状态全部由外部传进来，这里只渲染，不做任何过滤和计算。
  */
-export default function TaskList({ todos, empty, onToggle, onRemove }: Props) {
+export default function TaskList({ todos, empty, onToggle, onRemove, onEdit }: Props) {
   if (todos.length === 0) {
     return <p className="empty">{empty}</p>
   }
@@ -28,6 +30,25 @@ export default function TaskList({ todos, empty, onToggle, onRemove }: Props) {
         const days = dueDays(todo)
         // 老任务没有 dueDate，这一行就不显示，不硬塞一个「无日期」
         const dateText = todo.dueDate ? formatDateCn(todo.dueDate) : ''
+
+        const body = (
+          <>
+            <span className={todo.done ? 'row__text row__text--done' : 'row__text'}>
+              {todo.text}
+            </span>
+            {dateText && (
+              <span className={todo.done ? 'row__date' : `row__date row__date--${dueTone(days)}`}>
+                {dateText}
+                {!todo.done && (
+                  <>
+                    {' · '}
+                    <span className="nowrap">{dueLabel(days)}</span>
+                  </>
+                )}
+              </span>
+            )}
+          </>
+        )
 
         return (
           <li key={todo.id} className="row row--todo">
@@ -41,26 +62,19 @@ export default function TaskList({ todos, empty, onToggle, onRemove }: Props) {
               {todo.done ? '✓' : ''}
             </button>
 
-            <span className="row__body">
-              <span className={todo.done ? 'row__text row__text--done' : 'row__text'}>
-                {todo.text}
-              </span>
-              {dateText && (
-                <span
-                  className={
-                    todo.done ? 'row__date' : `row__date row__date--${dueTone(days)}`
-                  }
-                >
-                  {dateText}
-                  {!todo.done && (
-                    <>
-                      {' · '}
-                      <span className="nowrap">{dueLabel(days)}</span>
-                    </>
-                  )}
-                </span>
-              )}
-            </span>
+            {onEdit ? (
+              // 用按钮而不是给 span 挂 onClick：键盘 Tab 得到、读屏念得出「编辑」
+              <button
+                type="button"
+                className="row__body row__edit"
+                onClick={() => onEdit(todo.id)}
+                aria-label={`编辑：${todo.text}`}
+              >
+                {body}
+              </button>
+            ) : (
+              <span className="row__body">{body}</span>
+            )}
 
             <span className="row__actions">
               <button

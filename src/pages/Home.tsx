@@ -23,6 +23,7 @@ import {
   sortForPlan,
   tomorrowTasks,
   toggleTodo,
+  updateTodo,
 } from '../lib/todos'
 import type { Course, Goal, Subject, Todo, TodoKind } from '../lib/types'
 
@@ -71,6 +72,8 @@ export default function Home({
   onOpenPlan,
 }: Props) {
   const [panelOpen, setPanelOpen] = useState(false)
+  // 正在编辑的那条任务：点行正文进来，面板关掉就清空
+  const [editing, setEditing] = useState<Todo | null>(null)
   // 记住上次选的科目，下次打开面板直接站在那个科目上
   const [lastSubjectId, setLastSubjectId] = useStoredState<string>(KEYS.lastSubject, '')
 
@@ -118,6 +121,7 @@ export default function Home({
           empty="今天没有要做的任务，点右下角的 + 加一条"
           onToggle={id => setTodos(list => toggleTodo(list, id))}
           onRemove={id => setTodos(list => removeTodo(list, id))}
+          onEdit={id => setEditing(todos.find(todo => todo.id === id) ?? null)}
         />
 
         {todayList.length > 0 && (
@@ -173,7 +177,19 @@ export default function Home({
           subjects={pickable}
           defaultSubjectId={defaultSubjectId}
           onClose={() => setPanelOpen(false)}
-          onAdd={handleAdd}
+          onSubmit={handleAdd}
+        />
+      )}
+
+      {editing && (
+        <AddTaskPanel
+          subjects={pickable}
+          todo={editing}
+          onClose={() => setEditing(null)}
+          onSubmit={(text, subjectId, dueDate, kind) => {
+            setTodos(list => updateTodo(list, editing.id, { text, subjectId, dueDate, kind }))
+            setEditing(null)
+          }}
         />
       )}
     </>

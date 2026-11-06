@@ -10,6 +10,7 @@ import {
   removeTodo,
   sortForPlan,
   toggleTodo,
+  updateTodo,
 } from '../lib/todos'
 import type { TaskFilter } from '../lib/todos'
 import type { Subject, Todo, TodoKind } from '../lib/types'
@@ -38,6 +39,8 @@ export default function PlanTasks({ todos, setTodos, subjects }: Props) {
   // 只影响这一屏画不画已完成的，不删数据、也不落盘：刷新回到默认的「显示」
   const [hideDone, setHideDone] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
+  // 正在编辑的那条：存整条快照，面板关掉就清空
+  const [editing, setEditing] = useState<Todo | null>(null)
   // 和首页共用同一个 key：在哪儿加过英语，下次打开面板都站在英语上
   const [lastSubjectId, setLastSubjectId] = useStoredState<string>(KEYS.lastSubject, '')
 
@@ -132,6 +135,7 @@ export default function PlanTasks({ todos, setTodos, subjects }: Props) {
           empty={empty}
           onToggle={id => setTodos(list => toggleTodo(list, id))}
           onRemove={id => setTodos(list => removeTodo(list, id))}
+          onEdit={id => setEditing(todos.find(todo => todo.id === id) ?? null)}
         />
       </div>
 
@@ -159,7 +163,19 @@ export default function PlanTasks({ todos, setTodos, subjects }: Props) {
           subjects={pickable}
           defaultSubjectId={defaultSubjectId}
           onClose={() => setPanelOpen(false)}
-          onAdd={handleAdd}
+          onSubmit={handleAdd}
+        />
+      )}
+
+      {editing && (
+        <AddTaskPanel
+          subjects={pickable}
+          todo={editing}
+          onClose={() => setEditing(null)}
+          onSubmit={(text, subjectId, dueDate, kind) => {
+            setTodos(list => updateTodo(list, editing.id, { text, subjectId, dueDate, kind }))
+            setEditing(null)
+          }}
         />
       )}
     </>

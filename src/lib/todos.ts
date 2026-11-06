@@ -186,6 +186,50 @@ export function clearDone(list: Todo[]): Todo[] {
   return list.filter(todo => !todo.done)
 }
 
+/** 改一条任务时能碰的字段。没传的字段保持原样 */
+export type TodoPatch = {
+  text?: string
+  subjectId?: string
+  kind?: TodoKind
+  dueDate?: string
+}
+
+/**
+ * 编辑一条任务：文字、类型、科目、截止日期。
+ *
+ * 三条硬规矩：
+ * - 琐事的科目恒为空，切回学习再由调用方给科目，别留半吊子状态；
+ * - 成就任务的科目也恒为空（它们只活在目标页，不进科目页、不算未分类），
+ *   所以在目标页改文字不会把它变成某个科目的任务；
+ * - `createdAt` / `doneAt` / `achievementId` / `done` 一概不动 ——
+ *   改个错字不该让已完成的任务变回未完成，也不该改掉它「哪天完成的」。
+ *
+ * 文字清空（或者传 `''`）时原样返回，不会造出一个没内容的任务。
+ */
+export function updateTodo(list: Todo[], id: number, patch: TodoPatch): Todo[] {
+  return list.map(todo => {
+    if (todo.id !== id) return todo
+
+    const text = patch.text === undefined ? todo.text : patch.text.trim()
+    if (!text) return todo
+
+    const kind = patch.kind ?? todo.kind
+    const subjectId =
+      kind === 'chore' || todo.achievementId !== undefined
+        ? UNCATEGORIZED_ID
+        : (patch.subjectId ?? todo.subjectId)
+    // 日期空串按「没设日期」存，别落一个空字符串进 localStorage
+    const dueDate =
+      patch.dueDate === undefined ? todo.dueDate : patch.dueDate === '' ? undefined : patch.dueDate
+
+    const next: Todo = { ...todo, text, kind, subjectId }
+    // 没日期就把键删掉，不留一个 undefined 在对象里（跟撤销完成时清 doneAt 一个规矩）
+    if (dueDate === undefined) delete next.dueDate
+    else next.dueDate = dueDate
+    return next
+  })
+}
+
 /**
  * 计划页的筛选：全部 / 某个科目 / 琐事 / 未分类。
  *

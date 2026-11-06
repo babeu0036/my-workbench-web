@@ -1052,6 +1052,30 @@ textarea {
   min-width: 0;
 }
 
+/* 点正文进编辑：正文是个按钮，把按钮自带的边框、底色、字号全清掉，
+   外观和原来的 span 一模一样，只多一个 hover 提示「这行能点」 */
+.row__edit {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 已完成的行保持灰 + 删除线，hover 不再变紫，免得看着像还能改状态 */
+.row__edit:hover .row__text:not(.row__text--done) {
+  color: var(--accent);
+}
+
+.row__edit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
 .row__text {
   flex: 1;
   min-width: 0;

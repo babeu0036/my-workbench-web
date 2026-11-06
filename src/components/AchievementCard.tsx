@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import AddTaskPanel from './AddTaskPanel'
 import ConfirmDelete from './ConfirmDelete'
 import TaskInput from './TaskInput'
 import TaskList from './TaskList'
@@ -13,6 +14,8 @@ type Props = {
   onToggleTask: (id: number) => void
   onRemoveTask: (id: number) => void
   onAddTask: (text: string, dueDate: string) => void
+  /** 改文字和日期。成就任务的科目和类型不给改，所以只收这两项 */
+  onEditTask: (id: number, text: string, dueDate: string) => void
   /** 删除这条成就（任务会退回未分类，不跟着删） */
   onRemove: () => void
 }
@@ -40,9 +43,11 @@ export default function AchievementCard({
   onToggleTask,
   onRemoveTask,
   onAddTask,
+  onEditTask,
   onRemove,
 }: Props) {
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<Todo | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const state = achievementState(achievement, tasks)
   const stats = statsOf(tasks)
@@ -88,7 +93,13 @@ export default function AchievementCard({
             </span>
           </div>
 
-          <TaskList todos={tasks} empty="" onToggle={onToggleTask} onRemove={onRemoveTask} />
+          <TaskList
+            todos={tasks}
+            empty=""
+            onToggle={onToggleTask}
+            onRemove={onRemoveTask}
+            onEdit={id => setEditing(tasks.find(todo => todo.id === id) ?? null)}
+          />
         </>
       )}
 
@@ -111,6 +122,19 @@ export default function AchievementCard({
         <button type="button" className="ach__add" onClick={startAdd}>
           + 加任务
         </button>
+      )}
+
+      {/* 编辑的是成就任务：科目和类型都锁住，只改文字和日期 */}
+      {editing && (
+        <AddTaskPanel
+          subjects={[]}
+          todo={editing}
+          onClose={() => setEditing(null)}
+          onSubmit={(text, _subjectId, dueDate) => {
+            onEditTask(editing.id, text, dueDate)
+            setEditing(null)
+          }}
+        />
       )}
     </article>
   )
