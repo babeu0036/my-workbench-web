@@ -13,13 +13,22 @@ import { DEFAULT_SUBJECTS } from './lib/seed'
 import { normalizeCourses } from './lib/courses'
 import { normalizeDeadlines } from './lib/deadlines'
 import { pendingReminders } from './lib/due'
-import { normalizeGoals } from './lib/goals'
+import { normalizeGoals, normalizePeriods } from './lib/goals'
 import { normalizeAchievements, withLitState } from './lib/achievements'
 import { normalizeMoods } from './lib/mood'
 import type { MoodMap } from './lib/mood'
 import { startSync } from './lib/sync'
 import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, normalizeTodos, withoutAchievement } from './lib/todos'
-import type { Achievement, Course, Deadline, Goal, Route, Subject, Todo } from './lib/types'
+import type {
+  Achievement,
+  Course,
+  Deadline,
+  Goal,
+  GoalPeriod,
+  Route,
+  Subject,
+  Todo,
+} from './lib/types'
 
 /** 手机顶栏显示当前页名，省得用户不知道自己点进来了哪 */
 function titleOf(route: Route, subjects: Subject[]): string {
@@ -60,8 +69,9 @@ export default function App() {
     [],
     normalizeDeadlines,
   )
-  // 目标：首页那张「本周目标」卡只读它；写入在「目标」页接上之前用不到 setter
+  // 目标：一个周期（本学期 / 暑假 / 那周）下挂若干条，首页只读当前周期那几条
   const [goals, setGoals] = useStoredState<Goal[]>(KEYS.goals, [], normalizeGoals)
+  const [periods, setPeriods] = useStoredState<GoalPeriod[]>(KEYS.goalPeriods, [], normalizePeriods)
   // 目标页：成就 + 最上面那行最终目标
   const [achievements, setAchievements] = useStoredState<Achievement[]>(
     KEYS.achievements,
@@ -161,6 +171,7 @@ export default function App() {
               subjects={subjects}
               dueItems={dueItems}
               goals={goals}
+              periods={periods}
               courses={courses}
               semesterStart={semesterStart}
               moods={moods}
@@ -200,7 +211,7 @@ export default function App() {
           {/* 复盘只剩一页（原来的「数据」），不再有二级结构 */}
           {route.page === 'review' && <ReviewData todos={mainTodos} moods={moods} />}
 
-          {/* 目标页：最终目标 → 成就列表 → 本周目标；成就下的任务只在这一页出现 */}
+          {/* 目标页：最终目标 → 目标列表 → 成就列表；成就下的任务只在这一页出现 */}
           {route.page === 'goal' && (
             <GoalPage
               todos={todos}
@@ -211,6 +222,9 @@ export default function App() {
               setVision={setVision}
               goals={goals}
               setGoals={setGoals}
+              periods={periods}
+              setPeriods={setPeriods}
+              semesterStart={semesterStart}
             />
           )}
           {route.page === 'knowledge' && <Knowledge />}

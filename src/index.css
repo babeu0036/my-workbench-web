@@ -2705,6 +2705,143 @@ textarea {
   font-size: 13px;
 }
 
+/* ---------- 目标列表（扁平一列 + 周期标签） ---------- */
+
+/* 周期标签：一条目标属于哪个周期就挂在文字下面，过期周期只留个灰框 */
+.ptag {
+  flex: none;
+  padding: 1px 7px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.ptag--past {
+  border-color: var(--border);
+  background: none;
+}
+
+.goalrow__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.goalrow__range {
+  color: var(--muted);
+}
+
+/* 就地改目标的输入框：行内高度，不把整行撑成两个行高 */
+.row__input {
+  padding: 6px 10px;
+  font-size: 15px;
+  border-radius: 8px;
+}
+
+/* 列表下面那个虚线「+ 添加目标」 */
+.goal-add {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.goal-add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 同页两段（目标 / 成就）之间的小标题 */
+.goal-section {
+  margin: 4px 0 -4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* 添加目标面板里的小标题 */
+.sheet__label {
+  margin-bottom: -4px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* 自定义周期：名字 + 起止 */
+.periodform {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--surface-2);
+  border-radius: 12px;
+}
+
+.periodform__dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.periodform__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.periodform__ok {
+  align-self: flex-start;
+}
+
+@media (max-width: 400px) {
+  .periodform__dates {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 首页的当前周期目标：只列没做完的前三条 */
+.home-goal__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-goal__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.home-goal__item::before {
+  content: '';
+  flex: none;
+  width: 5px;
+  height: 5px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
 .ach {
   gap: 10px;
 }
@@ -2777,8 +2914,10 @@ textarea {
   background: var(--done);
 }
 
-/* 未开始的空状态：虚线框，点它把焦点送进下面的输入条，光标是文字光标 */
-.ach__empty {
+/* 未开始的空状态：虚线框，点它把焦点送进下面的输入条，光标是文字光标。
+   目标列表的空状态也用这一套（.goal-empty），看起来是同一个「还没做」 */
+.ach__empty,
+.goal-empty {
   width: 100%;
   padding: 14px 12px;
   border: 1px dashed var(--border);
@@ -2790,7 +2929,8 @@ textarea {
   cursor: text;
 }
 
-.ach__empty:hover {
+.ach__empty:hover,
+.goal-empty:hover {
   border-color: var(--accent);
   color: var(--accent);
 }

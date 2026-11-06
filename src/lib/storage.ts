@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react'
+import { dayKeyOffset } from './date'
+import { isLegacyGoal, legacyPeriodTitle } from './goals'
+import type { LegacyGoal } from './goals'
 import { normalizeTodos } from './todos'
-import type { Todo } from './types'
+import type { Goal, GoalPeriod, Todo } from './types'
 
 /** localStorage 的几个 key，分开存，互不影响 */
 export const KEYS = {
   todos: 'workbench.todos',
   deadlines: 'workbench.deadlines',
   notes: 'workbench.notes',
+  /** 目标：{ id, periodId, text, done, doneAt? }，挂在下面对应的周期上 */
   goals: 'workbench.goals',
+  /** 目标周期：本学期 / 暑假 / 那周，{ id, title, start, end } */
+  goalPeriods: 'workbench.goalPeriods',
   /** 首页添加面板上次选的科目，只有一个字符串 */
   lastSubject: 'workbench.lastSubject',
   /** 课程表：课程数组 */
@@ -73,6 +79,57 @@ export function useStoredState<T>(
 }
 
 /**
+ * 旧版目标是一周一条（{ weekKey, text, done, settled }），没有「周期」这一层。
+ * 这里按 weekKey 分组，每组升成一个周期「10.26 那周」，每条老目标变成周期里的一条：
+ * 结算过且打了勾的算完成，其余算没完成 —— 一条都不丢。
+ * 已经是新形状（带 periodId）就原样不动。
+ */
+function migrateLegacyGoals(): void {
+  const raw = readKey<unknown>(KEYS.goals, null)
+  if (!Array.isArray(raw) || raw.length === 0) return
+
+  const legacy = raw.filter(isLegacyGoal)
+  if (legacy.length === 0) return
+
+  const groups = new Map<string, LegacyGoal[]>()
+  legacy.forEach(item => {
+    const list = groups.get(item.weekKey) ?? []
+    list.push(item)
+    groups.set(item.weekKey, list)
+  })
+
+  const periods: GoalPeriod[] = []
+  const goals: Goal[] = []
+  let seq = 1
+
+  // weekKey 排序后建周期，读日志时顺序跟当年写目标的顺序一致
+  ;[...groups.keys()].sort().forEach(weekKey => {
+    const periodId = seq++
+    periods.push({
+      id: periodId,
+      title: legacyPeriodTitle(weekKey),
+      start: weekKey,
+      end: dayKeyOffset(weekKey, 6),
+    })
+
+    ;(groups.get(weekKey) ?? []).forEach(item => {
+      const text = typeof item.text === 'string' ? item.text.trim() : ''
+      if (!text) return
+      goals.push({
+        id: seq++,
+        periodId,
+        text,
+        // 旧版只有点过「完成 / 没完成」的才算数，没结算的一律当没完成
+        done: Boolean(item.settled && item.done),
+      })
+    })
+  })
+
+  writeKey(KEYS.goalPeriods, periods)
+  writeKey(KEYS.goals, goals)
+}
+
+/**
  * 最终目标从 `workbench.finalGoal` 改成 `workbench.vision`。
  * 只在 vision 还空着的时候搬一次，老键保留不删 —— 跟 todos 那次一个规矩，
  * 用户已经写过的那句话不会因为换个键名就消失。
@@ -93,6 +150,7 @@ function migrateLegacyVision(): void {
  */
 export function migrateLegacyStorage(): void {
   migrateLegacyVision()
+  migrateLegacyGoals()
 
   const legacy = readKey<unknown>('todos', null)
   if (!Array.isArray(legacy)) return

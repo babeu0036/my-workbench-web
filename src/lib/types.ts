@@ -73,17 +73,30 @@ export type Subject = {
 }
 
 /**
- * 一周一条目标。
- * weekKey 用当周周一的日期字符串（如 2026-10-26），字符串比较就是时间先后。
+ * 一段目标周期：本学期、暑假、或者自己起的一个名字。
+ * start / end 都是 10 字符日期键（2026-09-01），end 含当天。
+ * 周期之间允许重叠 —— 学期里套一个暑假是正常的事。
+ */
+export type GoalPeriod = {
+  id: number
+  /** 页面上那个小标签写什么：「本学期」「暑假」「11.02 那周」 */
+  title: string
+  start: string
+  end: string
+}
+
+/**
+ * 一条目标。挂在一个周期下，一个周期下想有几条就有几条。
+ * 没有「结算」这个状态：勾上就是完成，取消勾就回到未完成。
  */
 export type Goal = {
   id: number
-  weekKey: string
+  /** 属于哪个周期（GoalPeriod.id） */
+  periodId: number
   text: string
-  /** 目标有没有达成；没结算前没有意义 */
   done: boolean
-  /** 有没有结算过。结算后不再改动，是这一周的历史记录 */
-  settled: boolean
+  /** 勾上的时间，用来显示「11月6日 完成」；取消勾就清掉 */
+  doneAt?: number
 }
 
 /**

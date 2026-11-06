@@ -137,6 +137,19 @@ export function formatWeekRange(key: string): string {
 }
 
 /**
+ * 一段区间写成 09.01 - 01.15；跨年时两头都带上年份，
+ * 否则「09.01 - 01.15」看不出是同一年的九月到次年一月还是倒着。
+ */
+export function formatDateRange(start: string, end: string): string {
+  const a = parseDate(start)
+  const b = parseDate(end)
+  if (!a.y || !b.y) return `${start} - ${end}`
+  const md = (dt: { y: number; m: number; d: number }) => `${pad(dt.m)}.${pad(dt.d)}`
+  if (a.y !== b.y) return `${a.y}.${md(a)} - ${b.y}.${md(b)}`
+  return `${md(a)} - ${md(b)}`
+}
+
+/**
  * 日期键（2026-11-03）落不落在本周。
  * 截止日期是日期字符串而不是时间戳，这里也用日期键比较：
  * 两个都是 10 个字符，字符串比大小就等于比日期，不用来回转换。

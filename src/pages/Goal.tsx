@@ -2,15 +2,23 @@ import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import AchievementCard from '../components/AchievementCard'
 import AchievementForm from '../components/AchievementForm'
-import ReviewGoal from '../components/ReviewGoal'
+import GoalAddPanel from '../components/GoalAddPanel'
+import GoalList from '../components/GoalList'
 import {
   addAchievement,
   detachTasks,
   forAchievement,
   removeAchievement,
 } from '../lib/achievements'
+import {
+  addGoal,
+  removeGoal,
+  sortForGoalList,
+  toggleGoal,
+  updateGoal,
+} from '../lib/goals'
 import { addAchievementTodo, removeTodo, toggleTodo, updateTodo } from '../lib/todos'
-import type { Achievement, Goal as GoalItem, Todo } from '../lib/types'
+import type { Achievement, Goal as GoalItem, GoalPeriod, Todo } from '../lib/types'
 
 type Props = {
   /** 全部任务。这个页面是唯一看得见成就任务的地方 */
@@ -23,17 +31,22 @@ type Props = {
   setVision: Dispatch<SetStateAction<string>>
   goals: GoalItem[]
   setGoals: Dispatch<SetStateAction<GoalItem[]>>
+  /** 目标的周期：本学期 / 暑假 / 那周 …… */
+  periods: GoalPeriod[]
+  setPeriods: Dispatch<SetStateAction<GoalPeriod[]>>
+  /** 课程表里设的学期开始，用来算「本学期」那个快捷周期 */
+  semesterStart: string
 }
 
 /**
- * 目标。从上到下三段：最终目标一行 → 成就列表 → 本周目标。
+ * 目标。从上到下：最终目标一行 → 目标列表 → 成就列表。
  *
- * 不做「实践线 / 学业线」分组 —— 一条条平行摆着，哪条先做成先点亮。
- * 成就下面的任务只在这一页出现，计划·任务和首页都不收（见 withoutAchievement），
+ * 目标不再按周一条：一个周期（本学期 / 暑假 / 自己起的名）下想加几条加几条，
+ * 列表是扁平一列，每条前面挂个小标签写明属于哪个周期。
+ * 勾上就是完成，取消就回到未完成 —— 没有「点了就锁定」那套。
+ *
+ * 成就还是原来的样子：卡片三态，任务只在这一页出现（见 withoutAchievement），
  * 所以这里拿到的是完整的 todos，别的页面拿的是剔过的那份。
- *
- * 本周目标那一段直接引用 ReviewGoal（原来是「复盘 · 目标」页），
- * 时间关系和结算规则都留在那个组件里，这里不重复一份。
  */
 export default function Goal({
   todos,
@@ -44,10 +57,16 @@ export default function Goal({
   setVision,
   goals,
   setGoals,
+  periods,
+  setPeriods,
+  semesterStart,
 }: Props) {
-  const [formOpen, setFormOpen] = useState(false)
+  const [achievementOpen, setAchievementOpen] = useState(false)
+  const [goalOpen, setGoalOpen] = useState(false)
   const [editingVision, setEditingVision] = useState(false)
   const [visionDraft, setVisionDraft] = useState('')
+
+  const sortedGoals = sortForGoalList(goals, periods)
 
   function startEditVision() {
     setVisionDraft(vision)
@@ -59,9 +78,22 @@ export default function Goal({
     setEditingVision(false)
   }
 
-  function addNew(title: string, note: string) {
+  /**
+   * 面板里选的周期可能还不存在（点了预设或者刚自定义的）。
+   * 这里按「名字 + 起止」认一下：已经有就复用它，没有才真的追加一条周期。
+   */
+  function addOne(text: string, period: GoalPeriod) {
+    const existing = periods.find(
+      item => item.title === period.title && item.start === period.start && item.end === period.end,
+    )
+    if (!existing) setPeriods(list => [...list, period])
+    setGoals(list => addGoal(list, { periodId: existing ? existing.id : period.id, text }))
+    setGoalOpen(false)
+  }
+
+  function addAchievementItem(title: string, note: string) {
     setAchievements(list => addAchievement(list, title, note))
-    setFormOpen(false)
+    setAchievementOpen(false)
   }
 
   /** 删成就：任务不跟着删，只摘掉 achievementId，它们退回「未分类」 */
@@ -100,7 +132,7 @@ export default function Goal({
           ) : (
             <>
               <span className={vision ? 'final__text' : 'final__text final__text--empty'}>
-                {vision || '还没写最终目标'}
+                {vision || '还没写'}
               </span>
               <button type="button" className="btn btn--ghost final__btn" onClick={startEditVision}>
                 编辑
@@ -109,8 +141,25 @@ export default function Goal({
           )}
         </section>
 
+        <GoalList
+          goals={sortedGoals}
+          periods={periods}
+          onToggle={id => setGoals(list => toggleGoal(list, id))}
+          onUpdate={(id, text) => setGoals(list => updateGoal(list, id, text))}
+          onRemove={id => setGoals(list => removeGoal(list, id))}
+          onAdd={() => setGoalOpen(true)}
+        />
+
+        {goals.length > 0 && (
+          <button type="button" className="goal-add" onClick={() => setGoalOpen(true)}>
+            + 添加目标
+          </button>
+        )}
+
+        <h3 className="goal-section">成就</h3>
+
         {achievements.length === 0 ? (
-          <p className="placeholder__note">还没有目标，点右下角添加</p>
+          <p className="placeholder__note">还没有成就，点右下角添加</p>
         ) : (
           achievements.map(item => (
             <AchievementCard
@@ -129,17 +178,15 @@ export default function Goal({
             />
           ))
         )}
-
-        <ReviewGoal goals={goals} setGoals={setGoals} />
       </div>
 
       <button
         type="button"
         className="fab"
-        onClick={() => setFormOpen(true)}
+        onClick={() => setAchievementOpen(true)}
         aria-label="添加成就"
         aria-haspopup="dialog"
-        aria-expanded={formOpen}
+        aria-expanded={achievementOpen}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -152,7 +199,21 @@ export default function Goal({
         </svg>
       </button>
 
-      {formOpen && <AchievementForm onClose={() => setFormOpen(false)} onAdd={addNew} />}
+      {goalOpen && (
+        <GoalAddPanel
+          periods={periods}
+          semesterStart={semesterStart}
+          onClose={() => setGoalOpen(false)}
+          onSubmit={addOne}
+        />
+      )}
+
+      {achievementOpen && (
+        <AchievementForm
+          onClose={() => setAchievementOpen(false)}
+          onAdd={addAchievementItem}
+        />
+      )}
     </>
   )
 }

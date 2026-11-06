@@ -1,48 +1,74 @@
-import { formatWeekRange, weekKeyOf } from '../lib/date'
-import type { Goal } from '../lib/types'
+import { periodRangeText } from '../lib/goals'
+import type { Goal, GoalPeriod } from '../lib/types'
 
 type Props = {
-  /** 本周目标（goalOf 在页面里取好传进来），没有就是 undefined */
-  goal?: Goal
+  /** 今天落在里面、结束最近的那个周期；没有就是 undefined */
+  period?: GoalPeriod
+  /** 这个周期下的所有目标（页面里用 goalsOf 取好传进来） */
+  goals: Goal[]
   onOpenGoal: () => void
 }
 
+const SHOWN = 3
+
 /**
- * 首页顶部的本周目标卡。
+ * 首页的「当前周期目标」卡。
  *
- * 只有「还没结算」才是进行中；结算过的就是这周的记录，不再改判，
- * 所以点了完成之后这里显示「已完成」，而不是继续挂着「进行中」。
+ * 以前这里是「本周目标」一条，现在周期可能是一个学期或一个暑假，
+ * 一屏写不下，所以只列没做完的前三条，后面用「还有 N 条」收口，
+ * 想看全部点「去查看」。
  */
-export default function HomeGoal({ goal, onOpenGoal }: Props) {
+export default function HomeGoal({ period, goals, onOpenGoal }: Props) {
+  const done = goals.filter(goal => goal.done).length
+  const pending = goals.filter(goal => !goal.done)
+  const shown = pending.slice(0, SHOWN)
+  const rest = pending.length - shown.length
+  const allDone = goals.length > 0 && pending.length === 0
+
   return (
-    <section className="card home-goal" aria-label="本周目标">
+    <section className="card home-goal" aria-label="当前周期目标">
       <div className="card__head">
-        <span className="card__title">本周目标</span>
-        <span className="card__note">{formatWeekRange(weekKeyOf())}</span>
+        <span className="card__title">{period ? period.title : '目标'}</span>
+        {period && <span className="card__note">{periodRangeText(period)}</span>}
       </div>
 
-      {goal ? (
+      {!period ? (
         <>
-          <p className="home-goal__text">{goal.text}</p>
-          <div className="home-goal__foot">
-            {!goal.settled ? (
-              <span className="status status--running">进行中</span>
-            ) : goal.done ? (
-              <span className="status status--done">已完成</span>
-            ) : (
-              <span className="status status--closed">没完成</span>
-            )}
-            <button type="button" className="btn btn--ghost home-goal__more" onClick={onOpenGoal}>
-              去复盘
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          <p className="home-goal__empty">本周还没定目标</p>
+          <p className="home-goal__empty">还没有在进行的周期</p>
           <button type="button" className="btn btn--ghost home-goal__more" onClick={onOpenGoal}>
             去定目标
           </button>
+        </>
+      ) : goals.length === 0 ? (
+        <>
+          <p className="home-goal__empty">这个周期还没定目标</p>
+          <button type="button" className="btn btn--ghost home-goal__more" onClick={onOpenGoal}>
+            去定目标
+          </button>
+        </>
+      ) : (
+        <>
+          {allDone ? (
+            <p className="home-goal__empty">这个周期的目标都完成了</p>
+          ) : (
+            <ul className="home-goal__list">
+              {shown.map(goal => (
+                <li key={goal.id} className="home-goal__item">
+                  {goal.text}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="home-goal__foot">
+            <span className={allDone ? 'status status--done' : 'status status--running'}>
+              完成 {done} / {goals.length}
+            </span>
+            {rest > 0 && <span className="card__note">还有 {rest} 条</span>}
+            <button type="button" className="btn btn--ghost home-goal__more" onClick={onOpenGoal}>
+              去查看
+            </button>
+          </div>
         </>
       )}
     </section>
