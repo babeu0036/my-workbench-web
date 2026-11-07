@@ -1,4 +1,5 @@
-import type { Knowledge, KnowledgeType } from './types'
+import type { Attachment, Knowledge, KnowledgeType } from './types'
+import { normalizeAttachment } from './files'
 
 /**
  * 知识库：四条类型 + 自动归类 + 读盘兜底 + 搜索筛选。
@@ -6,6 +7,8 @@ import type { Knowledge, KnowledgeType } from './types'
  * 页面只管画，判断全在这里 —— 纯函数，能单独跑测试，不碰 localStorage。
  * 「自动归类」只在新建时用；编辑时类型以用户的选择为准，
  * 改个错别字不该把一条行业动态重新算成我的笔记。
+ *
+ * 附件只处理元信息（key / 文件名 / 大小），文件本体在 lib/files.ts 的 IndexedDB 里。
  */
 
 /** 四类，顺序就是筛选栏和表单里的顺序 */
@@ -43,16 +46,18 @@ const hasWord = (text: string, words: string[]) => words.some(word => text.inclu
 /**
  * 猜一条记录属于哪类。
  *
- * 在标题、说明、链接三处文字里找关键词 —— 只搜标题和说明的话，
- * 「只贴一个链接」的记录必然落到 mine，跟实际用途不符。
+ * 在标题、说明、链接、文件名四处文字里找关键词 —— 只搜标题和说明的话，
+ * 「只贴一个链接」或「只传一个文件」的记录必然落到 mine，跟实际用途不符。
+ * 文件名尤其重要：手头多是「奖学金评定办法.pdf」这种，标题常常只写「文件」。
  * 顺序不能换：「奖学金」同时出现在行业新闻里时，仍然算规则文件。
  */
 export function guessType(input: {
   title?: string
   summary?: string
   url?: string
+  fileName?: string
 } = {}): KnowledgeType {
-  const text = `${input.title ?? ''} ${input.summary ?? ''}`
+  const text = `${input.title ?? ''} ${input.summary ?? ''} ${input.fileName ?? ''}`
   if (hasWord(text, RULE_WORDS)) return 'rule'
 
   // 链接只看「有没有协议头」，不要求整个 URL 合法 —— 用户可能只贴了一半
@@ -92,7 +97,8 @@ export function normalizeUrl(raw: string): string | undefined {
 
 /**
  * 一条记录从 localStorage 回来：标题和说明缺一个就认不出来，丢掉；
- * 类型不认识归 mine；链接重新过一遍 normalizeUrl，空的不写键。
+ * 类型不认识归 mine；链接重新过一遍 normalizeUrl，空的不写键；
+ * 附件元信息不完整（缺 key / 缺名字）就当没有 —— 文件本体也可能早被清掉了。
  */
 export function normalizeKnowledge(
   raw: unknown,
@@ -126,6 +132,9 @@ export function normalizeKnowledge(
     if (url) knowledge.url = url
   }
 
+  const attachment = normalizeAttachment(item.attachment)
+  if (attachment) knowledge.attachment = attachment
+
   return knowledge
 }
 
@@ -148,6 +157,8 @@ export type KnowledgeInput = {
   title: string
   summary: string
   url?: string
+  /** 附件元信息：null = 明确清掉，undefined = 不动（更新时靠这个区分） */
+  attachment?: Attachment | null
   type: KnowledgeType
 }
 
@@ -170,13 +181,17 @@ export function addKnowledge(
   const url = normalizeUrl(input.url ?? '')
   if (url) knowledge.url = url
 
+  const attachment = normalizeAttachment(input.attachment)
+  if (attachment) knowledge.attachment = attachment
+
   return [...list, knowledge]
 }
 
 /**
- * 改一条：标题、说明、链接、类型都能改。
+ * 改一条：标题、说明、链接、附件、类型都能改。
  * 标题或说明改成空就整条不动（不许把记录改成没有内容）；
- * 链接传空字符串 = 清掉这个键；type 不合法就当没传，保留原来的。
+ * 链接传空字符串 = 清掉这个键；type 不合法就当没传，保留原来的；
+ * attachment 传 undefined = 不动，传 null = 清掉，传对象 = 换掉。
  */
 export function updateKnowledge(
   list: Knowledge[],
@@ -197,6 +212,12 @@ export function updateKnowledge(
       const url = normalizeUrl(patch.url)
       if (url) next.url = url
       else delete next.url
+    }
+
+    if (patch.attachment !== undefined) {
+      const attachment = normalizeAttachment(patch.attachment)
+      if (attachment) next.attachment = attachment
+      else delete next.attachment
     }
 
     return next

@@ -2986,6 +2986,152 @@ textarea {
   text-decoration: underline;
 }
 
+/* 链接和附件并排放，窄屏放不下就换行 */
+.krow__sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 1px;
+}
+
+.krow__sources .krow__link {
+  align-self: auto;
+}
+
+/* 「打开文件」：小文件图标 + 文件名 + 大小，点一下从本地库取原文件 */
+.krow__file {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.krow__file-icon {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+.krow__file:hover .krow__file-name {
+  text-decoration: underline;
+}
+
+.krow__file-name {
+  overflow-wrap: anywhere;
+}
+
+.krow__file-size {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* 表单里的附件框：空着是虚线邀请，选中后变实线显示文件名 */
+.kfile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.kfile--over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.kfile--has {
+  border-style: solid;
+}
+
+.kfile__pick {
+  align-self: flex-start;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.kfile__pick:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.kfile__tip {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.kfile__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.kfile__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.kfile__size {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.kfile__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.kfile__btn {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.kfile__btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.kfile__btn--remove:hover {
+  border-color: var(--danger, #c0392b);
+  color: var(--danger, #c0392b);
+}
+
+.kfile__error {
+  margin: 0;
+  color: var(--danger, #c0392b);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 /* 首页的当前周期目标：只列没做完的前三条 */
 .home-goal__list {
   display: flex;

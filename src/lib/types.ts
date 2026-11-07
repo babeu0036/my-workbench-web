@@ -61,8 +61,26 @@ export type Deadline = {
 export type KnowledgeType = 'rule' | 'material' | 'industry' | 'mine'
 
 /**
- * 知识库的一条记录：一个标题、一句话说明，链接可有可无。
- * `url` 没有这个键 = 没链接；不存空字符串。
+ * 知识库挂的附件。
+ *
+ * 文件真身存在 IndexedDB（浏览器本地库），这里只记「怎么找到它」和展示要用的信息。
+ * `key` 是 IndexedDB 里的主键，删记录 / 换附件时按它清掉文件，不留垃圾。
+ * 云同步只同步 localStorage，所以换台设备能看到这条记录，但文件不跟过去。
+ */
+export type Attachment = {
+  /** IndexedDB 里的主键 */
+  key: string
+  /** 原始文件名，带后缀，列表和面板上显示的就是它 */
+  name: string
+  /** 字节数，用来显示 1.2 MB 和判断有没有超上限 */
+  size: number
+  /** MIME，浏览器认不出时是空字符串 */
+  mime: string
+}
+
+/**
+ * 知识库的一条记录：一个标题、一句话说明，链接和附件都可选。
+ * `url` / `attachment` 没有这个键 = 没有，不存空值。
  */
 export type Knowledge = {
   id: number
@@ -70,6 +88,8 @@ export type Knowledge = {
   title: string
   /** 原始链接。保存时补全协议头，打不开的就不写进来 */
   url?: string
+  /** 附件的元信息，文件本体在 IndexedDB */
+  attachment?: Attachment
   /** 一句话说明，必填 */
   summary: string
   createdAt: number

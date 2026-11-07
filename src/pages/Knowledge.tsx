@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import KnowledgeForm from '../components/KnowledgeForm'
 import KnowledgeList from '../components/KnowledgeList'
@@ -11,6 +11,7 @@ import {
   updateKnowledge,
 } from '../lib/knowledge'
 import type { KnowledgeFilter, KnowledgeInput } from '../lib/knowledge'
+import { deleteAttachment, getAttachment } from '../lib/files'
 import type { Knowledge } from '../lib/types'
 
 type Props = {
@@ -28,6 +29,9 @@ type Props = {
  * - 一条都没有：「还没有记录，点右下角添加一条」（点了直接开面板）；
  * - 有记录但筛/搜不出来：「没有匹配的记录」+「清除筛选」。
  *
+ * 附件：记录里只存元信息，文件本体在 IndexedDB。删记录、换附件时顺手清掉旧文件，
+ * 不让它们留在浏览器里白占空间。取不到文件（换设备 / 清了站点数据）给一句提示。
+ *
  * 数据在最外层 App，切页不丢；这里只负责筛、排、画。
  */
 export default function KnowledgePage({ items, setItems }: Props) {
@@ -35,10 +39,17 @@ export default function KnowledgePage({ items, setItems }: Props) {
   const [filter, setFilter] = useState<KnowledgeFilter>('all')
   const [panelOpen, setPanelOpen] = useState(false)
   const [editing, setEditing] = useState<Knowledge | null>(null)
+  const [toast, setToast] = useState('')
 
   const shown = sortKnowledge(filterKnowledge(items, filter, query))
 
   const filters = [{ key: 'all' as const, label: '全部' }, ...KNOWLEDGE_TYPES]
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = window.setTimeout(() => setToast(''), 3200)
+    return () => window.clearTimeout(timer)
+  }, [toast])
 
   function clearFilter() {
     setQuery('')
@@ -48,6 +59,48 @@ export default function KnowledgePage({ items, setItems }: Props) {
   function addOne(input: KnowledgeInput) {
     setItems(list => addKnowledge(list, input))
     setPanelOpen(false)
+  }
+
+  function removeOne(id: number) {
+    const target = items.find(item => item.id === id)
+    // 文件删不掉也不拦着删记录，不然一条记录会永远留在列表里
+    if (target?.attachment) void deleteAttachment(target.attachment.key)
+    setItems(list => removeKnowledge(list, id))
+  }
+
+  function saveEdit(input: KnowledgeInput) {
+    if (!editing) return
+    const oldKey = editing.attachment?.key
+    const newKey = input.attachment?.key
+    setItems(list => updateKnowledge(list, editing.id, input))
+    // 换了文件或把附件去掉了，旧的就没用了
+    if (oldKey && oldKey !== newKey) void deleteAttachment(oldKey)
+    setEditing(null)
+  }
+
+  /** 从 IndexedDB 取回文件，直接开新标签：PDF / 图片能预览，其他类型浏览器会下载 */
+  async function openFile(item: Knowledge) {
+    const attachment = item.attachment
+    if (!attachment) return
+
+    const blob = await getAttachment(attachment.key)
+    if (!blob) {
+      setToast('这台设备上没有这个文件（同步过来的记录只带文件名）')
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(blob)
+    // 第三个参数不传：带 noopener 时 window.open 必定返回 null，就没法判断有没有被拦
+    const win = window.open(objectUrl, '_blank')
+    if (!win) {
+      const link = document.createElement('a')
+      link.href = objectUrl
+      link.download = attachment.name
+      link.click()
+      setToast('新窗口被浏览器拦了，已改为下载')
+    }
+    // 新标签还在加载，先别回收；一分钟后统一释放
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
   }
 
   return (
@@ -92,7 +145,8 @@ export default function KnowledgePage({ items, setItems }: Props) {
           <KnowledgeList
             items={shown}
             onEdit={id => setEditing(items.find(item => item.id === id) ?? null)}
-            onRemove={id => setItems(list => removeKnowledge(list, id))}
+            onRemove={removeOne}
+            onOpenFile={openFile}
           />
         )}
       </div>
@@ -124,11 +178,14 @@ export default function KnowledgePage({ items, setItems }: Props) {
         <KnowledgeForm
           entry={editing}
           onClose={() => setEditing(null)}
-          onSubmit={input => {
-            setItems(list => updateKnowledge(list, editing.id, input))
-            setEditing(null)
-          }}
+          onSubmit={saveEdit}
         />
+      )}
+
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
       )}
     </>
   )
