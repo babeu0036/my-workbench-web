@@ -11,6 +11,7 @@ import {
   removeAchievement,
 } from '../lib/achievements'
 import {
+  UNSORTED_PERIOD_ID,
   addGoal,
   removeGoal,
   sortForGoalList,
@@ -76,10 +77,17 @@ export default function Goal({
   }
 
   /**
-   * 面板里选的周期可能还不存在（点了预设或者刚自定义的）。
+   * 面板里选的周期可能还不存在（刚自定义的）。
    * 这里按「名字 + 起止」认一下：已经有就复用它，没有才真的追加一条周期。
+   * period 为 null 表示先不归周期 —— 直接放到「未分组」，不必先建周期。
    */
-  function addOne(text: string, period: GoalPeriod) {
+  function addOne(text: string, period: GoalPeriod | null) {
+    if (!period) {
+      setGoals(list => addGoal(list, { periodId: UNSORTED_PERIOD_ID, text }))
+      setGoalOpen(false)
+      return
+    }
+
     const existing = periods.find(
       item => item.title === period.title && item.start === period.start && item.end === period.end,
     )

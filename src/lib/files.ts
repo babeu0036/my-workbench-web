@@ -166,3 +166,48 @@ export function normalizeAttachment(value: unknown): Attachment | undefined {
     mime: value.mime,
   }
 }
+
+/* ---------- 预览方式 ---------- */
+
+export type PreviewKind = 'image' | 'pdf' | 'text' | 'video' | 'audio' | 'other'
+
+const TEXT_EXT = [
+  'txt', 'md', 'markdown', 'csv', 'json', 'log', 'xml', 'yml', 'yaml', 'ini',
+  'ts', 'tsx', 'js', 'jsx', 'py', 'java', 'c', 'cpp', 'h', 'css', 'html',
+]
+const IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif']
+const VIDEO_EXT = ['mp4', 'webm', 'ogv', 'm4v']
+const AUDIO_EXT = ['mp3', 'wav', 'ogg', 'm4a', 'flac']
+
+function extOf(name: string): string {
+  const dot = name.lastIndexOf('.')
+  return dot >= 0 ? name.slice(dot + 1).toLowerCase() : ''
+}
+
+/**
+ * 这个文件能不能在应用里直接看。
+ *
+ * MIME 优先（浏览器给的更准），认不出再退回后缀 —— 有些系统上传时
+ * `File.type` 是空的，只看 MIME 会把 PDF 当成「看不了」。
+ * 判不出来的一律 other：至少给个下载按钮，不假装能预览。
+ */
+export function previewKind(attachment: Attachment): PreviewKind {
+  const mime = attachment.mime.toLowerCase()
+  if (mime.startsWith('image/')) return 'image'
+  if (mime === 'application/pdf') return 'pdf'
+  if (mime.startsWith('text/')) return 'text'
+  if (mime === 'application/json' || mime === 'application/xml') return 'text'
+  if (mime.startsWith('video/')) return 'video'
+  if (mime.startsWith('audio/')) return 'audio'
+
+  const ext = extOf(attachment.name)
+  if (IMAGE_EXT.includes(ext)) return 'image'
+  if (ext === 'pdf') return 'pdf'
+  if (TEXT_EXT.includes(ext)) return 'text'
+  if (VIDEO_EXT.includes(ext)) return 'video'
+  if (AUDIO_EXT.includes(ext)) return 'audio'
+  return 'other'
+}
+
+/** 文本预览最多读这么多：再大就不是用来在手机上看的东西了 */
+export const MAX_TEXT_PREVIEW = 512 * 1024

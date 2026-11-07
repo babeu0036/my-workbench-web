@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { KNOWLEDGE_TYPES, guessType } from '../lib/knowledge'
+import {
+  KNOWLEDGE_TYPES,
+  guessType,
+  titleFrom,
+  typeLabel,
+} from '../lib/knowledge'
 import type { KnowledgeInput } from '../lib/knowledge'
 import {
   MAX_FILE_SIZE,
@@ -19,18 +24,19 @@ type Props = {
 /**
  * 知识库的记录面板（右下角 + 打开，点列表正文也能打开）。
  *
- * 字段：标题（必填）、链接（可选）、一句话说明（必填）、附件（可选）。
- * 类型默认按 `guessType` 自动判断，标题 / 说明 / 链接 / 文件名一改就跟着重算；
- * 只要用户手动点过某一颗，就锁成手动值，之后改文字不再覆盖 ——
- * 自动判断只是省一次点击，不能替用户做决定。
+ * 四个字段都不拦人：标题、链接、一句话说明、附件，**有任意一项就能保存**。
+ * 标题没写就用文件名 / 网站名 / 说明开头顶上（titleFrom），说明没写就不占那一行 ——
+ * 记东西最烦的是"先想标题再想说明"，这里不该有这道门槛。
+ *
+ * 类型默认按 `guessType` 自动判断（标题 / 说明 / 链接 / 文件名都参与），
+ * 但不摆一排按钮：平时只显示「类型 · 规则文件 · 自动判断」，点「改」才展开胶囊。
+ * 手动点过某一颗就锁定，之后改文字不再覆盖。
  *
  * 编辑时不重算：打开时类型就是原来那条，改个错别字不会把它重新归类。
  *
  * 附件是「先选后存」：选中的文件只留在内存里，点保存才写进 IndexedDB。
  * 中途关掉面板不会留下没人认领的文件；换掉或移除旧附件后，
  * 由页面在保存成功后清掉旧文件。
- *
- * 跟添加任务、添加成就同一个壳（`.sheet`）：底部滑出、Esc 关闭、自动聚焦。
  */
 export default function KnowledgeForm({ entry, onClose, onSubmit }: Props) {
   const [title, setTitle] = useState(entry?.title ?? '')
@@ -46,6 +52,8 @@ export default function KnowledgeForm({ entry, onClose, onSubmit }: Props) {
   // 编辑时视为「已经手动定过」，避免改标题把类型带走
   const [manual, setManual] = useState(Boolean(entry))
   const [type, setType] = useState<KnowledgeType>(entry?.type ?? 'mine')
+  // 类型胶囊默认收起：平时只看得到「判断成了什么」，想改再点开
+  const [typeOpen, setTypeOpen] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -65,7 +73,11 @@ export default function KnowledgeForm({ entry, onClose, onSubmit }: Props) {
   // 文件名也参与判断：手头多是「奖学金评定办法.pdf」这种，标题常常只写「文件」
   const guessed = guessType({ title, summary, url, fileName: attachment?.name })
   const current = manual ? type : guessed
-  const canSubmit = title.trim().length > 0 && summary.trim().length > 0
+  // 至少得留下点什么，不然列表里会出现一条点不开的空记录
+  const canSubmit = Boolean(
+    title.trim() || summary.trim() || url.trim() || attachment,
+  )
+  const fallbackTitle = titleFrom({ title, summary, url, attachment })
 
   /** 选中（或拖进）一个文件：只检查大小、记下元信息，不落库 */
   function takeFile(file: File | null | undefined) {
@@ -136,7 +148,7 @@ export default function KnowledgeForm({ entry, onClose, onSubmit }: Props) {
           onKeyDown={e => {
             if (e.key === 'Enter') submit()
           }}
-          placeholder="标题，比如「2026 年奖学金评定办法」"
+          placeholder="标题（可不填，会先用文件名）"
           aria-label="标题"
           maxLength={100}
         />
@@ -161,7 +173,7 @@ export default function KnowledgeForm({ entry, onClose, onSubmit }: Props) {
           onKeyDown={e => {
             if (e.key === 'Enter') submit()
           }}
-          placeholder="一句话说明，比如「今年的评定条件和材料清单」"
+          placeholder="一句话说明（可不填）"
           aria-label="一句话说明"
           maxLength={200}
         />
@@ -237,33 +249,51 @@ export default function KnowledgeForm({ entry, onClose, onSubmit }: Props) {
 
         {error && <p className="kfile__error">{error}</p>}
 
-        <span className="sheet__label">类型</span>
-
-        <div className="sheet__pills" role="radiogroup" aria-label="记录类型">
-          {KNOWLEDGE_TYPES.map(item => {
-            const on = item.key === current
-            return (
-              <button
-                key={item.key}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                className={on ? 'choice choice--on' : 'choice'}
-                onClick={() => {
-                  setType(item.key)
-                  setManual(true)
-                }}
-              >
-                {item.label}
-              </button>
-            )
-          })}
+        <div className="typebar">
+          <span className="typebar__label">类型</span>
+          <span className={`ktag ktag--${current}`}>{typeLabel(current)}</span>
+          <span className="typebar__note">{manual ? '手动选的' : '自动判断'}</span>
+          <button
+            type="button"
+            className="typebar__btn"
+            onClick={() => setTypeOpen(open => !open)}
+            aria-expanded={typeOpen}
+          >
+            {typeOpen ? '收起' : '改'}
+          </button>
         </div>
 
+        {typeOpen && (
+          <div className="sheet__pills" role="radiogroup" aria-label="记录类型">
+            {KNOWLEDGE_TYPES.map(item => {
+              const on = item.key === current
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  className={on ? 'choice choice--on' : 'choice'}
+                  onClick={() => {
+                    setType(item.key)
+                    setManual(true)
+                  }}
+                >
+                  {item.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         <p className="sheet__hint">
-          {manual
-            ? `已手动选为「${KNOWLEDGE_TYPES.find(item => item.key === type)?.label}」，改文字不会覆盖它`
-            : '按标题、说明、链接和文件名自动判断，可以手动改'}
+          {!canSubmit
+            ? '标题、说明、链接、文件，随便留一项就能添加'
+            : !title.trim()
+              ? `会以「${fallbackTitle}」为标题显示`
+              : manual
+                ? `类型已手动选为「${typeLabel(current)}」，改文字不会覆盖它`
+                : '类型按标题、说明、链接和文件名自动判断'}
         </p>
 
         <button

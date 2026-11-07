@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
+import AttachmentPreview from '../components/AttachmentPreview'
 import KnowledgeForm from '../components/KnowledgeForm'
 import KnowledgeList from '../components/KnowledgeList'
 import {
@@ -11,7 +12,7 @@ import {
   updateKnowledge,
 } from '../lib/knowledge'
 import type { KnowledgeFilter, KnowledgeInput } from '../lib/knowledge'
-import { deleteAttachment, getAttachment } from '../lib/files'
+import { deleteAttachment } from '../lib/files'
 import type { Knowledge } from '../lib/types'
 
 type Props = {
@@ -29,8 +30,8 @@ type Props = {
  * - 一条都没有：「还没有记录，点右下角添加一条」（点了直接开面板）；
  * - 有记录但筛/搜不出来：「没有匹配的记录」+「清除筛选」。
  *
- * 附件：记录里只存元信息，文件本体在 IndexedDB。删记录、换附件时顺手清掉旧文件，
- * 不让它们留在浏览器里白占空间。取不到文件（换设备 / 清了站点数据）给一句提示。
+ * 附件：记录里只存元信息，文件本体在 IndexedDB。点文件名开预览层，
+ * 在应用里直接看，不再交给浏览器下载；删记录、换附件时顺手清掉旧文件。
  *
  * 数据在最外层 App，切页不丢；这里只负责筛、排、画。
  */
@@ -39,17 +40,11 @@ export default function KnowledgePage({ items, setItems }: Props) {
   const [filter, setFilter] = useState<KnowledgeFilter>('all')
   const [panelOpen, setPanelOpen] = useState(false)
   const [editing, setEditing] = useState<Knowledge | null>(null)
-  const [toast, setToast] = useState('')
+  const [preview, setPreview] = useState<Knowledge | null>(null)
 
   const shown = sortKnowledge(filterKnowledge(items, filter, query))
 
   const filters = [{ key: 'all' as const, label: '全部' }, ...KNOWLEDGE_TYPES]
-
-  useEffect(() => {
-    if (!toast) return
-    const timer = window.setTimeout(() => setToast(''), 3200)
-    return () => window.clearTimeout(timer)
-  }, [toast])
 
   function clearFilter() {
     setQuery('')
@@ -76,31 +71,6 @@ export default function KnowledgePage({ items, setItems }: Props) {
     // 换了文件或把附件去掉了，旧的就没用了
     if (oldKey && oldKey !== newKey) void deleteAttachment(oldKey)
     setEditing(null)
-  }
-
-  /** 从 IndexedDB 取回文件，直接开新标签：PDF / 图片能预览，其他类型浏览器会下载 */
-  async function openFile(item: Knowledge) {
-    const attachment = item.attachment
-    if (!attachment) return
-
-    const blob = await getAttachment(attachment.key)
-    if (!blob) {
-      setToast('这台设备上没有这个文件（同步过来的记录只带文件名）')
-      return
-    }
-
-    const objectUrl = URL.createObjectURL(blob)
-    // 第三个参数不传：带 noopener 时 window.open 必定返回 null，就没法判断有没有被拦
-    const win = window.open(objectUrl, '_blank')
-    if (!win) {
-      const link = document.createElement('a')
-      link.href = objectUrl
-      link.download = attachment.name
-      link.click()
-      setToast('新窗口被浏览器拦了，已改为下载')
-    }
-    // 新标签还在加载，先别回收；一分钟后统一释放
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
   }
 
   return (
@@ -146,7 +116,7 @@ export default function KnowledgePage({ items, setItems }: Props) {
             items={shown}
             onEdit={id => setEditing(items.find(item => item.id === id) ?? null)}
             onRemove={removeOne}
-            onOpenFile={openFile}
+            onPreview={item => setPreview(item)}
           />
         )}
       </div>
@@ -182,10 +152,11 @@ export default function KnowledgePage({ items, setItems }: Props) {
         />
       )}
 
-      {toast && (
-        <div className="toast" role="status">
-          {toast}
-        </div>
+      {preview?.attachment && (
+        <AttachmentPreview
+          attachment={preview.attachment}
+          onClose={() => setPreview(null)}
+        />
       )}
     </>
   )

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { formatDateCn, dayKey } from '../lib/date'
-import { periodCovers, periodRangeText } from '../lib/goals'
+import { UNSORTED_TITLE, periodCovers, periodRangeText } from '../lib/goals'
 import type { Goal, GoalPeriod } from '../lib/types'
 
 type Props = {
@@ -48,8 +48,8 @@ export default function GoalList({ goals, periods, onToggle, onUpdate, onRemove,
     <ul className="list">
       {goals.map(goal => {
         const period = periods.find(item => item.id === goal.periodId)
-        // 周期被删了理论上不会有孤儿目标（删周期会连目标一起删），兜一手
-        const title = period?.title ?? '未归类'
+        // 没有周期就是「未分组」；周期被删了理论上不会有孤儿目标（删周期会连目标一起删）
+        const title = period?.title ?? UNSORTED_TITLE
         const past = period ? !periodCovers(period, dayKey()) : false
         const editing = editingId === goal.id
 

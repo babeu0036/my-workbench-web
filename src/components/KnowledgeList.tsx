@@ -1,5 +1,5 @@
 import ConfirmDelete from './ConfirmDelete'
-import { typeLabel } from '../lib/knowledge'
+import { SUMMARY_TITLE_MAX, typeLabel } from '../lib/knowledge'
 import { formatFileSize } from '../lib/files'
 import type { Knowledge } from '../lib/types'
 
@@ -8,8 +8,18 @@ type Props = {
   items: Knowledge[]
   onEdit: (id: number) => void
   onRemove: (id: number) => void
-  /** 打开附件：文件本体在 IndexedDB，取文件、开窗口这些副作用交给页面 */
-  onOpenFile: (item: Knowledge) => void
+  /** 打开附件预览：文件本体在 IndexedDB，取文件和渲染交给预览层 */
+  onPreview: (item: Knowledge) => void
+}
+
+/**
+ * 没写标题、拿一句话当标题时，标题和说明会是同一段文字 ——
+ * 再在下面显示一遍等于重复，直接不显示。
+ */
+function showSummary(item: Knowledge): boolean {
+  if (!item.summary) return false
+  if (item.title === item.summary) return false
+  return item.title !== `${item.summary.slice(0, SUMMARY_TITLE_MAX)}…`
 }
 
 /**
@@ -22,7 +32,7 @@ type Props = {
  * 附件显示文件名和大小：换台设备同步过来时文件不在本机，
  * 名字还在也便于知道原本挂的是什么。
  */
-export default function KnowledgeList({ items, onEdit, onRemove, onOpenFile }: Props) {
+export default function KnowledgeList({ items, onEdit, onRemove, onPreview }: Props) {
   return (
     <ul className="list">
       {items.map(item => (
@@ -38,7 +48,7 @@ export default function KnowledgeList({ items, onEdit, onRemove, onOpenFile }: P
                 <span className={`ktag ktag--${item.type}`}>{typeLabel(item.type)}</span>
                 <span className="row__text krow__title">{item.title}</span>
               </span>
-              <span className="krow__summary">{item.summary}</span>
+              {showSummary(item) && <span className="krow__summary">{item.summary}</span>}
             </button>
 
             <span className="krow__sources">
@@ -46,8 +56,8 @@ export default function KnowledgeList({ items, onEdit, onRemove, onOpenFile }: P
                 <button
                   type="button"
                   className="krow__file"
-                  onClick={() => onOpenFile(item)}
-                  title={`打开 ${item.attachment.name}`}
+                  onClick={() => onPreview(item)}
+                  title={`预览 ${item.attachment.name}`}
                 >
                   <svg className="krow__file-icon" viewBox="0 0 16 16" aria-hidden="true">
                     <path

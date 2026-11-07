@@ -13,8 +13,11 @@ import type { GoalPeriod } from '../lib/types'
 type Props = {
   periods: GoalPeriod[]
   onClose: () => void
-  /** 提交时把「要写进哪个周期」一起带出去；周期是新建的也一并带出去 */
-  onSubmit: (text: string, period: GoalPeriod) => void
+  /**
+   * 提交时把「要写进哪个周期」一起带出去；周期是新建的也一并带出去。
+   * 传 null 表示先不归周期（目标页会放到「未分组」）。
+   */
+  onSubmit: (text: string, period: GoalPeriod | null) => void
 }
 
 const samePeriod = (a: GoalPeriod, b: { title: string; start: string; end: string }) =>
@@ -23,29 +26,26 @@ const samePeriod = (a: GoalPeriod, b: { title: string; start: string; end: strin
 /**
  * 添加目标的面板（目标页「+ 添加目标」打开）。
  *
- * 一行文字 + 选周期。周期只来自两处：
- * 1. 已经建过的（已结束的不列，往过去加目标没有意义）；
- * 2. 自己定一个 —— 名字、开始、结束，都自己填。
+ * 一行文字就能加 —— 周期不是必选项。有现成周期就默认挂在当前那个下面，
+ * 想换点一下；一个周期都没有、或者不想归，选「先不归周期」就放进「未分组」，
+ * 之后随时还能再归。以前这里卡着「先建周期才能加」，等于为了记一句话先填三个字段。
  *
- * 没有「本周 / 本月 / 本学期 / 暑假 / 寒假」那排快捷格了：按日历自动切出来的
- * 周期会在下周凭空冒出个「新目标」，那不是用户定的，是系统替他定的。
- * 现在周期是什么、从哪天到哪天，全由用户说了算，想建几个建几个。
- *
- * 周期和目标一起提交：这样不必先建周期再回来写目标，两步变一步。
+ * 周期仍然只来自两处：已经建过的（已结束的不列）、自己定一个（名字 + 起止）。
+ * 没有「本周 / 本月 / 本学期 / 暑假 / 寒假」那排按日历自动切的快捷格。
  */
 export default function GoalAddPanel({ periods, onClose, onSubmit }: Props) {
   const [text, setText] = useState('')
-  const [selected, setSelected] = useState<GoalPeriod | null>(() => {
+  // null = 先不归周期；有数字 = 挂在那个周期下
+  const [selectedId, setSelectedId] = useState<number | null>(() => {
     const active = activePeriod(periods)
-    if (active) return active
+    if (active) return active.id
     const upcoming = sortPeriods(periods).find(period => periodState(period) !== 'past')
-    return upcoming ?? null
+    return upcoming?.id ?? null
   })
 
   /** 现有周期：已经结束的不列 */
   const pickable = sortPeriods(periods).filter(period => periodState(period) !== 'past')
-  // 一个可选的周期都没有时，表单直接摊开 —— 不让人先点一次才知道要建周期
-  const [formOpen, setFormOpen] = useState(pickable.length === 0)
+  const [formOpen, setFormOpen] = useState(false)
   const [customTitle, setCustomTitle] = useState('')
   const [customStart, setCustomStart] = useState(dayKey())
   const [customEnd, setCustomEnd] = useState('')
@@ -83,12 +83,12 @@ export default function GoalAddPanel({ periods, onClose, onSubmit }: Props) {
     )
   })()
 
-  // 表单开着就提交表单里的周期，否则提交选中的那个
-  const period = formOpen ? customPeriod : selected
-  const canSubmit = text.trim().length > 0 && period !== null
+  // 表单开着就提交表单里的周期（没填完就是 null = 不归周期），否则提交选中的那个
+  const period = formOpen ? customPeriod : (periods.find(item => item.id === selectedId) ?? null)
+  const canSubmit = text.trim().length > 0
 
   function submit() {
-    if (!canSubmit || !period) return
+    if (!canSubmit) return
     onSubmit(text.trim(), period)
   }
 
@@ -117,45 +117,53 @@ export default function GoalAddPanel({ periods, onClose, onSubmit }: Props) {
           maxLength={120}
         />
 
-        {pickable.length > 0 && (
-          <>
-            <span className="sheet__label">放在哪个周期</span>
+        <span className="sheet__label">放在哪个周期（可以不选）</span>
 
-            <div className="sheet__pills">
-              {pickable.map(item => {
-                const on = !formOpen && selected?.id === item.id
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={on ? 'choice choice--on' : 'choice'}
-                    onClick={() => {
-                      setSelected(item)
-                      setFormOpen(false)
-                    }}
-                    aria-pressed={on}
-                    title={periodRangeText(item)}
-                  >
-                    {item.title}
-                  </button>
-                )
-              })}
-            </div>
+        <div className="sheet__pills">
+          {pickable.map(item => {
+            const on = !formOpen && selectedId === item.id
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={on ? 'choice choice--on' : 'choice'}
+                onClick={() => {
+                  setSelectedId(item.id)
+                  setFormOpen(false)
+                }}
+                aria-pressed={on}
+                title={periodRangeText(item)}
+              >
+                {item.title}
+              </button>
+            )
+          })}
 
-            <button
-              type="button"
-              className={formOpen ? 'period-new period-new--on' : 'period-new'}
-              onClick={() => setFormOpen(open => !open)}
-              aria-expanded={formOpen}
-            >
-              {formOpen ? '收起，用上面的周期' : '+ 自己定一个周期'}
-            </button>
-          </>
-        )}
+          <button
+            type="button"
+            className={!formOpen && selectedId === null ? 'choice choice--on' : 'choice'}
+            onClick={() => {
+              setSelectedId(null)
+              setFormOpen(false)
+            }}
+            aria-pressed={!formOpen && selectedId === null}
+          >
+            先不归周期
+          </button>
+        </div>
+
+        <button
+          type="button"
+          className={formOpen ? 'period-new period-new--on' : 'period-new'}
+          onClick={() => setFormOpen(open => !open)}
+          aria-expanded={formOpen}
+        >
+          {formOpen ? '收起，用上面的选择' : '+ 自己定一个周期'}
+        </button>
 
         {formOpen && (
           <>
-            <span className="sheet__label">{pickable.length > 0 ? '新周期' : '周期'}</span>
+            <span className="sheet__label">新周期（起止不填就是先不归）</span>
 
             <div className="periodform">
               <input
@@ -195,9 +203,7 @@ export default function GoalAddPanel({ periods, onClose, onSubmit }: Props) {
         <p className="sheet__hint">
           {period
             ? `会记到「${period.title}」· ${periodRangeText(period)}`
-            : formOpen
-              ? '周期名字和起止日期都填上，才能添加'
-              : '还没选周期 —— 先挑一个，或者自己定一个'}
+            : '会先放在「未分组」，之后想归到哪个周期都行'}
         </p>
 
         <button

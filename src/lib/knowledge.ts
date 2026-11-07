@@ -95,10 +95,67 @@ export function normalizeUrl(raw: string): string | undefined {
 
 /* ---------- 读盘兜底 ---------- */
 
+/** 说明太长时截成标题的长度上限；列表判断「说明是不是已经当标题了」也用这个数 */
+export const SUMMARY_TITLE_MAX = 24
+
+/** 标题留空时用什么顶上：文件名 → 网站名 → 说明开头 → 未命名记录 */
+export function titleFrom(input: {
+  title?: string
+  summary?: string
+  url?: string
+  attachment?: Attachment | null
+}): string {
+  const title = (input.title ?? '').trim()
+  if (title) return title
+
+  const fileName = input.attachment?.name.trim()
+  if (fileName) return withoutExt(fileName)
+
+  const raw = (input.url ?? '').trim()
+  if (raw) {
+    try {
+      const host = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`).hostname
+      if (host.includes('.')) return host
+    } catch {
+      /* 认不出是什么地址，接着往下找 */
+    }
+  }
+
+  const summary = (input.summary ?? '').trim()
+  if (summary) {
+    return summary.length > SUMMARY_TITLE_MAX
+      ? `${summary.slice(0, SUMMARY_TITLE_MAX)}…`
+      : summary
+  }
+
+  return '未命名记录'
+}
+
+/** 只去掉最后一段扩展名：「a.tar.gz」→「a.tar」，「.gitignore」不动 */
+function withoutExt(name: string): string {
+  const dot = name.lastIndexOf('.')
+  return dot > 0 ? name.slice(0, dot) : name
+}
+
+/** 有一条能认出来的内容就算数：标题、说明、有效链接、附件，任意一项 */
+function hasContent(input: {
+  title?: string
+  summary?: string
+  url?: string
+  attachment?: Attachment | null
+}): boolean {
+  return Boolean(
+    (input.title ?? '').trim() ||
+      (input.summary ?? '').trim() ||
+      (input.url ?? '').trim() ||
+      input.attachment,
+  )
+}
+
 /**
- * 一条记录从 localStorage 回来：标题和说明缺一个就认不出来，丢掉；
+ * 一条记录从 localStorage 回来：什么都没留（标题、说明、链接、附件全空）才丢掉；
  * 类型不认识归 mine；链接重新过一遍 normalizeUrl，空的不写键；
- * 附件元信息不完整（缺 key / 缺名字）就当没有 —— 文件本体也可能早被清掉了。
+ * 标题空着就用文件名 / 网站名 / 说明顶上，列表上总有个能认的标题。
  */
 export function normalizeKnowledge(
   raw: unknown,
@@ -110,7 +167,9 @@ export function normalizeKnowledge(
 
   const title = typeof item.title === 'string' ? item.title.trim() : ''
   const summary = typeof item.summary === 'string' ? item.summary.trim() : ''
-  if (!title || !summary) return null
+  const url = typeof item.url === 'string' ? normalizeUrl(item.url) : undefined
+  const attachment = normalizeAttachment(item.attachment)
+  if (!hasContent({ title, summary, url, attachment })) return null
 
   const id =
     typeof item.id === 'number' && Number.isFinite(item.id) ? item.id : now + index
@@ -122,17 +181,12 @@ export function normalizeKnowledge(
   const knowledge: Knowledge = {
     id,
     type: isKnowledgeType(item.type) ? item.type : 'mine',
-    title,
+    title: titleFrom({ title, summary, url, attachment }),
     summary,
     createdAt,
   }
 
-  if (typeof item.url === 'string') {
-    const url = normalizeUrl(item.url)
-    if (url) knowledge.url = url
-  }
-
-  const attachment = normalizeAttachment(item.attachment)
+  if (url) knowledge.url = url
   if (attachment) knowledge.attachment = attachment
 
   return knowledge
@@ -169,28 +223,32 @@ export function addKnowledge(
 ): Knowledge[] {
   const title = input.title.trim()
   const summary = input.summary.trim()
-  if (!title || !summary) return list
+  const url = normalizeUrl(input.url ?? '')
+  const attachment = normalizeAttachment(input.attachment)
+  // 什么都没写就不加，免得列表里出现一条点不开的空记录
+  if (!hasContent({ title, summary, url, attachment })) return list
 
   const knowledge: Knowledge = {
     id: nextId(list, now),
-    type: isKnowledgeType(input.type) ? input.type : guessType(input),
-    title,
+    type: isKnowledgeType(input.type)
+      ? input.type
+      : guessType({ ...input, fileName: attachment?.name }),
+    title: titleFrom({ title, summary, url, attachment }),
     summary,
     createdAt: now,
   }
-  const url = normalizeUrl(input.url ?? '')
-  if (url) knowledge.url = url
 
-  const attachment = normalizeAttachment(input.attachment)
+  if (url) knowledge.url = url
   if (attachment) knowledge.attachment = attachment
 
   return [...list, knowledge]
 }
 
 /**
- * 改一条：标题、说明、链接、附件、类型都能改。
- * 标题或说明改成空就整条不动（不许把记录改成没有内容）；
- * 链接传空字符串 = 清掉这个键；type 不合法就当没传，保留原来的；
+ * 改一条：标题、说明、链接、附件、类型都能改，而且都可以留空 ——
+ * 标题空着会自动用文件名 / 网站名 / 说明顶上，所以列表不会出现没标题的行。
+ * 四项全清空就整条不动（不许把记录改成没有内容）；
+ * type 不合法就当没传，保留原来的；
  * attachment 传 undefined = 不动，传 null = 清掉，传对象 = 换掉。
  */
 export function updateKnowledge(
@@ -203,22 +261,24 @@ export function updateKnowledge(
 
     const title = patch.title === undefined ? item.title : patch.title.trim()
     const summary = patch.summary === undefined ? item.summary : patch.summary.trim()
-    if (!title || !summary) return item
+    const url = patch.url === undefined ? item.url : normalizeUrl(patch.url)
+    const attachment =
+      patch.attachment === undefined ? item.attachment : normalizeAttachment(patch.attachment)
+    if (!hasContent({ title, summary, url, attachment })) return item
 
     const type = isKnowledgeType(patch.type) ? patch.type : item.type
-    const next: Knowledge = { ...item, title, summary, type }
-
-    if (patch.url !== undefined) {
-      const url = normalizeUrl(patch.url)
-      if (url) next.url = url
-      else delete next.url
+    const next: Knowledge = {
+      ...item,
+      type,
+      title: titleFrom({ title, summary, url, attachment }),
+      summary,
     }
 
-    if (patch.attachment !== undefined) {
-      const attachment = normalizeAttachment(patch.attachment)
-      if (attachment) next.attachment = attachment
-      else delete next.attachment
-    }
+    if (url) next.url = url
+    else delete next.url
+
+    if (attachment) next.attachment = attachment
+    else delete next.attachment
 
     return next
   })

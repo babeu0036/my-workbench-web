@@ -13,6 +13,16 @@ import type { Goal, GoalPeriod } from './types'
 
 const KEY_RE = /^\d{4}-\d{2}-\d{2}$/
 
+/**
+ * 没选周期的目标归到这里。
+ *
+ * 加目标不必先建周期 —— 先写下来，之后再想要归到哪个学期 / 暑假。
+ * 周期 id 由 nextId 生成（时间戳或 +1），不可能是 0，所以拿 0 当「未分组」是安全的。
+ * 列表里它排在一个周期之后，首页的「当前周期目标」不会包含它。
+ */
+export const UNSORTED_PERIOD_ID = 0
+export const UNSORTED_TITLE = '未分组'
+
 export function isDateKey(value: unknown): value is string {
   return typeof value === 'string' && KEY_RE.test(value)
 }
