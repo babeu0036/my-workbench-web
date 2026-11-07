@@ -224,7 +224,6 @@ export default function App() {
               setGoals={setGoals}
               periods={periods}
               setPeriods={setPeriods}
-              semesterStart={semesterStart}
             />
           )}
           {route.page === 'knowledge' && <Knowledge />}

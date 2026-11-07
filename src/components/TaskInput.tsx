@@ -8,6 +8,11 @@ type Props = {
   placeholder: string
   /** 屏幕阅读器用的标签 */
   label: string
+  /**
+   * 日期可以不填（成就卡用）：默认折叠成一个小按钮，也不显示今天/明天/后天。
+   * 不传就是原来的规矩 —— 日期必填、默认今天。
+   */
+  optionalDate?: boolean
   onAdd: (text: string, dueDate: string) => void
   /**
    * 外部的输入框引用。成就卡片的「还没有任务，点这里加」要靠它把焦点挪进来 ——
@@ -21,16 +26,19 @@ type Props = {
  * （科目页加进当前科目，成就卡片加进那条成就）。
  * 日期默认今天，回车和「添加」按钮走同一个入口，缺文字或缺日期都不加。
  *
+ * 成就任务（`optionalDate`）例外：日期空着也能加，传出去的 dueDate 是空字符串，
+ * 调用方据此不写日期。成就是激励，不该先逼人挑个日子。
+ *
  * 日期选完不重置：连着记几件同一天的事，不用每次重选。
  */
-export default function TaskInput({ placeholder, label, onAdd, inputRef }: Props) {
+export default function TaskInput({ placeholder, label, optionalDate = false, onAdd, inputRef }: Props) {
   const [text, setText] = useState('')
-  const [dueDate, setDueDate] = useState(dayKey())
-  const canSubmit = text.trim().length > 0 && dueDate !== ''
+  const [dueDate, setDueDate] = useState(optionalDate ? '' : dayKey())
+  const canSubmit = text.trim().length > 0 && (optionalDate || dueDate !== '')
 
   function submit() {
     const value = text.trim()
-    if (!value || !dueDate) return
+    if (!value || (!optionalDate && !dueDate)) return
     onAdd(value, dueDate)
     setText('')
   }
@@ -54,7 +62,13 @@ export default function TaskInput({ placeholder, label, onAdd, inputRef }: Props
         </button>
       </div>
 
-      <DuePicker value={dueDate} onChange={setDueDate} />
+      <DuePicker
+        value={dueDate}
+        onChange={setDueDate}
+        label={optionalDate ? '日期' : '截止'}
+        optional={optionalDate}
+        quick={!optionalDate}
+      />
     </div>
   )
 }

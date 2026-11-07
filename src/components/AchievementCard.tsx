@@ -108,6 +108,7 @@ export default function AchievementCard({
           inputRef={inputRef}
           placeholder="加一件要做到的事…"
           label={`给「${achievement.title}」加任务`}
+          optionalDate
           onAdd={(text, dueDate) => {
             onAddTask(text, dueDate)
             // 加完就收起，卡片回到三态的干净样子

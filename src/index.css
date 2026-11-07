@@ -603,6 +603,42 @@ textarea {
   width: 100%;
 }
 
+/* 可选日期（成就任务）：没填时只有一个虚线小按钮，不占地方也不催人 */
+.due-picker--optional {
+  gap: 10px;
+}
+
+.due-picker__toggle {
+  padding: 5px 11px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.due-picker__toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.due-picker__clear {
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.due-picker__clear:hover {
+  color: var(--danger);
+}
+
 .input--date {
   flex: 1 1 140px;
   min-width: 0;
@@ -2779,6 +2815,26 @@ textarea {
   letter-spacing: 0.04em;
 }
 
+/* 添加目标面板里「+ 自己定一个周期」，没选它时也是虚线一条 */
+.period-new {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.period-new:hover,
+.period-new--on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* 自定义周期：名字 + 起止 */
 .periodform {
   display: flex;
@@ -2801,10 +2857,6 @@ textarea {
   gap: 4px;
   color: var(--muted);
   font-size: 12px;
-}
-
-.periodform__ok {
-  align-self: flex-start;
 }
 
 @media (max-width: 400px) {

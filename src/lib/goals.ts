@@ -1,4 +1,4 @@
-import { dayKey, dayKeyOffset, formatDateRange, weekKeyOf } from './date'
+import { dayKey, formatDateRange } from './date'
 import type { Goal, GoalPeriod } from './types'
 
 /**
@@ -220,69 +220,7 @@ export function toggleGoal(list: Goal[], id: number, now: number = Date.now()): 
   })
 }
 
-/* ---------- 预设周期 ---------- */
-
-export type PeriodPreset = {
-  /** 稳定标识，用来判断同一个预设是不是已经建过了 */
-  key: string
-  title: string
-  start: string
-  end: string
-}
-
-/**
- * 五个快捷周期。点了就填进去，建完还能改名改日期。
- *
- * 学期按课程表里设的「学期开始」往后推 20 周（跟课程表 MAX_WEEK 一个数）；
- * 没设过就没有这一项 —— 不替用户编一个学期出来。
- * 暑假 / 寒假没有校历可依，按常见区间给：暑假 7/1-8/31、寒假 1/15-2/20，
- * 今年的已经过完就顺延到明年。
- */
-export function periodPresets(semesterStart: string, now: number = Date.now()): PeriodPreset[] {
-  const today = dayKey(now)
-  const d = new Date(now)
-  const y = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-
-  const weekKey = weekKeyOf(now)
-  const monthStart = `${y}-${mm}-01`
-  const monthEnd = dayKeyOffset(
-    `${y}-${String(d.getMonth() + 2).padStart(2, '0')}-01`,
-    -1,
-  )
-
-  const list: PeriodPreset[] = [
-    { key: `week:${weekKey}`, title: '本周', start: weekKey, end: dayKeyOffset(weekKey, 6) },
-    { key: `month:${y}-${mm}`, title: '本月', start: monthStart, end: monthEnd },
-  ]
-
-  if (isDateKey(semesterStart)) {
-    list.push({
-      key: `semester:${semesterStart}`,
-      title: '本学期',
-      start: semesterStart,
-      end: dayKeyOffset(semesterStart, 20 * 7 - 1),
-    })
-  }
-
-  const summerYear = today <= `${y}-08-31` ? y : y + 1
-  list.push({
-    key: `summer:${summerYear}`,
-    title: '暑假',
-    start: `${summerYear}-07-01`,
-    end: `${summerYear}-08-31`,
-  })
-
-  const winterYear = today <= `${y}-02-20` ? y : y + 1
-  list.push({
-    key: `winter:${winterYear}`,
-    title: '寒假',
-    start: `${winterYear}-01-15`,
-    end: `${winterYear}-02-20`,
-  })
-
-  return list
-}
+/* ---------- 展示 ---------- */
 
 /** 周期上的日期写成 10.26 - 11.01（跨年时两头带年份），标签和卡片共用 */
 export function periodRangeText(period: { start: string; end: string }): string {

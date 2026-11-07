@@ -141,30 +141,34 @@ export function addTodo(
 
 /**
  * 给成就加一条任务。科目恒为空（成就任务不进科目页、也不算未分类），
- * kind 恒为 study，只多挂一个 achievementId；截止日期照旧必填。
+ * kind 恒为 study，只多挂一个 achievementId。
+ *
+ * 截止日期可以不填：传空串（或者不传）就不写 dueDate 这个键。
+ * 成就任务本来也不进到期提醒（App 传给别的页面的是 withoutAchievement 那份），
+ * 所以没日期不会漏提醒什么事，有日期也只是列表里多一行日子。
  */
 export function addAchievementTodo(
   list: Todo[],
   text: string,
   achievementId: number,
-  dueDate: string,
+  dueDate = '',
   now: number = Date.now(),
 ): Todo[] {
   const value = text.trim()
-  if (!value || !dueDate) return list
-  return [
-    ...list,
-    {
-      id: nextId(list, now),
-      text: value,
-      done: false,
-      subjectId: UNCATEGORIZED_ID,
-      kind: 'study',
-      createdAt: now,
-      dueDate,
-      achievementId,
-    },
-  ]
+  if (!value) return list
+
+  const todo: Todo = {
+    id: nextId(list, now),
+    text: value,
+    done: false,
+    subjectId: UNCATEGORIZED_ID,
+    kind: 'study',
+    createdAt: now,
+    achievementId,
+  }
+  // 没日期就不落这个键，跟 updateTodo 清日期时的规矩一致
+  if (dueDate) todo.dueDate = dueDate
+  return [...list, todo]
 }
 
 /** 勾选 / 撤销。完成时写 doneAt，撤销时清掉，绝不留旧时间 */

@@ -4,7 +4,6 @@ import {
   activePeriod,
   isDateKey,
   nextPeriodId,
-  periodPresets,
   periodRangeText,
   periodState,
   sortPeriods,
@@ -13,8 +12,6 @@ import type { GoalPeriod } from '../lib/types'
 
 type Props = {
   periods: GoalPeriod[]
-  /** 课程表里设的学期开始，用来算「本学期」这一格 */
-  semesterStart: string
   onClose: () => void
   /** 提交时把「要写进哪个周期」一起带出去；周期是新建的也一并带出去 */
   onSubmit: (text: string, period: GoalPeriod) => void
@@ -26,24 +23,29 @@ const samePeriod = (a: GoalPeriod, b: { title: string; start: string; end: strin
 /**
  * 添加目标的面板（目标页「+ 添加目标」打开）。
  *
- * 一行文字 + 选周期：先把现有的周期列出来（已结束的不列，那些是历史），
- * 下面一排是五个快捷周期，点了就当选中、提交时才真的建。
- * 「自定义…」展开成名字 + 起止，自己起一个「大二上」「考研冲刺」都行。
+ * 一行文字 + 选周期。周期只来自两处：
+ * 1. 已经建过的（已结束的不列，往过去加目标没有意义）；
+ * 2. 自己定一个 —— 名字、开始、结束，都自己填。
+ *
+ * 没有「本周 / 本月 / 本学期 / 暑假 / 寒假」那排快捷格了：按日历自动切出来的
+ * 周期会在下周凭空冒出个「新目标」，那不是用户定的，是系统替他定的。
+ * 现在周期是什么、从哪天到哪天，全由用户说了算，想建几个建几个。
  *
  * 周期和目标一起提交：这样不必先建周期再回来写目标，两步变一步。
  */
-export default function GoalAddPanel({ periods, semesterStart, onClose, onSubmit }: Props) {
+export default function GoalAddPanel({ periods, onClose, onSubmit }: Props) {
   const [text, setText] = useState('')
   const [selected, setSelected] = useState<GoalPeriod | null>(() => {
     const active = activePeriod(periods)
     if (active) return active
-    const upcoming = sortPeriods(periods).find(
-      period => periodState(period) !== 'past',
-    )
+    const upcoming = sortPeriods(periods).find(period => periodState(period) !== 'past')
     return upcoming ?? null
   })
 
-  const [customOpen, setCustomOpen] = useState(false)
+  /** 现有周期：已经结束的不列 */
+  const pickable = sortPeriods(periods).filter(period => periodState(period) !== 'past')
+  // 一个可选的周期都没有时，表单直接摊开 —— 不让人先点一次才知道要建周期
+  const [formOpen, setFormOpen] = useState(pickable.length === 0)
   const [customTitle, setCustomTitle] = useState('')
   const [customStart, setCustomStart] = useState(dayKey())
   const [customEnd, setCustomEnd] = useState('')
@@ -62,35 +64,32 @@ export default function GoalAddPanel({ periods, semesterStart, onClose, onSubmit
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
-  /** 现有周期：已经结束的不列，加目标往过去加没有意义 */
-  const pickable = sortPeriods(periods).filter(period => periodState(period) !== 'past')
-  // 已经建过的预设不再重复列出来（否则同一行里出现两个「本学期」）
-  const presets = periodPresets(semesterStart).filter(
-    preset => !periods.some(period => samePeriod(period, preset)),
-  )
-
-  function pickPreset(preset: { title: string; start: string; end: string }) {
-    const existing = periods.find(period => samePeriod(period, preset))
-    // 已有同样名字和日期的周期就直接选中它，不重复建
-    setSelected(existing ?? { id: nextPeriodId(periods), ...preset })
-    setCustomOpen(false)
-  }
-
-  function applyCustom() {
+  /**
+   * 表单里填的那个周期。名字和起止都齐了才算数；
+   * 名字和日期跟已有的完全一样就复用那条，不重复建。
+   */
+  const customPeriod: GoalPeriod | null = (() => {
     const title = customTitle.trim()
-    if (!title || !isDateKey(customStart) || !isDateKey(customEnd)) return
+    if (!title || !isDateKey(customStart) || !isDateKey(customEnd)) return null
     const [start, end] =
       customStart <= customEnd ? [customStart, customEnd] : [customEnd, customStart]
-    const existing = periods.find(period => samePeriod(period, { title, start, end }))
-    setSelected(existing ?? { id: nextPeriodId(periods), title, start, end })
-    setCustomOpen(false)
-  }
+    return (
+      periods.find(period => samePeriod(period, { title, start, end })) ?? {
+        id: nextPeriodId(periods),
+        title,
+        start,
+        end,
+      }
+    )
+  })()
 
-  const canSubmit = text.trim().length > 0 && selected !== null
+  // 表单开着就提交表单里的周期，否则提交选中的那个
+  const period = formOpen ? customPeriod : selected
+  const canSubmit = text.trim().length > 0 && period !== null
 
   function submit() {
-    if (!canSubmit || !selected) return
-    onSubmit(text.trim(), selected)
+    if (!canSubmit || !period) return
+    onSubmit(text.trim(), period)
   }
 
   return (
@@ -118,102 +117,87 @@ export default function GoalAddPanel({ periods, semesterStart, onClose, onSubmit
           maxLength={120}
         />
 
-        <span className="sheet__label">放在哪个周期</span>
-
         {pickable.length > 0 && (
-          <div className="sheet__pills">
-            {pickable.map(period => (
-              <button
-                key={period.id}
-                type="button"
-                className={selected?.id === period.id ? 'choice choice--on' : 'choice'}
-                onClick={() => {
-                  setSelected(period)
-                  setCustomOpen(false)
-                }}
-                aria-pressed={selected?.id === period.id}
-              >
-                {period.title}
-              </button>
-            ))}
-          </div>
-        )}
+          <>
+            <span className="sheet__label">放在哪个周期</span>
 
-        <span className="sheet__label">或者新建一个</span>
-
-        <div className="sheet__pills">
-          {presets.map(preset => {
-            const on = Boolean(selected && samePeriod(selected, preset))
-            return (
-              <button
-                key={preset.key}
-                type="button"
-                className={on ? 'choice choice--on' : 'choice'}
-                onClick={() => pickPreset(preset)}
-                aria-pressed={on}
-                title={periodRangeText(preset)}
-              >
-                {preset.title}
-              </button>
-            )
-          })}
-          <button
-            type="button"
-            className={customOpen ? 'choice choice--on' : 'choice'}
-            onClick={() => setCustomOpen(open => !open)}
-            aria-expanded={customOpen}
-          >
-            自定义…
-          </button>
-        </div>
-
-        {customOpen && (
-          <div className="periodform">
-            <input
-              className="input"
-              value={customTitle}
-              onChange={event => setCustomTitle(event.target.value)}
-              placeholder="周期名字：大二上 / 考研冲刺 / 暑假"
-              aria-label="周期名字"
-              maxLength={20}
-            />
-            <div className="periodform__dates">
-              <label className="periodform__field">
-                <span>开始</span>
-                <input
-                  type="date"
-                  className="input"
-                  value={customStart}
-                  onChange={event => setCustomStart(event.target.value)}
-                  aria-label="周期开始"
-                />
-              </label>
-              <label className="periodform__field">
-                <span>结束</span>
-                <input
-                  type="date"
-                  className="input"
-                  value={customEnd}
-                  onChange={event => setCustomEnd(event.target.value)}
-                  aria-label="周期结束"
-                />
-              </label>
+            <div className="sheet__pills">
+              {pickable.map(item => {
+                const on = !formOpen && selected?.id === item.id
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={on ? 'choice choice--on' : 'choice'}
+                    onClick={() => {
+                      setSelected(item)
+                      setFormOpen(false)
+                    }}
+                    aria-pressed={on}
+                    title={periodRangeText(item)}
+                  >
+                    {item.title}
+                  </button>
+                )
+              })}
             </div>
+
             <button
               type="button"
-              className="btn btn--ghost periodform__ok"
-              onClick={applyCustom}
-              disabled={!customTitle.trim() || !isDateKey(customStart) || !isDateKey(customEnd)}
+              className={formOpen ? 'period-new period-new--on' : 'period-new'}
+              onClick={() => setFormOpen(open => !open)}
+              aria-expanded={formOpen}
             >
-              用这个周期
+              {formOpen ? '收起，用上面的周期' : '+ 自己定一个周期'}
             </button>
-          </div>
+          </>
+        )}
+
+        {formOpen && (
+          <>
+            <span className="sheet__label">{pickable.length > 0 ? '新周期' : '周期'}</span>
+
+            <div className="periodform">
+              <input
+                className="input"
+                value={customTitle}
+                onChange={event => setCustomTitle(event.target.value)}
+                placeholder="名字：大二上 / 考研冲刺 / 暑假"
+                aria-label="周期名字"
+                maxLength={20}
+              />
+              <div className="periodform__dates">
+                <label className="periodform__field">
+                  <span>开始</span>
+                  <input
+                    type="date"
+                    className="input"
+                    value={customStart}
+                    onChange={event => setCustomStart(event.target.value)}
+                    aria-label="周期开始"
+                  />
+                </label>
+                <label className="periodform__field">
+                  <span>结束</span>
+                  <input
+                    type="date"
+                    className="input"
+                    value={customEnd}
+                    onChange={event => setCustomEnd(event.target.value)}
+                    aria-label="周期结束"
+                  />
+                </label>
+              </div>
+            </div>
+          </>
         )}
 
         <p className="sheet__hint">
-          {selected
-            ? `会记到「${selected.title}」· ${periodRangeText(selected)}`
-            : '还没选周期 —— 先挑一个，或者新建一个'}
+          {period
+            ? `会记到「${period.title}」· ${periodRangeText(period)}`
+            : formOpen
+              ? '周期名字和起止日期都填上，才能添加'
+              : '还没选周期 —— 先挑一个，或者自己定一个'}
         </p>
 
         <button

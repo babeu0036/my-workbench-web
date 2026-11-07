@@ -31,11 +31,9 @@ type Props = {
   setVision: Dispatch<SetStateAction<string>>
   goals: GoalItem[]
   setGoals: Dispatch<SetStateAction<GoalItem[]>>
-  /** 目标的周期：本学期 / 暑假 / 那周 …… */
+  /** 目标的周期：本学期 / 暑假 / 自己起的名 …… */
   periods: GoalPeriod[]
   setPeriods: Dispatch<SetStateAction<GoalPeriod[]>>
-  /** 课程表里设的学期开始，用来算「本学期」那个快捷周期 */
-  semesterStart: string
 }
 
 /**
@@ -59,7 +57,6 @@ export default function Goal({
   setGoals,
   periods,
   setPeriods,
-  semesterStart,
 }: Props) {
   const [achievementOpen, setAchievementOpen] = useState(false)
   const [goalOpen, setGoalOpen] = useState(false)
@@ -202,7 +199,6 @@ export default function Goal({
       {goalOpen && (
         <GoalAddPanel
           periods={periods}
-          semesterStart={semesterStart}
           onClose={() => setGoalOpen(false)}
           onSubmit={addOne}
         />
