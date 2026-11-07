@@ -2865,6 +2865,127 @@ textarea {
   }
 }
 
+/* ---------- 知识库 ---------- */
+
+/* 搜索框整行；页面本身是 flex column，上下间距已经由 .page 的 gap 管着 */
+.kb-search {
+  width: 100%;
+}
+
+/* 一条记录都没有时的虚线按钮，和「还没有目标，点这里添加」一个手感 */
+.kb-empty {
+  width: 100%;
+  padding: 14px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.kb-empty:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 类型标签：四类各一色，全部走主题变量，深色模式自动跟着换 */
+.ktag {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.ktag--rule {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ktag--material {
+  background: var(--done-soft);
+  color: var(--done);
+}
+
+.ktag--industry {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.ktag--mine {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+/* 记录行：删除按钮对齐第一行，不要沉到说明下面 */
+.row--knowledge {
+  align-items: flex-start;
+}
+
+.row--knowledge .row__actions {
+  margin-top: -6px;
+}
+
+/* 点正文进编辑：标签 + 标题一行，说明在下面；按钮自带的壳全清掉 */
+.krow__main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.krow__main:hover .krow__title {
+  color: var(--accent);
+}
+
+.krow__main:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.krow__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.krow__title {
+  line-height: 1.45;
+}
+
+.krow__summary {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* 「打开链接」是独立的 <a>，不跟正文按钮套在一起，点了不会先弹编辑面板 */
+.krow__link {
+  align-self: flex-start;
+  color: var(--accent);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.krow__link:hover {
+  text-decoration: underline;
+}
+
 /* 首页的当前周期目标：只列没做完的前三条 */
 .home-goal__list {
   display: flex;

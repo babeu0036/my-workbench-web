@@ -54,6 +54,27 @@ export type Deadline = {
   endDate?: string
 }
 
+/**
+ * 知识库条目的类型：规则文件 / 学习资料 / 行业动态 / 我的笔记。
+ * 新建时按 `guessType` 自动判断，用户可以手动改；手动改过就是最终值。
+ */
+export type KnowledgeType = 'rule' | 'material' | 'industry' | 'mine'
+
+/**
+ * 知识库的一条记录：一个标题、一句话说明，链接可有可无。
+ * `url` 没有这个键 = 没链接；不存空字符串。
+ */
+export type Knowledge = {
+  id: number
+  type: KnowledgeType
+  title: string
+  /** 原始链接。保存时补全协议头，打不开的就不写进来 */
+  url?: string
+  /** 一句话说明，必填 */
+  summary: string
+  createdAt: number
+}
+
 export type Note = {
   id: number
   content: string

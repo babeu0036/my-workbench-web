@@ -15,6 +15,7 @@ import { normalizeDeadlines } from './lib/deadlines'
 import { pendingReminders } from './lib/due'
 import { normalizeGoals, normalizePeriods } from './lib/goals'
 import { normalizeAchievements, withLitState } from './lib/achievements'
+import { normalizeKnowledgeList } from './lib/knowledge'
 import { normalizeMoods } from './lib/mood'
 import type { MoodMap } from './lib/mood'
 import { startSync } from './lib/sync'
@@ -25,6 +26,7 @@ import type {
   Deadline,
   Goal,
   GoalPeriod,
+  Knowledge as KnowledgeItem,
   Route,
   Subject,
   Todo,
@@ -81,6 +83,12 @@ export default function App() {
   // 目标页最上面那行「最终目标」，空字符串 = 还没写
   const [vision, setVision] = useStoredState<string>(KEYS.vision, '', value =>
     typeof value === 'string' ? value : '',
+  )
+  // 知识库：规则文件 / 学习资料 / 行业动态 / 我的笔记，搜索和筛选不落盘
+  const [knowledge, setKnowledge] = useStoredState<KnowledgeItem[]>(
+    KEYS.knowledge,
+    [],
+    normalizeKnowledgeList,
   )
   // 课程表：课程数组 + 学期第 1 周的周一（决定「现在是第几周」，进而决定单双周和灰色）
   const [courses, setCourses] = useStoredState<Course[]>(KEYS.courses, [], normalizeCourses)
@@ -226,7 +234,9 @@ export default function App() {
               setPeriods={setPeriods}
             />
           )}
-          {route.page === 'knowledge' && <Knowledge />}
+          {route.page === 'knowledge' && (
+            <Knowledge items={knowledge} setItems={setKnowledge} />
+          )}
 
           {route.page === 'settings' && <Settings />}
         </main>

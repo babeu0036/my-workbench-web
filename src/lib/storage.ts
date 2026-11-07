@@ -26,6 +26,8 @@ export const KEYS = {
   achievements: 'workbench.achievements',
   /** 目标页最上面那行「最终目标」（vision），只有一个字符串 */
   vision: 'workbench.vision',
+  /** 知识库：{ id, type, title, url?, summary, createdAt } 的数组 */
+  knowledge: 'workbench.knowledge',
 } as const
 
 /** 旧版的最终目标键，只在迁移时读一次，搬完保留不删 */
