@@ -55,10 +55,12 @@ export type Deadline = {
 }
 
 /**
- * 知识库条目的类型：规则文件 / 学习资料 / 行业动态 / 我的笔记。
+ * 知识库条目的类型：学习资料 / 行业动态 / 我的笔记。
  * 新建时按 `guessType` 自动判断，用户可以手动改；手动改过就是最终值。
+ *
+ * 老数据里的 `rule`（规则文件）已经取消，读盘时按新规则重判成这三类之一。
  */
-export type KnowledgeType = 'rule' | 'material' | 'industry' | 'mine'
+export type KnowledgeType = 'material' | 'industry' | 'mine'
 
 /**
  * 知识库挂的附件。

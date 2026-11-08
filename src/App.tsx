@@ -84,7 +84,7 @@ export default function App() {
   const [vision, setVision] = useStoredState<string>(KEYS.vision, '', value =>
     typeof value === 'string' ? value : '',
   )
-  // 知识库：规则文件 / 学习资料 / 行业动态 / 我的笔记，搜索和筛选不落盘
+  // 知识库：学习资料 / 行业动态 / 我的笔记，搜索和筛选不落盘
   const [knowledge, setKnowledge] = useStoredState<KnowledgeItem[]>(
     KEYS.knowledge,
     [],

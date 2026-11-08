@@ -2901,11 +2901,6 @@ textarea {
   white-space: nowrap;
 }
 
-.ktag--rule {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
 .ktag--material {
   background: var(--done-soft);
   color: var(--done);

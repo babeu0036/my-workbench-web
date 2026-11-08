@@ -2,7 +2,7 @@ import type { Attachment, Knowledge, KnowledgeType } from './types'
 import { normalizeAttachment } from './files'
 
 /**
- * 知识库：四条类型 + 自动归类 + 读盘兜底 + 搜索筛选。
+ * 知识库：三类类型 + 自动归类 + 读盘兜底 + 搜索筛选。
  *
  * 页面只管画，判断全在这里 —— 纯函数，能单独跑测试，不碰 localStorage。
  * 「自动归类」只在新建时用；编辑时类型以用户的选择为准，
@@ -11,16 +11,14 @@ import { normalizeAttachment } from './files'
  * 附件只处理元信息（key / 文件名 / 大小），文件本体在 lib/files.ts 的 IndexedDB 里。
  */
 
-/** 四类，顺序就是筛选栏和表单里的顺序 */
+/** 三类，顺序就是筛选栏和表单里的顺序 */
 export const KNOWLEDGE_TYPES: { key: KnowledgeType; label: string }[] = [
-  { key: 'rule', label: '规则文件' },
   { key: 'material', label: '学习资料' },
   { key: 'industry', label: '行业动态' },
   { key: 'mine', label: '我的笔记' },
 ]
 
 const LABELS: Record<KnowledgeType, string> = {
-  rule: '规则文件',
   material: '学习资料',
   industry: '行业动态',
   mine: '我的笔记',
@@ -31,13 +29,12 @@ export function typeLabel(type: KnowledgeType): string {
 }
 
 export function isKnowledgeType(value: unknown): value is KnowledgeType {
-  return value === 'rule' || value === 'material' || value === 'industry' || value === 'mine'
+  return value === 'material' || value === 'industry' || value === 'mine'
 }
 
 /* ---------- 自动归类 ---------- */
 
-/** 按顺序判断：规则 → 资料（含 http）→ 行业 → 我的笔记 */
-const RULE_WORDS = ['评奖', '奖学金', '学分', '综测', '章程', '通知']
+/** 按顺序判断：资料（含 http）→ 行业 → 我的笔记 */
 const MATERIAL_WORDS = ['教程', '手册', '视频', '文档']
 const INDUSTRY_WORDS = ['招聘', '岗位', '薪资', '行业', '芯片', '市场']
 
@@ -48,8 +45,8 @@ const hasWord = (text: string, words: string[]) => words.some(word => text.inclu
  *
  * 在标题、说明、链接、文件名四处文字里找关键词 —— 只搜标题和说明的话，
  * 「只贴一个链接」或「只传一个文件」的记录必然落到 mine，跟实际用途不符。
- * 文件名尤其重要：手头多是「奖学金评定办法.pdf」这种，标题常常只写「文件」。
- * 顺序不能换：「奖学金」同时出现在行业新闻里时，仍然算规则文件。
+ * 文件名尤其重要：手头多是「高数复习手册.pdf」这种，标题常常只写「文件」。
+ * 顺序不能换：带 http 的一律算学习资料，哪怕正文里出现「招聘」。
  */
 export function guessType(input: {
   title?: string
@@ -58,7 +55,6 @@ export function guessType(input: {
   fileName?: string
 } = {}): KnowledgeType {
   const text = `${input.title ?? ''} ${input.summary ?? ''} ${input.fileName ?? ''}`
-  if (hasWord(text, RULE_WORDS)) return 'rule'
 
   // 链接只看「有没有协议头」，不要求整个 URL 合法 —— 用户可能只贴了一半
   const hasLink = /https?:\/\//i.test(`${text} ${input.url ?? ''}`)
@@ -154,7 +150,8 @@ function hasContent(input: {
 
 /**
  * 一条记录从 localStorage 回来：什么都没留（标题、说明、链接、附件全空）才丢掉；
- * 类型不认识归 mine；链接重新过一遍 normalizeUrl，空的不写键；
+ * 类型不认识（含早期被取消的 rule）按新规则重判一遍；
+ * 链接重新过一遍 normalizeUrl，空的不写键；
  * 标题空着就用文件名 / 网站名 / 说明顶上，列表上总有个能认的标题。
  */
 export function normalizeKnowledge(
@@ -180,7 +177,10 @@ export function normalizeKnowledge(
 
   const knowledge: Knowledge = {
     id,
-    type: isKnowledgeType(item.type) ? item.type : 'mine',
+    // 老数据的「规则文件」已经取消，不能原样留着（会显示成第四种标签），按内容重判
+    type: isKnowledgeType(item.type)
+      ? item.type
+      : guessType({ title, summary, url, fileName: attachment?.name }),
     title: titleFrom({ title, summary, url, attachment }),
     summary,
     createdAt,

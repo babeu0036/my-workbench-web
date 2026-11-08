@@ -29,7 +29,7 @@ type Props = {
  * 记东西最烦的是"先想标题再想说明"，这里不该有这道门槛。
  *
  * 类型默认按 `guessType` 自动判断（标题 / 说明 / 链接 / 文件名都参与），
- * 但不摆一排按钮：平时只显示「类型 · 规则文件 · 自动判断」，点「改」才展开胶囊。
+ * 但不摆一排按钮：平时只显示「类型 · 学习资料 · 自动判断」，点「改」才展开胶囊。
  * 手动点过某一颗就锁定，之后改文字不再覆盖。
  *
  * 编辑时不重算：打开时类型就是原来那条，改个错别字不会把它重新归类。
@@ -70,7 +70,7 @@ export default function KnowledgeForm({ entry, onClose, onSubmit }: Props) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
-  // 文件名也参与判断：手头多是「奖学金评定办法.pdf」这种，标题常常只写「文件」
+  // 文件名也参与判断：手头多是「高数复习手册.pdf」这种，标题常常只写「文件」
   const guessed = guessType({ title, summary, url, fileName: attachment?.name })
   const current = manual ? type : guessed
   // 至少得留下点什么，不然列表里会出现一条点不开的空记录
