@@ -98,11 +98,11 @@ export type Knowledge = {
 }
 
 /**
- * 行业动态里的一条：从 RSS 源拉下来的，**不是**知识库记录 ——
+ * 行业动态里的一条：从 Supabase 的 `feed_items` 表读出来的，**不是**知识库记录 ——
  * 只有点了「收藏」才会转成一条 Knowledge 存下来。
  *
- * pubDate 保留源里的原样字符串（rss2json 给的是 2026-11-08 10:00:00），
- * 展示时才解析，解析不出来就是空。
+ * pubDate 保留表里的原样字符串（`pub_date` 是 2026-11-07T05:01:17+00:00 这种 UTC ISO），
+ * 展示时才转成本机时间，解析不出来就是空。
  */
 export type FeedItem = {
   title: string

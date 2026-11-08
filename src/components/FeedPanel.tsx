@@ -21,7 +21,10 @@ type Props = {
  *
  * 拉失败分两种：有旧内容就照旧列出来，表头标「更新失败，显示上次内容」；
  * 一条都没有才写「暂时拉不到，稍后再试」。两种都可以点「重试」立刻再拉一次，
- * 不用干等 24 小时过期。
+ * 不用干等半小时过期。
+ *
+ * 列表空着还有第三种原因：请求成功了，但表里就是没有内容 ——
+ * 那要写「暂无内容」，不能借用「暂时拉不到」的失败文案，否则会让人白点「重试」。
  *
  * 标题是普通 <a target="_blank">，点开原文不离开工作台。
  */
@@ -42,6 +45,14 @@ export default function FeedPanel({
           ? '正在更新'
           : formatFetchedAt(fetchedAt)
 
+  // 空列表的三种原因，别混成一句话：等 / 拉失败 / 确实没内容
+  const emptyText =
+    status === 'loading'
+      ? '正在更新'
+      : status === 'error'
+        ? '暂时拉不到，稍后再试'
+        : '暂无内容'
+
   return (
     <section className="feed" aria-label="今日动态">
       <div className="feed__head">
@@ -59,9 +70,7 @@ export default function FeedPanel({
       </div>
 
       {items.length === 0 ? (
-        <p className="feed__placeholder">
-          {status === 'error' ? '暂时拉不到，稍后再试' : '正在更新'}
-        </p>
+        <p className="feed__placeholder">{emptyText}</p>
       ) : (
         <ul className="feed__list">
           {items.map(item => {

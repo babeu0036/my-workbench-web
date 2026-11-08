@@ -92,7 +92,7 @@ export default function App() {
     [],
     normalizeKnowledgeList,
   )
-  // 行业动态的缓存：拉一次管 24 小时，拉失败时继续用旧内容
+  // 行业动态的缓存：拉一次管 30 分钟，拉失败时继续用旧内容
   const [feedCache, setFeedCache] = useStoredState<FeedCache>(
     KEYS.feedCache,
     { fetchedAt: 0, items: [] },

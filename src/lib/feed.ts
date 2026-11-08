@@ -2,47 +2,49 @@ import { dayKey, dayKeyOffset } from './date'
 import type { FeedCache, FeedItem } from './types'
 
 /**
- * 行业动态：从两个 RSS 源各取 10 条，合并成一份列表。
+ * 行业动态：从 Supabase 的 `feed_items` 表取最新 20 条。
  *
- * 浏览器不能直接抓 RSS（跨域），所以统一走 rss2json 这个中转：
- * 它把 XML 转成 JSON，`status === 'ok'` 时 `items` 里就是条目。
+ * 抓 RSS 的活已经挪到服务端（爬虫 + 定时写库），前端只做一次 GET：
+ * 表上开了 anon 只读，所以浏览器直接用 publishable key 读，
+ * **绝不**把 service_role 那把放进来 —— 它能绕过所有权限。
  *
- * 这里全是纯函数（除了 fetchFeed 那一个），能单独跑测试，不碰 localStorage。
+ * 这里除 `fetchFeed` 之外都是纯函数，能单独跑测试，不碰 localStorage。
  * 缓存新鲜度一律按本机时间算 —— 缓存会跟着云同步跑到别的设备，
- * 但那台设备的「24 小时」得由它自己的钟决定。
+ * 但那台设备的「30 分钟」得由它自己的钟决定。
  */
 
-/** 每个源取前几条 */
-export const FEED_PER_SOURCE = 10
+/** 项目地址（只到域名，路径在下面拼） */
+export const FEED_URL = 'https://ovoocdjdowiqzkoqxcjg.supabase.co'
 
-/** 缓存活多久：24 小时。超过就重拉 */
-export const FEED_TTL = 24 * 60 * 60 * 1000
+/** 可直接暴露给浏览器的 publishable key：只能读，不能写 */
+export const FEED_KEY = 'sb_publishable_vWA3KDJibQ9H7rMmjN4wkg_1E2oorh0'
 
-export type FeedSource = {
-  key: string
-  /** 列表里显示的来源名 */
-  name: string
-  url: string
-}
+/** 一次取多少条。库里会一直长，列表只显示最近的 */
+export const FEED_LIMIT = 20
 
-export const FEED_SOURCES: FeedSource[] = [
-  { key: 'infoq', name: 'InfoQ', url: 'https://www.infoq.cn/feed' },
-  { key: 'oschina', name: '开源中国', url: 'https://www.oschina.net/news/rss' },
-]
+/** 缓存活多久：30 分钟。超过就重拉 */
+export const FEED_TTL = 30 * 60 * 1000
+
+/** 请求超时：10 秒。卡住的请求不如早点失败，让「重试」有用 */
+export const FEED_TIMEOUT = 10_000
 
 /** 拉取状态：loading 转圈 / ok 正常 / stale 有旧内容但这次失败 / error 什么都没有 */
 export type FeedStatus = 'loading' | 'ok' | 'stale' | 'error'
 
-/** 中转地址。源地址要 encode，否则带 query 的 feed 会把它自己的参数混进来 */
-export function proxyUrl(sourceUrl: string): string {
-  return `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(sourceUrl)}`
+/** 查表地址。字段名写死，别用 select=* —— 表以后加列也不用跟着改 */
+export function feedApiUrl(): string {
+  return (
+    `${FEED_URL}/rest/v1/feed_items` +
+    `?select=title,link,source,pub_date&order=pub_date.desc&limit=${FEED_LIMIT}`
+  )
 }
 
 /**
  * 把源里的时间转成时间戳，认不出来返回 0。
  *
- * rss2json 给的是 `2026-11-08 10:00:00` 这种空格分隔的格式，
- * Safari 直接 `new Date()` 会拿到 Invalid Date，得先换成 ISO 的 T。
+ * 库里是 `2026-11-07T05:01:17+00:00` 这种 ISO，直接能解析；
+ * 顺手兼容 `2026-11-08 10:00:00` 这种空格分隔的（Safari 会当场 Invalid Date），
+ * 换成 ISO 的 T 再试一次。
  */
 export function parseFeedTime(value: string): number {
   const text = value.trim()
@@ -55,67 +57,67 @@ export function parseFeedTime(value: string): number {
   return Number.isFinite(ts) ? ts : 0
 }
 
-/**
- * 解析一个源返回的 JSON。
- *
- * 只要 `status === 'ok'` 且 `items` 是数组；逐条挑 title / link / pubDate，
- * **缺一项就丢掉那一条** —— 没有链接的条目点不开，留着只是占地方。
- * 时间解析不出来（0）的也留着：显示成空时间，总比整条消失好。
- */
-export function parseFeedJson(
-  raw: unknown,
-  source: string,
-  limit = FEED_PER_SOURCE,
-): FeedItem[] {
-  if (!raw || typeof raw !== 'object') return []
-  const data = raw as { status?: unknown; items?: unknown }
-  if (data.status !== 'ok' || !Array.isArray(data.items)) return []
-
+/** 同一链接只留第一条，后来的丢掉 —— React 的 key 就是链接，重了整列会报错 */
+export function dedupeFeed(list: FeedItem[]): FeedItem[] {
+  const seen = new Set<string>()
   const out: FeedItem[] = []
-  data.items.forEach(entry => {
-    if (out.length >= limit) return
-    if (!entry || typeof entry !== 'object') return
-    const item = entry as Partial<FeedItem>
 
-    const title = typeof item.title === 'string' ? item.title.trim() : ''
-    const link = typeof item.link === 'string' ? item.link.trim() : ''
-    if (!title || !/^https?:\/\//i.test(link)) return
-
-    out.push({
-      title,
-      link,
-      source,
-      pubDate: typeof item.pubDate === 'string' ? item.pubDate.trim() : '',
-    })
+  list.forEach(item => {
+    if (seen.has(item.link)) return
+    seen.add(item.link)
+    out.push(item)
   })
 
   return out
 }
 
-/** 两个源拼一起 → 按链接去重 → 新的在上。同一秒发的保持原顺序 */
-export function mergeFeed(lists: FeedItem[][]): FeedItem[] {
-  const seen = new Set<string>()
-  const out: FeedItem[] = []
+/**
+ * 解析表返回的行。
+ *
+ * 行里叫 `pub_date`，前端统一叫 `pubDate`，在这里换过来；
+ * **缺标题或链接就丢掉那一条** —— 没有链接的条目点不开，留着只是占地方。
+ * 时间解析不出来（0）的也留着：显示成空时间，总比整条消失好。
+ *
+ * 顺序不动：SQL 已经按 pub_date 倒序排过，这里只负责去重。
+ */
+export function parseFeedRows(raw: unknown): FeedItem[] {
+  if (!Array.isArray(raw)) return []
 
-  lists.forEach(list => {
-    list.forEach(item => {
-      if (seen.has(item.link)) return
-      seen.add(item.link)
-      out.push(item)
+  const out: FeedItem[] = []
+  raw.forEach(entry => {
+    if (!entry || typeof entry !== 'object') return
+    const row = entry as {
+      title?: unknown
+      link?: unknown
+      source?: unknown
+      pub_date?: unknown
+    }
+
+    const title = typeof row.title === 'string' ? row.title.trim() : ''
+    const link = typeof row.link === 'string' ? row.link.trim() : ''
+    if (!title || !/^https?:\/\//i.test(link)) return
+
+    out.push({
+      title,
+      link,
+      source: typeof row.source === 'string' ? row.source.trim() : '',
+      pubDate: typeof row.pub_date === 'string' ? row.pub_date.trim() : '',
     })
   })
 
-  return out.sort((a, b) => parseFeedTime(b.pubDate) - parseFeedTime(a.pubDate))
+  return dedupeFeed(out)
 }
 
 /**
- * 缓存还能不能用。
+ * 缓存还能不能用：只看「上次成功写入的时间 + 30 分钟」。
  *
- * 空缓存不算新鲜（哪怕 fetchedAt 是刚才）；本机时间被调回过去时按新鲜算，
- * 否则每次打开都要重拉一遍。
+ * 不再因为「条数是 0」判成过期 —— 表里确实没内容时，成功一次就该安静 30 分钟，
+ * 否则每次切到这一栏都要发一遍请求。失败路径不写 fetchedAt，所以不会误缓存空结果。
+ *
+ * 本机时间被调回过去时按新鲜算，否则每次打开都要重拉一遍。
  */
 export function isFresh(cache: FeedCache, now: number = Date.now()): boolean {
-  if (!cache.fetchedAt || cache.items.length === 0) return false
+  if (!cache.fetchedAt) return false
   const diff = now - cache.fetchedAt
   return diff < 0 || diff < FEED_TTL
 }
@@ -161,33 +163,39 @@ export function normalizeFeedCache(raw: unknown): FeedCache {
 }
 
 /**
- * 拉两个源。单个源失败不影响另一个；两个都挂（或者一个条都没解析出来）才抛错 ——
- * 页面据此决定是「显示上次内容」还是「暂时拉不到」。
+ * 拉一次，10 秒没回来就 abort。
  *
- * 用 allSettled 而不是 all：一个源挂了不该把另一个已经拿到的内容一起扔掉。
+ * 三种都算失败，页面据此决定是「显示上次内容」还是「暂时拉不到」：
+ * - 非 2xx（权限、表名写错、5xx）；
+ * - 返回的不是数组（比如被网关拦成了错误页）；
+ * - 有行但一条都解析不出来（字段名对不上），这时显示「暂无内容」会掩盖真正的毛病。
+ *
+ * 成功但返回空数组是**正常结果**，交给页面显示「暂无内容」。
  */
 export async function fetchFeed(): Promise<FeedItem[]> {
-  const results = await Promise.allSettled(
-    FEED_SOURCES.map(async source => {
-      const res = await fetch(proxyUrl(source.url), { headers: { Accept: 'application/json' } })
-      if (!res.ok) throw new Error(`${source.name} ${res.status}`)
-      const json: unknown = await res.json()
-      return parseFeedJson(json, source.name)
-    }),
-  )
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FEED_TIMEOUT)
 
-  const lists: FeedItem[][] = []
-  let failed = 0
-  results.forEach(result => {
-    if (result.status === 'fulfilled') lists.push(result.value)
-    else failed += 1
-  })
+  try {
+    const res = await fetch(feedApiUrl(), {
+      signal: controller.signal,
+      headers: {
+        apikey: FEED_KEY,
+        Authorization: `Bearer ${FEED_KEY}`,
+        Accept: 'application/json',
+      },
+    })
+    if (!res.ok) throw new Error(`行业动态 ${res.status}`)
 
-  const items = mergeFeed(lists)
-  if (failed === FEED_SOURCES.length || items.length === 0) {
-    throw new Error('行业动态暂时拉不到')
+    const json: unknown = await res.json()
+    if (!Array.isArray(json)) throw new Error('行业动态返回格式不对')
+
+    const items = parseFeedRows(json)
+    if (json.length > 0 && items.length === 0) throw new Error('行业动态没有可用的条目')
+    return items
+  } finally {
+    clearTimeout(timer)
   }
-  return items
 }
 
 /** 缓存里最新一条的时间，表头显示「更新于 …」用 */
