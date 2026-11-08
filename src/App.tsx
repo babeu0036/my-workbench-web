@@ -16,6 +16,7 @@ import { pendingReminders } from './lib/due'
 import { normalizeGoals, normalizePeriods } from './lib/goals'
 import { normalizeAchievements, withLitState } from './lib/achievements'
 import { normalizeKnowledgeList } from './lib/knowledge'
+import { normalizeFeedCache } from './lib/feed'
 import { normalizeMoods } from './lib/mood'
 import type { MoodMap } from './lib/mood'
 import { startSync } from './lib/sync'
@@ -24,6 +25,7 @@ import type {
   Achievement,
   Course,
   Deadline,
+  FeedCache,
   Goal,
   GoalPeriod,
   Knowledge as KnowledgeItem,
@@ -89,6 +91,12 @@ export default function App() {
     KEYS.knowledge,
     [],
     normalizeKnowledgeList,
+  )
+  // 行业动态的缓存：拉一次管 24 小时，拉失败时继续用旧内容
+  const [feedCache, setFeedCache] = useStoredState<FeedCache>(
+    KEYS.feedCache,
+    { fetchedAt: 0, items: [] },
+    normalizeFeedCache,
   )
   // 课程表：课程数组 + 学期第 1 周的周一（决定「现在是第几周」，进而决定单双周和灰色）
   const [courses, setCourses] = useStoredState<Course[]>(KEYS.courses, [], normalizeCourses)
@@ -235,7 +243,12 @@ export default function App() {
             />
           )}
           {route.page === 'knowledge' && (
-            <Knowledge items={knowledge} setItems={setKnowledge} />
+            <Knowledge
+              items={knowledge}
+              setItems={setKnowledge}
+              feed={feedCache}
+              setFeed={setFeedCache}
+            />
           )}
 
           {route.page === 'settings' && <Settings />}

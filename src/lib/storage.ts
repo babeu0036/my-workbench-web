@@ -28,6 +28,8 @@ export const KEYS = {
   vision: 'workbench.vision',
   /** 知识库：{ id, type, title, url?, summary, createdAt } 的数组 */
   knowledge: 'workbench.knowledge',
+  /** 行业动态的缓存：{ fetchedAt, items }。几 KB，跟着云同步一起走 */
+  feedCache: 'workbench.feedCache',
 } as const
 
 /** 旧版的最终目标键，只在迁移时读一次，搬完保留不删 */

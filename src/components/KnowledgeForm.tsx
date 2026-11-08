@@ -17,6 +17,11 @@ import type { Attachment, Knowledge, KnowledgeType } from '../lib/types'
 type Props = {
   /** 有值 = 编辑这条：字段预填，标题和按钮换字 */
   entry?: Knowledge
+  /**
+   * 打开时焦点落在哪个框。默认标题；收藏行业动态时直接落在「一句话说明」——
+   * 标题和链接已经从那条动态带过来了，要补的就是那句话。
+   */
+  focusField?: 'title' | 'summary'
   onClose: () => void
   onSubmit: (input: KnowledgeInput) => void
 }
@@ -38,7 +43,7 @@ type Props = {
  * 中途关掉面板不会留下没人认领的文件；换掉或移除旧附件后，
  * 由页面在保存成功后清掉旧文件。
  */
-export default function KnowledgeForm({ entry, onClose, onSubmit }: Props) {
+export default function KnowledgeForm({ entry, focusField = 'title', onClose, onSubmit }: Props) {
   const [title, setTitle] = useState(entry?.title ?? '')
   const [url, setUrl] = useState(entry?.url ?? '')
   const [summary, setSummary] = useState(entry?.summary ?? '')
@@ -55,12 +60,14 @@ export default function KnowledgeForm({ entry, onClose, onSubmit }: Props) {
   // 类型胶囊默认收起：平时只看得到「判断成了什么」，想改再点开
   const [typeOpen, setTypeOpen] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
+  const summaryRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    const timer = window.setTimeout(() => titleRef.current?.focus(), 30)
+    const target = focusField === 'summary' ? summaryRef : titleRef
+    const timer = window.setTimeout(() => target.current?.focus(), 30)
     return () => window.clearTimeout(timer)
-  }, [])
+  }, [focusField])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -167,6 +174,7 @@ export default function KnowledgeForm({ entry, onClose, onSubmit }: Props) {
         />
 
         <input
+          ref={summaryRef}
           className="input"
           value={summary}
           onChange={e => setSummary(e.target.value)}

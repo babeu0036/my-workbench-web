@@ -92,9 +92,35 @@ export type Knowledge = {
   url?: string
   /** 附件的元信息，文件本体在 IndexedDB */
   attachment?: Attachment
-  /** 一句话说明，必填 */
+  /** 一句话说明。可以不填 —— 收藏行业动态时就是空着进来的，列表里显示「补一句说明」 */
   summary: string
   createdAt: number
+}
+
+/**
+ * 行业动态里的一条：从 RSS 源拉下来的，**不是**知识库记录 ——
+ * 只有点了「收藏」才会转成一条 Knowledge 存下来。
+ *
+ * pubDate 保留源里的原样字符串（rss2json 给的是 2026-11-08 10:00:00），
+ * 展示时才解析，解析不出来就是空。
+ */
+export type FeedItem = {
+  title: string
+  link: string
+  /** 来源站名，用来在每条右下角标一下是哪家的 */
+  source: string
+  pubDate: string
+}
+
+/**
+ * 行业动态的缓存，存在 `workbench.feedCache`。
+ *
+ * 它会跟着云同步上传（几 KB），所以换台设备可能拿到别的地方的旧缓存 ——
+ * 新鲜度一律按**本机时间**算（见 lib/feed.ts 的 isFresh）。
+ */
+export type FeedCache = {
+  fetchedAt: number
+  items: FeedItem[]
 }
 
 export type Note = {

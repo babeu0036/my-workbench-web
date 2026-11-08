@@ -2891,6 +2891,17 @@ textarea {
   color: var(--accent);
 }
 
+/* 行业动态下还没收藏过任何东西：一句灰字说明就够了，不用虚线按钮 */
+.kb-note {
+  margin: 0;
+  padding: 14px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
 /* 类型标签：四类各一色，全部走主题变量，深色模式自动跟着换 */
 .ktag {
   flex: none;
@@ -3029,6 +3040,162 @@ textarea {
   color: var(--muted);
   font-size: 12px;
 }
+
+/* 一行没写说明（收藏来的动态就是这样进门的）：灰字提示，点正文就能补 */
+.krow__hint {
+  align-self: flex-start;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+/* ---------- 行业动态（今日动态） ---------- */
+
+/* 知识库列表上面一块：一条一条排，标题左、收藏右，来源和时间在标题下面 */
+.feed {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px 4px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.feed__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 6px;
+}
+
+.feed__title {
+  flex: none;
+  color: var(--text-h);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* 状态那一句占满中间，太长就省略，别把「重试」挤到第二行 */
+.feed__state {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feed__state--warn {
+  color: var(--warn);
+}
+
+.feed__retry {
+  flex: none;
+  padding: 2px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.feed__retry:hover {
+  border-color: var(--accent);
+}
+
+.feed__placeholder {
+  margin: 0;
+  padding: 8px 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.feed__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 两行两列：标题和时间都在左列，收藏竖着横跨两行贴在右边 */
+.feed__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'link collect'
+    'meta collect';
+  align-items: start;
+  gap: 3px 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+}
+
+.feed__link {
+  grid-area: link;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.feed__link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.feed__meta {
+  grid-area: meta;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.feed__source {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.feed__time {
+  color: var(--muted);
+}
+
+.feed__collect {
+  grid-area: collect;
+  align-self: center;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.feed__collect:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+/* 收藏过就点不动了：同一个链接在列表里只该有一条记录 */
+.feed__collect:disabled {
+  color: var(--muted);
+  opacity: 0.7;
+  cursor: default;
+}
+
 
 /* 表单里的附件框：空着是虚线邀请，选中后变实线显示文件名 */
 .kfile {
