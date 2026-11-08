@@ -2,11 +2,14 @@ import { dayKey, dayKeyOffset } from './date'
 import type { FeedCache, FeedItem } from './types'
 
 /**
- * 行业动态：从 Supabase 的 `feed_items` 表取最新 20 条。
+ * 行业动态：从 Supabase 的 `feed_items` 表取最新 60 条，按来源均衡后显示 20 条。
  *
  * 抓 RSS 的活已经挪到服务端（爬虫 + 定时写库），前端只做一次 GET：
  * 表上开了 anon 只读，所以浏览器直接用 publishable key 读，
  * **绝不**把 service_role 那把放进来 —— 它能绕过所有权限。
+ *
+ * 为什么不直接取 20 条：某个站一口气发 15 篇，列表就被它刷屏了。
+ * 多取一些回来自己分，每个来源先给 5 条，见 balanceFeed。
  *
  * 这里除 `fetchFeed` 之外都是纯函数，能单独跑测试，不碰 localStorage。
  * 缓存新鲜度一律按本机时间算 —— 缓存会跟着云同步跑到别的设备，
@@ -19,7 +22,19 @@ export const FEED_URL = 'https://ovoocdjdowiqzkoqxcjg.supabase.co'
 /** 可直接暴露给浏览器的 publishable key：只能读，不能写 */
 export const FEED_KEY = 'sb_publishable_vWA3KDJibQ9H7rMmjN4wkg_1E2oorh0'
 
-/** 一次取多少条。库里会一直长，列表只显示最近的 */
+/**
+ * 一次从库里取多少条。
+ *
+ * 比列表显示的 20 条多得多 —— 要留够料给「按来源均衡」挑：
+ * 某个来源连发 20 条时，另外三个来源的条目也得在这 60 条里，
+ * 否则均衡就成了空话。
+ */
+export const FEED_FETCH_LIMIT = 60
+
+/** 第一轮每个来源最多放几条进列表 */
+export const FEED_PER_SOURCE = 5
+
+/** 列表最终显示几条 */
 export const FEED_LIMIT = 20
 
 /** 缓存活多久：30 分钟。超过就重拉 */
@@ -35,7 +50,7 @@ export type FeedStatus = 'loading' | 'ok' | 'stale' | 'error'
 export function feedApiUrl(): string {
   return (
     `${FEED_URL}/rest/v1/feed_items` +
-    `?select=title,link,source,pub_date&order=pub_date.desc&limit=${FEED_LIMIT}`
+    `?select=title,link,source,pub_date&order=pub_date.desc&limit=${FEED_FETCH_LIMIT}`
   )
 }
 
@@ -69,6 +84,55 @@ export function dedupeFeed(list: FeedItem[]): FeedItem[] {
   })
 
   return out
+}
+
+/**
+ * 按来源均衡，避免某个站刷屏。
+ *
+ * ① 每个来源先取最新的 5 条；
+ * ② 这样凑不满 20 条时（来源数少于 4 个），把各来源剩下的按时间倒序补进来；
+ * ③ 补到 20 条或者没有更多为止，最后整体按时间倒序。
+ *
+ * 第 ② 步只在来源少的时候才触发：四个来源各 5 条正好 20 条，轮不到它。
+ * 不补的话，只有一个来源的表会只显示 5 条，看着像坏了。
+ *
+ * 时间解析不出来（0）的算最旧，优先被截掉；同一时刻保持服务器返回的先后
+ * （用原始下标当第二排序键，不靠 sort 的稳定性）。
+ */
+export function balanceFeed(list: FeedItem[]): FeedItem[] {
+  const unique = dedupeFeed(list)
+
+  // 原始位置：同一时间戳的条目不因为分桶而乱序
+  const index = new Map<string, number>()
+  unique.forEach((item, i) => index.set(item.link, i))
+  const byNewest = (a: FeedItem, b: FeedItem) =>
+    parseFeedTime(b.pubDate) - parseFeedTime(a.pubDate) ||
+    (index.get(a.link) ?? 0) - (index.get(b.link) ?? 0)
+
+  // 按来源分桶。来源为空的单独一桶，别把没标来源的都算成同一家
+  const buckets = new Map<string, FeedItem[]>()
+  unique.forEach(item => {
+    const bucket = buckets.get(item.source)
+    if (bucket) bucket.push(item)
+    else buckets.set(item.source, [item])
+  })
+
+  const picked: FeedItem[] = []
+  const rest: FeedItem[] = []
+  buckets.forEach(bucket => {
+    const sorted = bucket.slice().sort(byNewest)
+    sorted.slice(0, FEED_PER_SOURCE).forEach(item => picked.push(item))
+    sorted.slice(FEED_PER_SOURCE).forEach(item => rest.push(item))
+  })
+
+  // ② 回填：来源不够多的时候，按时间把剩下的补到 20 条
+  const room = FEED_LIMIT - picked.length
+  if (room > 0 && rest.length > 0) {
+    rest.sort(byNewest)
+    rest.slice(0, room).forEach(item => picked.push(item))
+  }
+
+  return picked.sort(byNewest).slice(0, FEED_LIMIT)
 }
 
 /**
@@ -163,7 +227,7 @@ export function normalizeFeedCache(raw: unknown): FeedCache {
 }
 
 /**
- * 拉一次，10 秒没回来就 abort。
+ * 拉一次（最多 60 条），10 秒没回来就 abort。取回后按来源均衡成 20 条再返回。
  *
  * 三种都算失败，页面据此决定是「显示上次内容」还是「暂时拉不到」：
  * - 非 2xx（权限、表名写错、5xx）；
@@ -192,7 +256,8 @@ export async function fetchFeed(): Promise<FeedItem[]> {
 
     const items = parseFeedRows(json)
     if (json.length > 0 && items.length === 0) throw new Error('行业动态没有可用的条目')
-    return items
+    // 取回 60 条只是原料，按来源均衡后才交给页面
+    return balanceFeed(items)
   } finally {
     clearTimeout(timer)
   }
