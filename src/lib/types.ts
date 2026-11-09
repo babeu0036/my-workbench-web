@@ -55,34 +55,30 @@ export type Deadline = {
 }
 
 /**
- * 知识库条目的类型：学习资料 / 行业动态 / 我的笔记。
+ * 知识库条目的类型：课程 / 竞赛 / 求职 / 制度 / 经验。
  * 新建时按 `guessType` 自动判断，用户可以手动改；手动改过就是最终值。
  *
- * 老数据里的 `rule`（规则文件）已经取消，读盘时按新规则重判成这三类之一。
+ * 老数据的 `material / industry / mine`（以及更早的 `rule`）已经取消，
+ * 读盘时按新关键词重判成这五类之一。
  */
-export type KnowledgeType = 'material' | 'industry' | 'mine'
+export type KnowledgeType = 'course' | 'contest' | 'job' | 'rule' | 'exp'
 
 /**
- * 知识库挂的附件。
+ * 早期版本存在浏览器 IndexedDB 里的附件元信息。
  *
- * 文件真身存在 IndexedDB（浏览器本地库），这里只记「怎么找到它」和展示要用的信息。
- * `key` 是 IndexedDB 里的主键，删记录 / 换附件时按它清掉文件，不留垃圾。
- * 云同步只同步 localStorage，所以换台设备能看到这条记录，但文件不跟过去。
+ * **只用于读旧数据迁移**：新代码一律用 Knowledge 上的 fileName / fileSize /
+ * fileUrl / fileType，IndexedDB 那套已经删干净了，不再读写。
  */
-export type Attachment = {
-  /** IndexedDB 里的主键 */
+export type LegacyAttachment = {
   key: string
-  /** 原始文件名，带后缀，列表和面板上显示的就是它 */
   name: string
-  /** 字节数，用来显示 1.2 MB 和判断有没有超上限 */
   size: number
-  /** MIME，浏览器认不出时是空字符串 */
   mime: string
 }
 
 /**
  * 知识库的一条记录：一个标题、一句话说明，链接和附件都可选。
- * `url` / `attachment` 没有这个键 = 没有，不存空值。
+ * `url` 和文件那四个字段，没有这个键 = 没有，不存空值。
  */
 export type Knowledge = {
   id: number
@@ -90,8 +86,14 @@ export type Knowledge = {
   title: string
   /** 原始链接。保存时补全协议头，打不开的就不写进来 */
   url?: string
-  /** 附件的元信息，文件本体在 IndexedDB */
-  attachment?: Attachment
+  /** 附件原名（带后缀），列表和面板上显示的就是它 */
+  fileName?: string
+  /** 字节数，用来显示 1.2 MB */
+  fileSize?: number
+  /** Supabase Storage 的公开地址；早期留在本地的老附件没有这一项 */
+  fileUrl?: string
+  /** MIME，浏览器认不出时是空字符串 */
+  fileType?: string
   /** 一句话说明。可以不填 —— 收藏行业动态时就是空着进来的，列表里显示「补一句说明」 */
   summary: string
   createdAt: number

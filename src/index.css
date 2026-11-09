@@ -12,6 +12,9 @@
   --danger-soft: rgba(200, 50, 74, 0.1);
   --warn: #b4670a;
   --warn-soft: rgba(217, 119, 6, 0.14);
+  /* 第五种标签色（课程）：主题里原先只有紫/红/橙/绿，缺一个蓝 */
+  --info: #1d63c9;
+  --info-soft: rgba(29, 99, 201, 0.12);
   /* 「已完成」用的绿。只给状态标签用，不参与任务勾选的强调色 */
   --done: #16794a;
   --done-soft: rgba(22, 121, 74, 0.12);
@@ -42,6 +45,8 @@
     --danger-soft: rgba(242, 112, 138, 0.14);
     --warn: #e0a44a;
     --warn-soft: rgba(224, 164, 74, 0.16);
+    --info: #7aa8ff;
+    --info-soft: rgba(122, 168, 255, 0.16);
     --done: #5ad39a;
     --done-soft: rgba(90, 211, 154, 0.16);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
@@ -2902,7 +2907,7 @@ textarea {
   text-align: center;
 }
 
-/* 类型标签：四类各一色，全部走主题变量，深色模式自动跟着换 */
+/* 类型标签：五类各一色，全部走主题变量，深色模式自动跟着换 */
 .ktag {
   flex: none;
   padding: 1px 7px;
@@ -2912,19 +2917,29 @@ textarea {
   white-space: nowrap;
 }
 
-.ktag--material {
-  background: var(--done-soft);
-  color: var(--done);
+.ktag--course {
+  background: var(--info-soft);
+  color: var(--info);
 }
 
-.ktag--industry {
+.ktag--contest {
   background: var(--warn-soft);
   color: var(--warn);
 }
 
-.ktag--mine {
+.ktag--job {
+  background: var(--done-soft);
+  color: var(--done);
+}
+
+.ktag--rule {
   background: var(--surface-2);
   color: var(--muted);
+}
+
+.ktag--exp {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* 记录行：删除按钮对齐第一行，不要沉到说明下面 */
@@ -3070,11 +3085,49 @@ textarea {
   padding-bottom: 6px;
 }
 
+/* 表头左半边是折叠开关：标题 + 条数 + 箭头，收起时也留得住信息 */
+.feed__toggle {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.feed__toggle:hover .feed__title {
+  color: var(--accent);
+}
+
+.feed__count {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.feed__chev {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1;
+}
+
 .feed__title {
   flex: none;
   color: var(--text-h);
   font-size: 14px;
   font-weight: 600;
+}
+
+/* 收起时不留列表的空白，只当一条横幅 */
+.feed--closed {
+  padding-bottom: 10px;
+}
+
+.feed--closed .feed__head {
+  padding-bottom: 0;
 }
 
 /* 状态那一句占满中间，太长就省略，别把「重试」挤到第二行 */
@@ -3240,6 +3293,21 @@ textarea {
   line-height: 1.5;
 }
 
+/* 老版本留在本地的附件：只有名字没有地址，说清楚为什么点不开 */
+.kfile__note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* 证件提醒：一行灰字，不抢眼但看得见 */
+.kfile__warn {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .kfile__row {
   display: flex;
   align-items: baseline;
@@ -3346,8 +3414,9 @@ textarea {
 .preview {
   display: flex;
   flex-direction: column;
-  width: min(920px, 100%);
-  height: min(82vh, 100%);
+  /* 占屏幕 80%：宽高都按视口比例，窄屏再回落到整屏 */
+  width: 80vw;
+  height: 80vh;
   border-radius: 14px;
   background: var(--surface);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -3433,6 +3502,74 @@ textarea {
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* Word 转出来的 HTML：当一张纸看，白底黑字，段落和表格给回基本版式 */
+.preview__body--docx {
+  background: var(--surface);
+}
+
+.preview__doc {
+  padding: 32px clamp(20px, 6%, 56px) 48px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.preview__doc h1,
+.preview__doc h2,
+.preview__doc h3,
+.preview__doc h4 {
+  margin: 1.4em 0 0.6em;
+  color: var(--text-h);
+  line-height: 1.35;
+}
+
+.preview__doc h1 {
+  font-size: 22px;
+}
+
+.preview__doc h2 {
+  font-size: 18px;
+}
+
+.preview__doc h3 {
+  font-size: 16px;
+}
+
+.preview__doc p {
+  margin: 0 0 0.9em;
+}
+
+.preview__doc ul,
+.preview__doc ol {
+  margin: 0 0 0.9em;
+  padding-left: 1.6em;
+}
+
+.preview__doc img {
+  max-width: 100%;
+  height: auto;
+}
+
+.preview__doc a {
+  color: var(--accent);
+}
+
+.preview__doc table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.preview__doc td,
+.preview__doc th {
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
 }
 
 .preview__media {

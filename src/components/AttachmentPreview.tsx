@@ -1,70 +1,60 @@
-import { useEffect, useRef, useState } from 'react'
-import {
-  MAX_TEXT_PREVIEW,
-  formatFileSize,
-  getAttachment,
-  previewKind,
-} from '../lib/files'
-import type { Attachment } from '../lib/types'
+import { useEffect, useState } from 'react'
+import { formatFileSize } from '../lib/files'
+import { docxToHtml, previewKind } from '../lib/preview'
 
 type Props = {
-  attachment: Attachment
+  name: string
+  size?: number
+  /** 云端公开地址；早期本地附件没有 */
+  url?: string
+  type?: string
   onClose: () => void
 }
 
 /**
- * 附件预览层：在应用里直接看，不再让浏览器每次点都下载一遍。
+ * 附件预览层：占屏幕 80%，点空白或 Esc 关掉。
  *
- * 图片、PDF、纯文本、音视频都由浏览器自己渲染；Word / PPT / 压缩包这类
- * 浏览器看不懂的，才显示「下载」按钮 —— 点了才落到本地，不点就不落。
+ * - PDF：iframe 交给浏览器自带阅读器
+ * - 图片：img 直接显示
+ * - Word(docx)：mammoth 在浏览器里转成 HTML（点开时才动态加载那个包）
+ * - 其余：老实说「该格式不支持预览」，给个下载按钮
  *
- * 文件从 IndexedDB 里读出来现开一个 blob 地址，关掉就释放。
- * 换设备同步过来的记录只有文件名、没有文件本体，这里会说明白。
+ * 早期版本的附件只有文件名、没有云端地址，这里会直接说明，
+ * 而不是转圈等一个永远不会来的文件。
  */
-export default function AttachmentPreview({ attachment, onClose }: Props) {
-  const kind = previewKind(attachment)
-  const [url, setUrl] = useState('')
-  const [text, setText] = useState('')
-  const [truncated, setTruncated] = useState(false)
+export default function AttachmentPreview({ name, size, url, type, onClose }: Props) {
+  const kind = previewKind(name, type)
+  const [html, setHtml] = useState('')
+  const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
-  const urlRef = useRef('')
 
   useEffect(() => {
-    let alive = true
-    setUrl('')
-    setText('')
-    setTruncated(false)
+    setHtml('')
     setFailed(false)
 
-    void (async () => {
-      const blob = await getAttachment(attachment.key)
-      if (!alive) return
-      if (!blob) {
-        setFailed(true)
-        return
-      }
+    if (!url) {
+      setFailed(true)
+      return
+    }
+    if (kind !== 'docx') return
 
-      const objectUrl = URL.createObjectURL(blob)
-      urlRef.current = objectUrl
-      setUrl(objectUrl)
-
-      if (kind === 'text') {
-        const slice = blob.slice(0, MAX_TEXT_PREVIEW)
-        const content = await slice.text()
-        if (!alive) return
-        setText(content)
-        setTruncated(blob.size > MAX_TEXT_PREVIEW)
-      }
-    })()
+    let alive = true
+    setLoading(true)
+    docxToHtml(url)
+      .then(result => {
+        if (alive) setHtml(result)
+      })
+      .catch(() => {
+        if (alive) setFailed(true)
+      })
+      .finally(() => {
+        if (alive) setLoading(false)
+      })
 
     return () => {
       alive = false
-      if (urlRef.current) {
-        URL.revokeObjectURL(urlRef.current)
-        urlRef.current = ''
-      }
     }
-  }, [attachment.key, kind])
+  }, [url, kind])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -80,17 +70,19 @@ export default function AttachmentPreview({ attachment, onClose }: Props) {
         className="preview"
         role="dialog"
         aria-modal="true"
-        aria-label={`预览：${attachment.name}`}
+        aria-label={`预览：${name}`}
         onClick={event => event.stopPropagation()}
       >
         <div className="preview__head">
-          <span className="preview__name" title={attachment.name}>
-            {attachment.name}
+          <span className="preview__name" title={name}>
+            {name}
           </span>
-          <span className="preview__size">{formatFileSize(attachment.size)}</span>
+          {typeof size === 'number' && size > 0 && (
+            <span className="preview__size">{formatFileSize(size)}</span>
+          )}
 
           {url && (
-            <a className="btn btn--ghost preview__download" href={url} download={attachment.name}>
+            <a className="btn btn--ghost preview__download" href={url} download={name} target="_blank" rel="noreferrer noopener">
               下载
             </a>
           )}
@@ -100,29 +92,36 @@ export default function AttachmentPreview({ attachment, onClose }: Props) {
         </div>
 
         <div className={`preview__body preview__body--${kind}`}>
-          {failed ? (
-            <p className="preview__note">这台设备上没有这个文件（同步过来的记录只带文件名）</p>
-          ) : !url ? (
-            <p className="preview__note">正在打开…</p>
+          {!url ? (
+            <p className="preview__note">
+              这个文件还留在旧版本的浏览器里，没有云端地址。编辑这条记录，重新选一次文件就能在线预览。
+            </p>
           ) : kind === 'image' ? (
-            <img className="preview__image" src={url} alt={attachment.name} />
+            <img className="preview__image" src={url} alt={name} />
           ) : kind === 'pdf' ? (
-            <iframe className="preview__frame" src={url} title={attachment.name} />
-          ) : kind === 'text' ? (
-            <>
-              <pre className="preview__text">{text}</pre>
-              {truncated && <p className="preview__note">文件太大，只显示了开头一部分</p>}
-            </>
-          ) : kind === 'video' ? (
-            <video className="preview__media" src={url} controls />
-          ) : kind === 'audio' ? (
-            <div className="preview__note">
-              <audio className="preview__media" src={url} controls />
-            </div>
+            <iframe className="preview__frame" src={url} title={name} />
+          ) : kind === 'docx' ? (
+            loading ? (
+              <p className="preview__note">正在打开…</p>
+            ) : failed ? (
+              <div className="preview__note">
+                <p>这个 Word 文件打不开，可能是文件损坏了。下载下来用别的软件试试。</p>
+                <a className="btn btn--primary" href={url} download={name}>
+                  下载
+                </a>
+              </div>
+            ) : (
+              // mammoth 的输出就是 docx 里的段落/表格/标题，直接排进预览区
+              <div
+                className="preview__doc"
+                // eslint-disable-next-line react/no-danger
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            )
           ) : (
             <div className="preview__note">
-              <p>这种文件浏览器里看不了，需要下载后用别的软件打开。</p>
-              <a className="btn btn--primary" href={url} download={attachment.name}>
+              <p>该格式不支持预览，下载后用别的软件打开。</p>
+              <a className="btn btn--primary" href={url} download={name}>
                 下载
               </a>
             </div>

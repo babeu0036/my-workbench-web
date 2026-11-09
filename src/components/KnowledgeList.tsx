@@ -8,7 +8,7 @@ type Props = {
   items: Knowledge[]
   onEdit: (id: number) => void
   onRemove: (id: number) => void
-  /** 打开附件预览：文件本体在 IndexedDB，取文件和渲染交给预览层 */
+  /** 打开附件预览：文件在 Supabase Storage，点开就地看 */
   onPreview: (item: Knowledge) => void
 }
 
@@ -29,8 +29,8 @@ function showSummary(item: Knowledge): boolean {
  * 放在同一个按钮里的话，点「打开文件」会先触发编辑面板，等于点不开。
  * 删除走 ConfirmDelete（原地变「确定 / 取消」），不用 window.confirm。
  *
- * 附件显示文件名和大小：换台设备同步过来时文件不在本机，
- * 名字还在也便于知道原本挂的是什么。
+ * 附件显示文件名和大小，点开在弹出层里预览；
+ * 早期版本留下的老附件只有名字没有地址，点开会提示重新上传。
  */
 export default function KnowledgeList({ items, onEdit, onRemove, onPreview }: Props) {
   return (
@@ -54,12 +54,16 @@ export default function KnowledgeList({ items, onEdit, onRemove, onPreview }: Pr
             </button>
 
             <span className="krow__sources">
-              {item.attachment && (
+              {item.fileName && (
                 <button
                   type="button"
                   className="krow__file"
                   onClick={() => onPreview(item)}
-                  title={`预览 ${item.attachment.name}`}
+                  title={
+                    item.fileUrl
+                      ? `预览 ${item.fileName}`
+                      : `${item.fileName}（还没上传到云端，编辑后重新选一次文件）`
+                  }
                 >
                   <svg className="krow__file-icon" viewBox="0 0 16 16" aria-hidden="true">
                     <path
@@ -77,8 +81,10 @@ export default function KnowledgeList({ items, onEdit, onRemove, onPreview }: Pr
                       strokeLinejoin="round"
                     />
                   </svg>
-                  <span className="krow__file-name">{item.attachment.name}</span>
-                  <span className="krow__file-size">{formatFileSize(item.attachment.size)}</span>
+                  <span className="krow__file-name">{item.fileName}</span>
+                  <span className="krow__file-size">
+                    {formatFileSize(item.fileSize ?? 0)}
+                  </span>
                 </button>
               )}
 

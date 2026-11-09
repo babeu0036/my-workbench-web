@@ -15,7 +15,6 @@ import {
 import type { KnowledgeFilter, KnowledgeInput } from '../lib/knowledge'
 import { fetchFeed, isFresh } from '../lib/feed'
 import type { FeedStatus } from '../lib/feed'
-import { deleteAttachment } from '../lib/files'
 import type { FeedCache, FeedItem, Knowledge } from '../lib/types'
 
 type Props = {
@@ -27,7 +26,7 @@ type Props = {
 }
 
 /**
- * 知识库。自上而下：标题 → 搜索框 → 类型筛选 →（仅行业动态）今日动态 → 列表；
+ * 知识库。自上而下：标题 →（可折叠的行业动态）→ 搜索框 → 类型筛选 → 列表；
  * 右下角 + 加一条。
  *
  * 搜索是即时的：每敲一个字就重算，没有「搜索」按钮。搜索和筛选都只活在内存里，
@@ -37,14 +36,14 @@ type Props = {
  * - 一条都没有：「还没有记录，点右下角添加一条」（点了直接开面板）；
  * - 有记录但筛/搜不出来：「没有匹配的记录」+「清除筛选」。
  *
- * 行业动态：只在选中这一栏时才检查缓存。30 分钟内直接用，不发请求；
- * 过期或没有缓存才读一次 Supabase 的 feed_items 表（服务端抓的 RSS）。
+ * 行业动态：常驻顶部、默认收起，不绑类型筛选。打开页面就检查缓存，
+ * 30 分钟内直接用；过期或没有缓存才读一次 Supabase 的 feed_items 表。
  * 拉失败还有旧内容就照旧显示（标一句「更新失败」），一条都没有才说「暂时拉不到」；
  * 请求成功但表里没内容只说「暂无内容」，不冒充失败。
- * 收藏 = 立刻存一条记录 + 打开面板把光标放到说明上，Esc 关掉也不会丢（说明本来就可以空着）。
+ * 收藏 = 存成一条「经验」+ 打开面板把光标放到说明上，Esc 关掉也不会丢。
  *
- * 附件：记录里只存元信息，文件本体在 IndexedDB。点文件名开预览层，
- * 在应用里直接看，不再交给浏览器下载；删记录、换附件时顺手清掉旧文件。
+ * 附件：记录里只存文件名 / 大小 / MIME / 云端地址，文件本体在 Supabase Storage。
+ * 点文件名开预览层就地看；删记录不动 bucket 里的文件（anon 没有删除权限）。
  *
  * 数据在最外层 App，切页不丢；这里只负责筛、排、画。
  */
@@ -56,6 +55,7 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
   /** 从行业动态收藏进来的那条，打开面板时焦点落在「一句话说明」 */
   const [focusField, setFocusField] = useState<'title' | 'summary'>('title')
   const [preview, setPreview] = useState<Knowledge | null>(null)
+  const [feedOpen, setFeedOpen] = useState(false)
 
   const [feedStatus, setFeedStatus] = useState<FeedStatus>('loading')
   // 同一时刻只允许一个请求在飞：切页来回点、连点重试都不会发两遍
@@ -91,12 +91,12 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
     }
   }
 
-  // 只在切到「行业动态」时检查一次；「重试」按钮走另一条路
+  // 打开知识库就查一次：折叠着也能在表头看到条数和更新时间
   useEffect(() => {
-    if (filter === 'industry') void loadFeed(false)
+    void loadFeed(false)
     // loadFeed 每次渲染都是新的，跟着它会把 effect 变成每渲染一次就跑
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter])
+  }, [])
 
   function clearFilter() {
     setQuery('')
@@ -114,7 +114,7 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
       title: item.title,
       summary: '',
       url: item.link,
-      type: 'industry',
+      type: 'exp',
     })
     if (next.length === items.length) return
 
@@ -125,19 +125,12 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
   }
 
   function removeOne(id: number) {
-    const target = items.find(item => item.id === id)
-    // 文件删不掉也不拦着删记录，不然一条记录会永远留在列表里
-    if (target?.attachment) void deleteAttachment(target.attachment.key)
     setItems(list => removeKnowledge(list, id))
   }
 
   function saveEdit(input: KnowledgeInput) {
     if (!editing) return
-    const oldKey = editing.attachment?.key
-    const newKey = input.attachment?.key
     setItems(list => updateKnowledge(list, editing.id, input))
-    // 换了文件或把附件去掉了，旧的就没用了
-    if (oldKey && oldKey !== newKey) void deleteAttachment(oldKey)
     setEditing(null)
     setFocusField('title')
   }
@@ -153,11 +146,22 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
       <div className="page page--fab">
         <h2 className="page__title">知识库</h2>
 
+        <FeedPanel
+          status={feedStatus}
+          items={feed.items}
+          fetchedAt={feed.fetchedAt}
+          open={feedOpen}
+          onToggle={() => setFeedOpen(open => !open)}
+          isCollected={link => collected.has(link)}
+          onCollect={collect}
+          onRetry={() => void loadFeed(true)}
+        />
+
         <input
           className="input kb-search"
           value={query}
           onChange={event => setQuery(event.target.value)}
-          placeholder="搜标题或一句话说明"
+          placeholder="搜标题、说明或文件名"
           aria-label="搜索知识库"
         />
 
@@ -175,26 +179,10 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
           ))}
         </div>
 
-        {filter === 'industry' && (
-          <FeedPanel
-            status={feedStatus}
-            items={feed.items}
-            fetchedAt={feed.fetchedAt}
-            isCollected={link => collected.has(link)}
-            onCollect={collect}
-            onRetry={() => void loadFeed(true)}
-          />
-        )}
-
         {items.length === 0 ? (
-          filter === 'industry' ? (
-            // 这一栏上面就是今日动态，再说「点右下角添加一条」会让人以为要自己写
-            <p className="kb-note">还没有收藏的动态，点上面的「收藏」就会存到这里</p>
-          ) : (
-            <button type="button" className="kb-empty" onClick={() => setPanelOpen(true)}>
-              还没有记录，点右下角添加一条
-            </button>
-          )
+          <button type="button" className="kb-empty" onClick={() => setPanelOpen(true)}>
+            还没有记录，点右下角添加一条
+          </button>
         ) : shown.length === 0 ? (
           <div className="empty-block">
             <p className="empty">没有匹配的记录</p>
@@ -231,9 +219,7 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
         </svg>
       </button>
 
-      {panelOpen && (
-        <KnowledgeForm onClose={() => setPanelOpen(false)} onSubmit={addOne} />
-      )}
+      {panelOpen && <KnowledgeForm onClose={() => setPanelOpen(false)} onSubmit={addOne} />}
 
       {editing && (
         <KnowledgeForm
@@ -247,9 +233,12 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
         />
       )}
 
-      {preview?.attachment && (
+      {preview?.fileName && (
         <AttachmentPreview
-          attachment={preview.attachment}
+          name={preview.fileName}
+          size={preview.fileSize}
+          url={preview.fileUrl}
+          type={preview.fileType}
           onClose={() => setPreview(null)}
         />
       )}

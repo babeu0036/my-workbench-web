@@ -7,6 +7,9 @@ type Props = {
   items: FeedItem[]
   /** 上次拉成功的时间，表头显示「更新于 12:30」 */
   fetchedAt: number
+  /** 展开 / 收起；收起时只留标题、条数和状态 */
+  open: boolean
+  onToggle: () => void
   /** 这条链接是不是已经收藏过了（有对应记录就显示「已收藏」并禁用） */
   isCollected: (link: string) => boolean
   onCollect: (item: FeedItem) => void
@@ -14,14 +17,14 @@ type Props = {
 }
 
 /**
- * 「今日动态」：行业动态筛选下顶在上面的一块。
+ * 「行业动态」：常驻知识库顶部，不绑类型筛选，可折叠。
  *
- * 拉取中不能留白 —— 表头写「正在更新」，列表区写一句提示，
- * 让用户知道是在等，而不是没有内容。
+ * 默认收起 —— 二十条动态会把列表推到一屏之外；收起时表头照样给条数和
+ * 更新时间，看得出值不值得点开。拉取在页面打开时就开始，所以展开就有内容。
  *
+ * 拉取中不能留白：表头写「正在更新」，列表区写一句提示。
  * 拉失败分两种：有旧内容就照旧列出来，表头标「更新失败，显示上次内容」；
- * 一条都没有才写「暂时拉不到，稍后再试」。两种都可以点「重试」立刻再拉一次，
- * 不用干等半小时过期。
+ * 一条都没有才写「暂时拉不到，稍后再试」。两种都可以点「重试」立刻再拉一次。
  *
  * 列表空着还有第三种原因：请求成功了，但表里就是没有内容 ——
  * 那要写「暂无内容」，不能借用「暂时拉不到」的失败文案，否则会让人白点「重试」。
@@ -32,6 +35,8 @@ export default function FeedPanel({
   status,
   items,
   fetchedAt,
+  open,
+  onToggle,
   isCollected,
   onCollect,
   onRetry,
@@ -54,11 +59,26 @@ export default function FeedPanel({
         : '暂无内容'
 
   return (
-    <section className="feed" aria-label="今日动态">
+    <section className={open ? 'feed' : 'feed feed--closed'} aria-label="行业动态">
       <div className="feed__head">
-        <span className="feed__title">今日动态</span>
+        <button
+          type="button"
+          className="feed__toggle"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-label={open ? '收起行业动态' : '展开行业动态'}
+        >
+          <span className="feed__title">行业动态</span>
+          {items.length > 0 && <span className="feed__count">{items.length} 条</span>}
+          <span className="feed__chev" aria-hidden="true">
+            {open ? '▾' : '▸'}
+          </span>
+        </button>
+
         <span
-          className={status === 'stale' || status === 'error' ? 'feed__state feed__state--warn' : 'feed__state'}
+          className={
+            status === 'stale' || status === 'error' ? 'feed__state feed__state--warn' : 'feed__state'
+          }
         >
           {stateText}
         </span>
@@ -69,42 +89,43 @@ export default function FeedPanel({
         )}
       </div>
 
-      {items.length === 0 ? (
-        <p className="feed__placeholder">{emptyText}</p>
-      ) : (
-        <ul className="feed__list">
-          {items.map(item => {
-            const collected = isCollected(item.link)
-            return (
-              <li key={item.link} className="feed__row">
-                <a
-                  className="feed__link"
-                  href={item.link}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  {item.title}
-                </a>
+      {open &&
+        (items.length === 0 ? (
+          <p className="feed__placeholder">{emptyText}</p>
+        ) : (
+          <ul className="feed__list">
+            {items.map(item => {
+              const collected = isCollected(item.link)
+              return (
+                <li key={item.link} className="feed__row">
+                  <a
+                    className="feed__link"
+                    href={item.link}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    {item.title}
+                  </a>
 
-                <span className="feed__meta">
-                  <span className="feed__source">{item.source}</span>
-                  <span className="feed__time">{formatFeedTime(item.pubDate)}</span>
-                </span>
+                  <span className="feed__meta">
+                    <span className="feed__source">{item.source}</span>
+                    <span className="feed__time">{formatFeedTime(item.pubDate)}</span>
+                  </span>
 
-                <button
-                  type="button"
-                  className="feed__collect"
-                  onClick={() => onCollect(item)}
-                  disabled={collected}
-                  aria-label={collected ? `已收藏：${item.title}` : `收藏：${item.title}`}
-                >
-                  {collected ? '已收藏' : '收藏'}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+                  <button
+                    type="button"
+                    className="feed__collect"
+                    onClick={() => onCollect(item)}
+                    disabled={collected}
+                    aria-label={collected ? `已收藏：${item.title}` : `收藏：${item.title}`}
+                  >
+                    {collected ? '已收藏' : '收藏'}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        ))}
     </section>
   )
 }

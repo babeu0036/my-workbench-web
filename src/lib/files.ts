@@ -1,112 +1,23 @@
-import type { Attachment } from './types'
+import { FEED_KEY, FEED_URL } from './feed'
 
 /**
- * 知识库附件的本地存储。
+ * 知识库附件：直接传 Supabase Storage 的 public bucket `files`。
  *
- * 文件本体放 IndexedDB，不放 localStorage —— 后者只有 5 MB 左右，
- * 一个课件就能撑爆，而且同步时会把整份文件当字符串传上去。
- * localStorage 里只留 `Attachment` 那几个字段（key / 名字 / 大小 / MIME），
- * 所以换台设备能看到记录，但文件不跟过去，点开会提示「文件不在这台设备上」。
+ * 为什么不放浏览器本地了：IndexedDB 里的文件换台设备就打不开，
+ * 云同步只搬 localStorage，等于附件永远困在一台机器上。
  *
- * 全程不抛异常：浏览器不支持、配额满了、用户清了站点数据，
- * 一律当成「没存上 / 取不到」，由页面给一句人话，不把错误甩到控制台。
+ * 这个 bucket 是 public 的 —— **拿到链接的人都能看**，
+ * 所以表单里得提醒一句「别传证件」。上传用 publishable key（anon），
+ * service_role 绝不进来；bucket 那边要给 anon 开 INSERT 策略。
+ *
+ * 除 `uploadFile` 之外都是纯函数，能单独跑测试。
  */
 
-const DB_NAME = 'workbench-files'
-const STORE = 'files'
-const DB_VERSION = 1
+/** 单个文件上限 10 MB。再大的课件建议放网盘，这里记个链接 */
+export const MAX_FILE_SIZE = 10 * 1024 * 1024
 
-/** 单个文件上限。课程 PPT 一般几 MB，20 MB 足够；再大就不该塞浏览器了 */
-export const MAX_FILE_SIZE = 20 * 1024 * 1024
-
-let dbPromise: Promise<IDBDatabase | null> | null = null
-
-function openDb(): Promise<IDBDatabase | null> {
-  if (dbPromise) return dbPromise
-
-  dbPromise = new Promise<IDBDatabase | null>(resolve => {
-    if (typeof indexedDB === 'undefined') {
-      resolve(null)
-      return
-    }
-    try {
-      const request = indexedDB.open(DB_NAME, DB_VERSION)
-      request.onupgradeneeded = () => {
-        const db = request.result
-        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE)
-      }
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => resolve(null)
-      request.onblocked = () => resolve(null)
-    } catch {
-      resolve(null)
-    }
-  })
-
-  return dbPromise
-}
-
-/**
- * 跑一次单条操作。没有主键表，key 由调用方给（`put(value, key)` / `get(key)`）。
- * 任何一步失败都返回 null，调用方只需要判空。
- */
-async function run<T>(
-  mode: IDBTransactionMode,
-  action: (store: IDBObjectStore) => IDBRequest<T>,
-): Promise<T | null> {
-  const db = await openDb()
-  if (!db) return null
-
-  return new Promise<T | null>(resolve => {
-    try {
-      const transaction = db.transaction(STORE, mode)
-      const request = action(transaction.objectStore(STORE))
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => resolve(null)
-      transaction.onabort = () => resolve(null)
-    } catch {
-      resolve(null)
-    }
-  })
-}
-
-/** 存一份文件。返回 false 表示没存上（不支持 / 配额满），页面据此拦住提交 */
-export async function putAttachment(key: string, file: Blob): Promise<boolean> {
-  const db = await openDb()
-  if (!db) return false
-
-  // 写入成功要看事务 complete，而不是 put 的 onsuccess ——
-  // 后者只代表请求排进队列，配额不足是在提交时才报错的
-  return new Promise<boolean>(resolve => {
-    try {
-      const transaction = db.transaction(STORE, 'readwrite')
-      transaction.objectStore(STORE).put(file, key)
-      transaction.oncomplete = () => resolve(true)
-      transaction.onerror = () => resolve(false)
-      transaction.onabort = () => resolve(false)
-    } catch {
-      resolve(false)
-    }
-  })
-}
-
-/** 取回文件本体；没有 / 取不到都是 null */
-export async function getAttachment(key: string): Promise<Blob | null> {
-  const result = await run<Blob>('readonly', store => store.get(key))
-  return result instanceof Blob ? result : null
-}
-
-/** 删一份文件。本来就没有也算成功，删记录、换附件都能无脑调 */
-export async function deleteAttachment(key: string): Promise<void> {
-  await run('readwrite', store => store.delete(key))
-}
-
-/** 附件主键：带时间戳，方便在 IndexedDB 里看出先后；随机尾巴防同一毫秒撞车 */
-export function newAttachmentKey(now: number = Date.now()): string {
-  return `k-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-/* ---------- 展示 ---------- */
+/** bucket 名，建在 Supabase 后台的 Storage 里，必须是 public */
+export const FILES_BUCKET = 'files'
 
 /** 1.2 MB / 860 KB / 512 B，两种单位之间不出现 1024 KB 这种 */
 export function formatFileSize(bytes: number): string {
@@ -128,86 +39,73 @@ function trimZero(value: string): string {
   return value.endsWith('.0') ? value.slice(0, -2) : value
 }
 
-/** 从 File 里抽元信息。key 用调用方给的，方便先建 key 再决定存不存 */
-export function attachmentFromFile(file: File, key = newAttachmentKey()): Attachment {
-  return {
-    key,
-    name: file.name || '未命名文件',
-    size: file.size,
-    mime: file.type || '',
-  }
+/**
+ * 对象路径：`{时间戳}-{随机串}-{文件名的 ASCII 版}`。
+ *
+ * 时间戳让人在后台一眼看出先后，随机串防同一毫秒同名撞车。
+ *
+ * 为什么不是原文件名：Supabase Storage 的 key 只收 ASCII，
+ * 直接传「高数复习手册.pdf」会 400 InvalidKey（实测）。
+ * 所以路径里换成安全名，**记录里的 fileName 仍是原名**，
+ * 列表显示和下载时的文件名都不受影响。
+ */
+export function fileObjectPath(
+  file: { name: string },
+  now: number = Date.now(),
+  rand: string = Math.random().toString(36).slice(2, 8),
+): string {
+  return `${now}-${rand}-${asciiName(file.name || '未命名文件')}`
 }
 
-/** 读盘校验：缺 key、缺名字、大小不是数字的一律当没有附件 */
-export function isAttachment(value: unknown): value is Attachment {
-  if (!value || typeof value !== 'object') return false
-  const item = value as Partial<Attachment>
-  return (
-    typeof item.key === 'string' &&
-    item.key.trim().length > 0 &&
-    typeof item.name === 'string' &&
-    item.name.trim().length > 0 &&
-    typeof item.size === 'number' &&
-    Number.isFinite(item.size) &&
-    item.size >= 0 &&
-    typeof item.mime === 'string'
-  )
-}
-
-/** 存进记录前归一：名字去掉首尾空格，MIME 缺了用空串，其余原样 */
-export function normalizeAttachment(value: unknown): Attachment | undefined {
-  if (!isAttachment(value)) return undefined
-  const name = value.name.trim()
-  if (!name) return undefined
-  return {
-    key: value.key,
-    name,
-    size: value.size,
-    mime: value.mime,
-  }
-}
-
-/* ---------- 预览方式 ---------- */
-
-export type PreviewKind = 'image' | 'pdf' | 'text' | 'video' | 'audio' | 'other'
-
-const TEXT_EXT = [
-  'txt', 'md', 'markdown', 'csv', 'json', 'log', 'xml', 'yml', 'yaml', 'ini',
-  'ts', 'tsx', 'js', 'jsx', 'py', 'java', 'c', 'cpp', 'h', 'css', 'html',
-]
-const IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif']
-const VIDEO_EXT = ['mp4', 'webm', 'ogv', 'm4v']
-const AUDIO_EXT = ['mp3', 'wav', 'ogg', 'm4a', 'flac']
-
-function extOf(name: string): string {
+/** 只留 ASCII 字母数字和 . _ -，连续下划线合成一个；中文名退化成 file.ext */
+function asciiName(name: string): string {
   const dot = name.lastIndexOf('.')
-  return dot >= 0 ? name.slice(dot + 1).toLowerCase() : ''
+  const rawBase = dot > 0 ? name.slice(0, dot) : name
+  const rawExt = dot > 0 ? name.slice(dot + 1) : ''
+
+  const base = rawBase
+    .replace(/[^A-Za-z0-9._-]+/g, '_')
+    .replace(/_{2,}/g, '_')
+    .replace(/^[-_.]+|[-_.]+$/g, '')
+  const ext = rawExt.replace(/[^A-Za-z0-9]/g, '')
+
+  return ext ? `${base || 'file'}.${ext}` : base || 'file'
+}
+
+/** 路径里可能有空格和中文，逐段转义；斜杠要留着当分隔符 */
+function encodePath(path: string): string {
+  return path.split('/').map(encodeURIComponent).join('/')
+}
+
+/** 公开访问地址：bucket 是 public，任何人拿到这个链接都能打开 */
+export function publicFileUrl(path: string): string {
+  return `${FEED_URL}/storage/v1/object/public/${FILES_BUCKET}/${encodePath(path)}`
 }
 
 /**
- * 这个文件能不能在应用里直接看。
+ * 传一个文件，返回它的对象路径和公开地址。
  *
- * MIME 优先（浏览器给的更准），认不出再退回后缀 —— 有些系统上传时
- * `File.type` 是空的，只看 MIME 会把 PDF 当成「看不了」。
- * 判不出来的一律 other：至少给个下载按钮，不假装能预览。
+ * 失败一律抛错，由表单显示一句人话，不把半截状态写进记录 ——
+ * 记录里存了 fileUrl 但文件其实没传上去，点开就是 404，比报错更难查。
  */
-export function previewKind(attachment: Attachment): PreviewKind {
-  const mime = attachment.mime.toLowerCase()
-  if (mime.startsWith('image/')) return 'image'
-  if (mime === 'application/pdf') return 'pdf'
-  if (mime.startsWith('text/')) return 'text'
-  if (mime === 'application/json' || mime === 'application/xml') return 'text'
-  if (mime.startsWith('video/')) return 'video'
-  if (mime.startsWith('audio/')) return 'audio'
+export async function uploadFile(file: File): Promise<{ path: string; url: string }> {
+  const path = fileObjectPath(file)
+  const res = await fetch(`${FEED_URL}/storage/v1/object/${FILES_BUCKET}/${encodePath(path)}`, {
+    method: 'POST',
+    headers: {
+      apikey: FEED_KEY,
+      Authorization: `Bearer ${FEED_KEY}`,
+      'Content-Type': file.type || 'application/octet-stream',
+      'x-upsert': 'false',
+      'cache-control': '3600',
+    },
+    body: file,
+  })
 
-  const ext = extOf(attachment.name)
-  if (IMAGE_EXT.includes(ext)) return 'image'
-  if (ext === 'pdf') return 'pdf'
-  if (TEXT_EXT.includes(ext)) return 'text'
-  if (VIDEO_EXT.includes(ext)) return 'video'
-  if (AUDIO_EXT.includes(ext)) return 'audio'
-  return 'other'
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`上传失败（${res.status}）${detail.slice(0, 200)}`)
+  }
+
+  return { path, url: publicFileUrl(path) }
 }
-
-/** 文本预览最多读这么多：再大就不是用来在手机上看的东西了 */
-export const MAX_TEXT_PREVIEW = 512 * 1024
