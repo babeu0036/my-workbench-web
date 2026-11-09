@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatFileSize } from '../lib/files'
-import { docxToHtml, previewKind } from '../lib/preview'
+import { OFFICE_TIMEOUT, docxToHtml, officeViewerUrl, previewKind } from '../lib/preview'
 
 type Props = {
   name: string
@@ -17,6 +17,9 @@ type Props = {
  * - PDF：iframe 交给浏览器自带阅读器
  * - 图片：img 直接显示
  * - Word(docx)：mammoth 在浏览器里转成 HTML（点开时才动态加载那个包）
+ * - 其他 Office：交给微软的在线查看器，10 秒没回来就当它打不开；
+ *   底部**始终**留一行「打不开？下载原文件」—— 那台服务器在国外，
+ *   慢或被拦是常事，不能让人等满 10 秒才知道有退路
  * - 其余：老实说「该格式不支持预览」，给个下载按钮
  *
  * 早期版本的附件只有文件名、没有云端地址，这里会直接说明，
@@ -27,15 +30,37 @@ export default function AttachmentPreview({ name, size, url, type, onClose }: Pr
   const [html, setHtml] = useState('')
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
+  /** Office 预览自己超时：跟「文件打不开」分开说，文案不一样 */
+  const [officeTimeout, setOfficeTimeout] = useState(false)
+  const officeTimer = useRef<number | null>(null)
 
   useEffect(() => {
+    const clearOfficeTimer = () => {
+      if (officeTimer.current !== null) {
+        window.clearTimeout(officeTimer.current)
+        officeTimer.current = null
+      }
+    }
+
     setHtml('')
     setFailed(false)
+    setOfficeTimeout(false)
+    clearOfficeTimer()
 
     if (!url) {
       setFailed(true)
       return
     }
+
+    if (kind === 'office') {
+      // iframe 跨域，读不到内容；能等的只有「页面有没有回来」这一件事
+      officeTimer.current = window.setTimeout(() => {
+        officeTimer.current = null
+        setOfficeTimeout(true)
+      }, OFFICE_TIMEOUT)
+      return clearOfficeTimer
+    }
+
     if (kind !== 'docx') return
 
     let alive = true
@@ -63,6 +88,14 @@ export default function AttachmentPreview({ name, size, url, type, onClose }: Pr
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
+
+  /** iframe 回来了就撤掉计时器；至于里面显示的是正文还是它自己的错误页，跨域看不出来 */
+  const handleFrameLoad = () => {
+    if (officeTimer.current !== null) {
+      window.clearTimeout(officeTimer.current)
+      officeTimer.current = null
+    }
+  }
 
   return (
     <div className="preview-layer" onClick={onClose} role="presentation">
@@ -100,6 +133,23 @@ export default function AttachmentPreview({ name, size, url, type, onClose }: Pr
             <img className="preview__image" src={url} alt={name} />
           ) : kind === 'pdf' ? (
             <iframe className="preview__frame" src={url} title={name} />
+          ) : kind === 'office' ? (
+            officeTimeout ? (
+              <div className="preview__note">
+                <p>预览加载超时，可下载查看。</p>
+                <a className="btn btn--primary" href={url} download={name}>
+                  下载
+                </a>
+              </div>
+            ) : (
+              <iframe
+                className="preview__frame"
+                src={officeViewerUrl(url)}
+                title={name}
+                onLoad={handleFrameLoad}
+                referrerPolicy="no-referrer"
+              />
+            )
           ) : kind === 'docx' ? (
             loading ? (
               <p className="preview__note">正在打开…</p>
@@ -127,6 +177,15 @@ export default function AttachmentPreview({ name, size, url, type, onClose }: Pr
             </div>
           )}
         </div>
+
+        {/* Office 走的是微软的服务器，慢或被拦都不奇怪：退路一直在，不用等超时 */}
+        {url && kind === 'office' && (
+          <div className="preview__foot">
+            <a href={url} download={name} target="_blank" rel="noreferrer noopener">
+              打不开？下载原文件
+            </a>
+          </div>
+        )}
       </div>
     </div>
   )
