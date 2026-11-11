@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { KNOWLEDGE_TYPES, guessType, titleFrom, typeLabel } from '../lib/knowledge'
+import {
+  KNOWLEDGE_TYPES,
+  guessType,
+  normalizeTags,
+  titleFrom,
+  typeLabel,
+} from '../lib/knowledge'
 import type { KnowledgeFileInput, KnowledgeInput } from '../lib/knowledge'
 import { MAX_FILE_SIZE, formatFileSize, uploadFile } from '../lib/files'
+import { compressImage, isCompressible } from '../lib/image'
 import type { Knowledge, KnowledgeType } from '../lib/types'
 
 type Props = {
@@ -48,13 +55,19 @@ export default function KnowledgeForm({ entry, focusField = 'title', onClose, on
   const [title, setTitle] = useState(entry?.title ?? '')
   const [url, setUrl] = useState(entry?.url ?? '')
   const [summary, setSummary] = useState(entry?.summary ?? '')
+  // 标签在输入框里是「高数, 期末」这样一串，保存时再拆成数组
+  const [tags, setTags] = useState((entry?.tags ?? []).join(', '))
   // 当前附件：编辑时先放原来那条，选了新文件就换成新的（还没传）
   const [file, setFile] = useState<KnowledgeFileInput | null>(fileOf(entry))
   // 新选的本地文件，保存时才上传；null = 没换文件
   const [picked, setPicked] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState(false)
+  // 图片在上传前先过一遍 canvas，压缩期间别再让人点提交
+  const [compressing, setCompressing] = useState(false)
   const [dragging, setDragging] = useState(false)
+  // 连选两张图时，只认最后一次的结果，前一张的压缩结果直接丢掉
+  const pickSeq = useRef(0)
   // 编辑时视为「已经手动定过」，避免改标题把类型带走
   const [manual, setManual] = useState(Boolean(entry))
   const [type, setType] = useState<KnowledgeType>(entry?.type ?? 'exp')
@@ -85,18 +98,40 @@ export default function KnowledgeForm({ entry, focusField = 'title', onClose, on
   const canSubmit = Boolean(title.trim() || summary.trim() || url.trim() || file)
   const fallbackTitle = titleFrom({ title, summary, url, fileName: file?.name })
 
-  /** 选中（或拖进）一个文件：只检查大小、记下元信息，不上传 */
-  function takeFile(next: File | null | undefined) {
+  /**
+   * 选中（或拖进）一个文件：**图片先压缩，再查 10 MB**。
+   *
+   * 顺序不能反：一张 12 MB 的截图压完可能只有 800 KB，先拦下来就白拦了。
+   * 压缩期间按钮禁用，避免点出两份；换文件时用序号丢弃过期的结果。
+   */
+  async function takeFile(next: File | null | undefined) {
     if (!next) return
-    if (next.size > MAX_FILE_SIZE) {
+
+    const seq = ++pickSeq.current
+    setError('')
+
+    let chosen = next
+    if (isCompressible(next.type)) {
+      setCompressing(true)
+      try {
+        chosen = await compressImage(next)
+      } finally {
+        if (seq === pickSeq.current) setCompressing(false)
+      }
+      if (seq !== pickSeq.current) return
+    }
+
+    if (chosen.size > MAX_FILE_SIZE) {
+      // 压缩没起作用时别写「压缩后」，否则会让人以为压了却没用
+      const after = chosen === next ? '' : '压缩后'
       setError(
-        `「${next.name}」有 ${formatFileSize(next.size)}，超过 10 MB，换个小的，或者先把文件放别处、这里只写标题`,
+        `「${next.name}」${after}仍有 ${formatFileSize(chosen.size)}，超过 10 MB，换个小的，或者先把文件放别处、这里只写标题`,
       )
       return
     }
-    setError('')
-    setPicked(next)
-    setFile({ name: next.name, size: next.size, type: next.type, url: '' })
+
+    setPicked(chosen)
+    setFile({ name: chosen.name, size: chosen.size, type: chosen.type, url: '' })
   }
 
   function clearFile() {
@@ -106,7 +141,7 @@ export default function KnowledgeForm({ entry, focusField = 'title', onClose, on
   }
 
   async function submit() {
-    if (!canSubmit || uploading) return
+    if (!canSubmit || uploading || compressing) return
 
     let nextFile = file
     // 换了新文件才传；没换就保持原样（包括老的本地附件，不碰它的元信息）
@@ -128,6 +163,7 @@ export default function KnowledgeForm({ entry, focusField = 'title', onClose, on
       title,
       summary,
       url,
+      tags: normalizeTags(tags),
       type: manual ? type : guessed,
       file: nextFile,
     })
@@ -201,6 +237,18 @@ export default function KnowledgeForm({ entry, focusField = 'title', onClose, on
           maxLength={200}
         />
 
+        <input
+          className="input"
+          value={tags}
+          onChange={e => setTags(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') void submit()
+          }}
+          placeholder="标签（用逗号分隔，可留空）例如：高数, 期末, 老师发的"
+          aria-label="标签"
+          maxLength={200}
+        />
+
         <span className="sheet__label">附件（可选）</span>
 
         <div
@@ -215,7 +263,7 @@ export default function KnowledgeForm({ entry, focusField = 'title', onClose, on
           onDrop={e => {
             e.preventDefault()
             setDragging(false)
-            takeFile(e.dataTransfer.files?.[0])
+            void takeFile(e.dataTransfer.files?.[0])
           }}
         >
           {file ? (
@@ -236,7 +284,7 @@ export default function KnowledgeForm({ entry, focusField = 'title', onClose, on
                   type="button"
                   className="kfile__btn"
                   onClick={() => fileRef.current?.click()}
-                  disabled={uploading}
+                  disabled={uploading || compressing}
                 >
                   换一个
                 </button>
@@ -256,12 +304,14 @@ export default function KnowledgeForm({ entry, focusField = 'title', onClose, on
                 type="button"
                 className="kfile__pick"
                 onClick={() => fileRef.current?.click()}
-                disabled={uploading}
+                disabled={uploading || compressing}
               >
-                添加附件
+                {compressing ? '压缩中…' : '添加附件'}
               </button>
               <span className="kfile__tip">
-                PDF、Word、图片都行，单个不超过 10 MB；也可以直接把文件拖到这里
+                {compressing
+                  ? '正在压缩图片，稍等一下…'
+                  : 'PDF、Word、图片都行，单个不超过 10 MB（图片会自动压缩）；也可以直接把文件拖到这里'}
               </span>
             </>
           )}
@@ -271,7 +321,7 @@ export default function KnowledgeForm({ entry, focusField = 'title', onClose, on
             className="kfile__input"
             type="file"
             onChange={e => {
-              takeFile(e.target.files?.[0])
+              void takeFile(e.target.files?.[0])
               // 清空 value，同一个文件改完再选一次也能触发 change
               e.target.value = ''
             }}
@@ -335,7 +385,7 @@ export default function KnowledgeForm({ entry, focusField = 'title', onClose, on
           type="button"
           className="btn btn--primary sheet__submit"
           onClick={() => void submit()}
-          disabled={!canSubmit || uploading}
+          disabled={!canSubmit || uploading || compressing}
         >
           {uploading ? '上传中…' : entry ? '保存' : '添加'}
         </button>

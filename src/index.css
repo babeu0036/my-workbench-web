@@ -2877,6 +2877,33 @@ textarea {
   width: 100%;
 }
 
+/* 存储用量：筛选栏下面一行小字，正常是灰的，快到九成就变红；下一行是常驻说明 */
+.kb-usage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: -4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.kb-usage--warn {
+  color: var(--danger);
+}
+
+.kb-usage__alert {
+  font-weight: 600;
+}
+
+.kb-usage__note {
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 /* 一条记录都没有时的虚线按钮，和「还没有目标，点这里添加」一个手感 */
 .kb-empty {
   width: 100%;
@@ -2927,7 +2954,7 @@ textarea {
   color: var(--warn);
 }
 
-.ktag--job {
+.ktag--result {
   background: var(--done-soft);
   color: var(--done);
 }
@@ -3064,6 +3091,20 @@ textarea {
   line-height: 1.5;
   text-decoration: underline dotted;
   text-underline-offset: 3px;
+}
+
+/* 自己打的标签：灰字小号，一行排不下就换行，不做彩色 */
+.krow__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-self: flex-start;
+}
+
+.krow__tag {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 /* ---------- 行业动态（今日动态） ---------- */

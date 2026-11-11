@@ -10,9 +10,11 @@ import {
   filterKnowledge,
   removeKnowledge,
   sortKnowledge,
+  storageUsage,
   updateKnowledge,
 } from '../lib/knowledge'
 import type { KnowledgeFilter, KnowledgeInput } from '../lib/knowledge'
+import { formatStorageSize } from '../lib/files'
 import { fetchFeed, isFresh } from '../lib/feed'
 import type { FeedStatus } from '../lib/feed'
 import type { FeedCache, FeedItem, Knowledge } from '../lib/types'
@@ -26,11 +28,16 @@ type Props = {
 }
 
 /**
- * 知识库。自上而下：标题 →（可折叠的行业动态）→ 搜索框 → 类型筛选 → 列表；
+ * 知识库。自上而下：标题 →（可折叠的行业动态）→ 搜索框 → 类型筛选 → 存储用量 → 列表；
  * 右下角 + 加一条。
  *
- * 搜索是即时的：每敲一个字就重算，没有「搜索」按钮。搜索和筛选都只活在内存里，
- * 刷新回到「全部」—— 不落盘，也避免某天打开发现「记录不见了」其实是筛选没清。
+ * 搜索是即时的：每敲一个字就重算，没有「搜索」按钮。标题、说明、标签、文件名、
+ * 类型标签文字都参与。搜索和筛选都只活在内存里，刷新回到「全部」——
+ * 不落盘，也避免某天打开发现「记录不见了」其实是筛选没清。
+ *
+ * 存储用量只统计记录里的 fileSize，按全部记录算，不跟着筛选走；
+ * 到九成变红提醒一句。它不是 Supabase 后台的真实占用（删记录不清文件），
+ * 所以下面常驻一行说明，省得用户拿它对账。
  *
  * 两种空状态分开写，别混：
  * - 一条都没有：「还没有记录，点右下角添加一条」（点了直接开面板）；
@@ -63,6 +70,8 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
 
   const shown = sortKnowledge(filterKnowledge(items, filter, query))
   const filters = [{ key: 'all' as const, label: '全部' }, ...KNOWLEDGE_TYPES]
+  // 用量按**全部记录**算，不跟着筛选和搜索走：删掉的那几条也算进去才诚实
+  const usage = storageUsage(items)
 
   /** 已经收藏过的链接：同一个链接只放一个「收藏」，省得列表里出现两条一样的 */
   const collected = new Set(
@@ -161,7 +170,7 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
           className="input kb-search"
           value={query}
           onChange={event => setQuery(event.target.value)}
-          placeholder="搜标题、说明或文件名"
+          placeholder="搜标题、说明、标签或文件名"
           aria-label="搜索知识库"
         />
 
@@ -178,6 +187,14 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
             </button>
           ))}
         </div>
+
+        <div className={usage.warn ? 'kb-usage kb-usage--warn' : 'kb-usage'}>
+          <span>
+            已用 {formatStorageSize(usage.used)} / {formatStorageSize(usage.quota)}
+          </span>
+          {usage.warn && <span className="kb-usage__alert">空间快满了，建议清理大文件</span>}
+        </div>
+        <p className="kb-usage__note">实际占用可能略高，删除的文件不立即释放</p>
 
         {items.length === 0 ? (
           <button type="button" className="kb-empty" onClick={() => setPanelOpen(true)}>

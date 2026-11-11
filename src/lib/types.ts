@@ -55,13 +55,13 @@ export type Deadline = {
 }
 
 /**
- * 知识库条目的类型：课程 / 竞赛 / 求职 / 制度 / 经验。
+ * 知识库条目的类型：课程资料 / 竞赛项目 / 成果档案 / 规章制度 / 经验技巧。
  * 新建时按 `guessType` 自动判断，用户可以手动改；手动改过就是最终值。
  *
- * 老数据的 `material / industry / mine`（以及更早的 `rule`）已经取消，
+ * 老数据的 `material / industry / mine / job` 都已经取消，
  * 读盘时按新关键词重判成这五类之一。
  */
-export type KnowledgeType = 'course' | 'contest' | 'job' | 'rule' | 'exp'
+export type KnowledgeType = 'course' | 'contest' | 'result' | 'rule' | 'exp'
 
 /**
  * 早期版本存在浏览器 IndexedDB 里的附件元信息。
@@ -94,6 +94,12 @@ export type Knowledge = {
   fileUrl?: string
   /** MIME，浏览器认不出时是空字符串 */
   fileType?: string
+  /**
+   * 自己打的标签，用来在大类下面再分一层（「高数」「嵌入式」）。
+   * 一律存数组、空着就是 `[]`，读的时候不用再判 undefined。
+   * 展示时前面加 `#`，搜索也认它。
+   */
+  tags: string[]
   /** 一句话说明。可以不填 —— 收藏行业动态时就是空着进来的，列表里显示「补一句说明」 */
   summary: string
   createdAt: number

@@ -51,6 +51,15 @@ export default function KnowledgeList({ items, onEdit, onRemove, onPreview }: Pr
               {showSummary(item) && <span className="krow__summary">{item.summary}</span>}
               {/* 收藏来的行业动态只带标题和链接，说明是空的 —— 灰字提示一句，点进正文就能补 */}
               {!item.summary && <span className="krow__hint">补一句说明</span>}
+              {(item.tags ?? []).length > 0 && (
+                <span className="krow__tags">
+                  {(item.tags ?? []).map(tag => (
+                    <span key={tag} className="krow__tag">
+                      #{tag}
+                    </span>
+                  ))}
+                </span>
+              )}
             </button>
 
             <span className="krow__sources">

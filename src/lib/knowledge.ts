@@ -14,19 +14,19 @@ import type { Knowledge, KnowledgeType, LegacyAttachment } from './types'
 
 /** 五类，顺序就是筛选栏和表单里的顺序 */
 export const KNOWLEDGE_TYPES: { key: KnowledgeType; label: string }[] = [
-  { key: 'course', label: '课程' },
-  { key: 'contest', label: '竞赛' },
-  { key: 'job', label: '求职' },
-  { key: 'rule', label: '制度' },
-  { key: 'exp', label: '经验' },
+  { key: 'course', label: '课程资料' },
+  { key: 'contest', label: '竞赛项目' },
+  { key: 'result', label: '成果档案' },
+  { key: 'rule', label: '规章制度' },
+  { key: 'exp', label: '经验技巧' },
 ]
 
 const LABELS: Record<KnowledgeType, string> = {
-  course: '课程',
-  contest: '竞赛',
-  job: '求职',
-  rule: '制度',
-  exp: '经验',
+  course: '课程资料',
+  contest: '竞赛项目',
+  result: '成果档案',
+  rule: '规章制度',
+  exp: '经验技巧',
 }
 
 export function typeLabel(type: KnowledgeType): string {
@@ -37,10 +37,49 @@ export function isKnowledgeType(value: unknown): value is KnowledgeType {
   return (
     value === 'course' ||
     value === 'contest' ||
-    value === 'job' ||
+    value === 'result' ||
     value === 'rule' ||
     value === 'exp'
   )
+}
+
+/* ---------- 标签 ---------- */
+
+/** 一条记录最多留几个标签：够分小类就行，再多列表就成一行乱码了 */
+export const MAX_TAGS = 10
+/** 单个标签的字符上限，粘贴一大段话进来也不至于撑破一行 */
+export const MAX_TAG_LENGTH = 20
+
+/**
+ * 把用户写的一串字变成标签数组。
+ *
+ * 中英文逗号、分号、顿号都当分隔符 —— 中文输入法下面打出「，」太正常了，
+ * 只认半角逗号会让人以为标签没生效。顺手去掉开头的 `#`（展示时本来就会加），
+ * 去重不区分大小写，空的丢掉。
+ */
+export function normalizeTags(input: string[] | string | undefined | null): string[] {
+  if (!input) return []
+  const chunks = Array.isArray(input)
+    ? input
+    : String(input).split(/[,，、;；]/)
+
+  const tags: string[] = []
+  for (const raw of chunks) {
+    const tag = String(raw ?? '')
+      .trim()
+      .replace(/^#+/, '')
+      .trim()
+    if (!tag) continue
+    if (tags.some(item => item.toLowerCase() === tag.toLowerCase())) continue
+    tags.push(tag.slice(0, MAX_TAG_LENGTH))
+    if (tags.length >= MAX_TAGS) break
+  }
+  return tags
+}
+
+/** 标签显示成「#高数 #嵌入式」；空数组给空串，调用方直接判真假 */
+export function tagsText(tags: string[] | undefined): string {
+  return (tags ?? []).map(tag => `#${tag}`).join(' ')
 }
 
 /* ---------- 自动归类 ---------- */
@@ -50,13 +89,16 @@ export function isKnowledgeType(value: unknown): value is KnowledgeType {
  *
  * 顺序不能换：「期末复习比赛报名」既是课程又是竞赛，先判课程更符合直觉；
  * 「奖学金规定」会落到「制度」而不是「经验」，因为制度那条排在前面。
+ *
+ * contest 这一组**故意不收「获奖」**：它太泛，「获奖记录」「获奖证书」
+ * 该算成果档案，收进来就会被竞赛先抢走。
  */
 const TYPE_WORDS: { type: KnowledgeType; words: string[] }[] = [
-  { type: 'course', words: ['课件', '期末', '复习', '真题', '老师'] },
-  { type: 'contest', words: ['比赛', '竞赛', '报名', '省奖', '获奖'] },
-  { type: 'job', words: ['简历', '实习', '岗位', '面试', 'offer', '项目成果'] },
-  { type: 'rule', words: ['评奖', '奖学金', '学分', '综测', '规定'] },
-  { type: 'exp', words: ['报错', '解决', '配置', '流程', '注意'] },
+  { type: 'course', words: ['课件', '期末', '复习', '真题', '老师', '作业'] },
+  { type: 'contest', words: ['比赛', '竞赛', '报名', '省奖', '备赛'] },
+  { type: 'result', words: ['简历', '证书', '项目成果', '获奖', '实习'] },
+  { type: 'rule', words: ['评奖', '奖学金', '学分', '综测', '规定', '通知'] },
+  { type: 'exp', words: ['报错', '解决', '配置', '流程', '技巧'] },
 ]
 
 /**
@@ -256,10 +298,12 @@ export function normalizeKnowledge(
 
   const knowledge: Knowledge = {
     id,
-    // 老的 material / industry / mine / rule 都不能原样留着（会显示成不认识的标签），按内容重判
+    // 老的 material / industry / mine / job / rule 都不能原样留着（会显示成不认识的标签），按内容重判
     type: isKnowledgeType(item.type) ? item.type : guessType({ title, summary, fileName }),
     title: titleFrom({ title, summary, url, fileName }),
     summary,
+    // 老记录没有这个键，读盘时统一补成空数组，后面就不用到处判 undefined
+    tags: normalizeTags(item.tags),
     createdAt,
   }
 
@@ -302,6 +346,8 @@ export type KnowledgeInput = {
   url?: string
   /** 文件：null / 不传 = 没有（更新时 null 表示清掉），有值就换成这个 */
   file?: KnowledgeFileInput | null
+  /** 标签：不传 = 不动（更新时）；传空数组 = 清空 */
+  tags?: string[]
   type: KnowledgeType
 }
 
@@ -323,6 +369,7 @@ export function addKnowledge(
     type: isKnowledgeType(input.type) ? input.type : guessType({ title, summary, fileName }),
     title: titleFrom({ title, summary, url, fileName }),
     summary,
+    tags: normalizeTags(input.tags),
     createdAt: now,
   }
 
@@ -360,6 +407,8 @@ export function updateKnowledge(
       type,
       title: titleFrom({ title, summary, url, fileName }),
       summary,
+      // 不传 tags = 保持原样；传空数组才是清空
+      tags: patch.tags === undefined ? item.tags : normalizeTags(patch.tags),
     }
 
     if (url) next.url = url
@@ -381,8 +430,10 @@ export function removeKnowledge(list: Knowledge[], id: number): Knowledge[] {
 export type KnowledgeFilter = 'all' | KnowledgeType
 
 /**
- * 类型筛选 + 搜索一起做。搜索看标题、说明和文件名（链接不参与），
- * 忽略大小写、忽略两头空格；空搜索词等于不搜。
+ * 类型筛选 + 搜索一起做。
+ *
+ * 搜索看标题、说明、标签、文件名和**类型标签**（搜「竞赛」能出竞赛项目，
+ * 搜「成果档案」也出得来）；链接不参与。忽略大小写、忽略两头空格，空搜索词等于不搜。
  */
 export function filterKnowledge(
   list: Knowledge[],
@@ -396,7 +447,9 @@ export function filterKnowledge(
     return (
       item.title.toLowerCase().includes(keyword) ||
       item.summary.toLowerCase().includes(keyword) ||
-      (item.fileName ?? '').toLowerCase().includes(keyword)
+      (item.fileName ?? '').toLowerCase().includes(keyword) ||
+      (item.tags ?? []).some(tag => tag.toLowerCase().includes(keyword)) ||
+      typeLabel(item.type).includes(keyword)
     )
   })
 }
@@ -406,4 +459,44 @@ export function sortKnowledge(list: Knowledge[]): Knowledge[] {
   return [...list].sort((a, b) =>
     a.createdAt === b.createdAt ? b.id - a.id : b.createdAt - a.createdAt,
   )
+}
+
+/* ---------- 存储用量 ---------- */
+
+/** bucket 配额：1 GB。这是给自己看的预算，不是 Supabase 那边真实的上限 */
+export const STORAGE_QUOTA = 1024 * 1024 * 1024
+
+/** 到九成就提醒，留一点余量收拾 */
+export const STORAGE_WARN_RATIO = 0.9
+
+/**
+ * 已用空间 = 所有记录 fileSize 之和。
+ *
+ * 注意它只统计**记录里记着的大小**：删记录不会清 bucket 里的文件
+ * （anon 没有 DELETE 权限），所以后台看到的实际占用会比这个数字大一点。
+ */
+export function storageUsed(list: Knowledge[]): number {
+  return list.reduce((sum, item) => {
+    const size = item.fileSize
+    return sum + (typeof size === 'number' && Number.isFinite(size) && size > 0 ? size : 0)
+  }, 0)
+}
+
+export type StorageUsage = {
+  used: number
+  quota: number
+  /** used / quota，可能大于 1；用来画进度或再判断都行 */
+  ratio: number
+  /** 到 90%（含）就是 true */
+  warn: boolean
+}
+
+export function storageUsage(list: Knowledge[]): StorageUsage {
+  const used = storageUsed(list)
+  return {
+    used,
+    quota: STORAGE_QUOTA,
+    ratio: used / STORAGE_QUOTA,
+    warn: used >= STORAGE_QUOTA * STORAGE_WARN_RATIO,
+  }
 }

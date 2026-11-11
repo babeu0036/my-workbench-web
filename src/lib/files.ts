@@ -40,6 +40,21 @@ function trimZero(value: string): string {
 }
 
 /**
+ * 存储用量那一行用的格式，比文件大小多一档 GB：`1 GB` / `128 MB` / `0 B`。
+ * MB 以内直接交给 formatFileSize，两处单位不会打架。
+ */
+export function formatStorageSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return '未知大小'
+
+  const gb = bytes / (1024 * 1024 * 1024)
+  if (gb >= 1) {
+    const value = gb < 10 ? gb.toFixed(1) : String(Math.round(gb))
+    return `${trimZero(value)} GB`
+  }
+  return formatFileSize(bytes)
+}
+
+/**
  * 对象路径：`{时间戳}-{随机串}-{文件名的 ASCII 版}`。
  *
  * 时间戳让人在后台一眼看出先后，随机串防同一毫秒同名撞车。
