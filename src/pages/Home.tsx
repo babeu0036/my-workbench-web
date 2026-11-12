@@ -10,7 +10,8 @@ import TodayCourses from '../components/TodayCourses'
 import TomorrowBlock from '../components/TomorrowBlock'
 import { todayCourses, tomorrowCourses } from '../lib/courses'
 import { dayKey, todayLabel } from '../lib/date'
-import { activePeriod, goalsOf } from '../lib/goals'
+import { currentStage } from '../lib/stages'
+import { goalsOfStage } from '../lib/goals'
 import { moodOf, setMood } from '../lib/mood'
 import type { MoodMap } from '../lib/mood'
 import { streak, todayTasks, todayTotals } from '../lib/stats'
@@ -25,7 +26,7 @@ import {
   toggleTodo,
   updateTodo,
 } from '../lib/todos'
-import type { Course, Goal, GoalPeriod, Subject, Todo, TodoKind } from '../lib/types'
+import type { Course, Goal, Stage, Subject, Todo, TodoKind } from '../lib/types'
 
 type Props = {
   todos: Todo[]
@@ -34,8 +35,8 @@ type Props = {
   /** 该提醒的任务，最急的在前；在 App 里算好传进来，侧边栏角标用的是同一份 */
   dueItems: Todo[]
   goals: Goal[]
-  /** 目标的周期：首页只显示「今天落在里面、结束最近」的那一个 */
-  periods: GoalPeriod[]
+  /** 阶段：首页只显示「今天落在里面、结束最近」的那一个 */
+  stages: Stage[]
   courses: Course[]
   /** 学期第 1 周的周一，决定「今天有课」里的课这周上不上 */
   semesterStart: string
@@ -65,7 +66,7 @@ export default function Home({
   subjects,
   dueItems,
   goals,
-  periods,
+  stages,
   courses,
   semesterStart,
   moods,
@@ -88,9 +89,9 @@ export default function Home({
 
   const today = dayKey()
   const mood = moodOf(moods, today)
-  // 首页只看当前周期：学期里套着暑假时，取结束得更近的那个
-  const period = activePeriod(periods)
-  const periodGoals = period ? goalsOf(goals, period.id) : []
+  // 首页只看当前阶段：阶段之间允许重叠时，取结束得更近的那个
+  const stage = currentStage(stages)
+  const stageGoals = stage ? goalsOfStage(goals, stage.id) : []
   const classes = todayCourses(courses, semesterStart)
   const totals = todayTotals(todos)
   const days = streak(todos)
@@ -113,7 +114,7 @@ export default function Home({
         <h2 className="page__title">首页</h2>
         <p className="page__hint">{todayLabel()} · 今天的任务</p>
 
-        <HomeGoal period={period} goals={periodGoals} onOpenGoal={onOpenGoal} />
+        <HomeGoal stage={stage} goals={stageGoals} onOpenGoal={onOpenGoal} />
 
         <DueSoon items={dueItems} subjects={subjects} onOpenSubject={onOpenSubject} />
 

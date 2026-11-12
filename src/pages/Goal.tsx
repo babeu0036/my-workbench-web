@@ -1,25 +1,22 @@
 import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import AchievementCard from '../components/AchievementCard'
 import AchievementForm from '../components/AchievementForm'
 import GoalAddPanel from '../components/GoalAddPanel'
 import GoalList from '../components/GoalList'
+import StageForm from '../components/StageForm'
+import StageList from '../components/StageList'
+import { addAchievement, detachTasks, removeAchievement } from '../lib/achievements'
+import { addGoal, removeGoal, sortForGoalList, toggleGoal, updateGoal } from '../lib/goals'
 import {
-  addAchievement,
-  detachTasks,
-  forAchievement,
-  removeAchievement,
-} from '../lib/achievements'
-import {
-  UNSORTED_PERIOD_ID,
-  addGoal,
-  removeGoal,
-  sortForGoalList,
-  toggleGoal,
-  updateGoal,
-} from '../lib/goals'
+  UNSORTED_STAGE_ID,
+  addStage,
+  currentStage,
+  nextStageOrder,
+  removeStage,
+  updateStage,
+} from '../lib/stages'
 import { addAchievementTodo, removeTodo, toggleTodo, updateTodo } from '../lib/todos'
-import type { Achievement, Goal as GoalItem, GoalPeriod, Todo } from '../lib/types'
+import type { Achievement, Goal as GoalItem, Stage, Todo } from '../lib/types'
 
 type Props = {
   /** 全部任务。这个页面是唯一看得见成就任务的地方 */
@@ -32,20 +29,19 @@ type Props = {
   setVision: Dispatch<SetStateAction<string>>
   goals: GoalItem[]
   setGoals: Dispatch<SetStateAction<GoalItem[]>>
-  /** 目标的周期：本学期 / 暑假 / 自己起的名 …… */
-  periods: GoalPeriod[]
-  setPeriods: Dispatch<SetStateAction<GoalPeriod[]>>
+  /** 阶段：目标页唯一的时间轴，目标条目和成就都挂在它下面 */
+  stages: Stage[]
+  setStages: Dispatch<SetStateAction<Stage[]>>
 }
 
 /**
- * 目标。从上到下：最终目标一行 → 目标列表 → 成就列表。
+ * 目标。从上到下：最终目标一行 → 目标条目 → 阶段（每个阶段里是成就卡）。
  *
- * 目标不再按周一条：一个周期（本学期 / 暑假 / 自己起的名）下想加几条加几条，
- * 列表是扁平一列，每条前面挂个小标签写明属于哪个周期。
- * 勾上就是完成，取消就回到未完成 —— 没有「点了就锁定」那套。
+ * 目标条目仍然是扁平一列、每条前面挂阶段标签，**不塞进阶段里** ——
+ * 阶段那一层负责成就，目标再按阶段分组就成了两层一样的结构。
  *
- * 成就还是原来的样子：卡片三态，任务只在这一页出现（见 withoutAchievement），
- * 所以这里拿到的是完整的 todos，别的页面拿的是剔过的那份。
+ * 成就按阶段折叠：当前阶段默认展开，其余收着。任务只在这一页出现
+ * （见 withoutAchievement），所以这里拿到的是完整的 todos，别的页面拿的是剔过的那份。
  */
 export default function Goal({
   todos,
@@ -56,15 +52,18 @@ export default function Goal({
   setVision,
   goals,
   setGoals,
-  periods,
-  setPeriods,
+  stages,
+  setStages,
 }: Props) {
-  const [achievementOpen, setAchievementOpen] = useState(false)
+  // 打开添加成就的面板时记下预选的阶段；null = 关着
+  const [addingFor, setAddingFor] = useState<{ stageId: number } | null>(null)
   const [goalOpen, setGoalOpen] = useState(false)
+  const [stageOpen, setStageOpen] = useState(false)
+  const [editingStage, setEditingStage] = useState<Stage | null>(null)
   const [editingVision, setEditingVision] = useState(false)
   const [visionDraft, setVisionDraft] = useState('')
 
-  const sortedGoals = sortForGoalList(goals, periods)
+  const sortedGoals = sortForGoalList(goals, stages)
 
   function startEditVision() {
     setVisionDraft(vision)
@@ -77,34 +76,55 @@ export default function Goal({
   }
 
   /**
-   * 面板里选的周期可能还不存在（刚自定义的）。
-   * 这里按「名字 + 起止」认一下：已经有就复用它，没有才真的追加一条周期。
-   * period 为 null 表示先不归周期 —— 直接放到「未分组」，不必先建周期。
+   * 面板里选的阶段可能还不存在（刚自定义的）。
+   * 这里按「名字 + 起止」认一下：已经有就复用它，没有才真的追加一条阶段。
+   * stage 为 null 表示先不归阶段 —— 直接放到「未归类」，不必先建阶段。
    */
-  function addOne(text: string, period: GoalPeriod | null) {
-    if (!period) {
-      setGoals(list => addGoal(list, { periodId: UNSORTED_PERIOD_ID, text }))
+  function addOne(text: string, stage: Stage | null) {
+    if (!stage) {
+      setGoals(list => addGoal(list, { stageId: UNSORTED_STAGE_ID, text }))
       setGoalOpen(false)
       return
     }
 
-    const existing = periods.find(
-      item => item.title === period.title && item.start === period.start && item.end === period.end,
+    const existing = stages.find(
+      item =>
+        item.title === stage.title && item.startKey === stage.startKey && item.endKey === stage.endKey,
     )
-    if (!existing) setPeriods(list => [...list, period])
-    setGoals(list => addGoal(list, { periodId: existing ? existing.id : period.id, text }))
+    if (existing) {
+      setGoals(list => addGoal(list, { stageId: existing.id, text }))
+    } else {
+      // 面板给的 order 只是「排最后」的意思，真实值按现有最大值算
+      const created: Stage = { ...stage, order: nextStageOrder(stages) }
+      setStages(list => [...list, created])
+      setGoals(list => addGoal(list, { stageId: created.id, text }))
+    }
     setGoalOpen(false)
   }
 
-  function addAchievementItem(title: string, note: string) {
-    setAchievements(list => addAchievement(list, title, note))
-    setAchievementOpen(false)
+  function addAchievementItem(title: string, note: string, stageId: number) {
+    setAchievements(list => addAchievement(list, title, note, stageId))
+    setAddingFor(null)
   }
 
   /** 删成就：任务不跟着删，只摘掉 achievementId，它们退回「未分类」 */
-  function removeOne(id: number) {
+  function removeAchievementItem(id: number) {
     setAchievements(list => removeAchievement(list, id))
     setTodos(list => detachTasks(list, id))
+  }
+
+  /**
+   * 删阶段：它下面的成就一起删（removeStage 已经把新数组算好了），
+   * 这些成就的任务只摘掉 achievementId —— 任务本身留在计划·任务里，
+   * 不然会变成一批谁也看不见的孤儿任务。
+   */
+  function removeStageItem(stage: Stage) {
+    const result = removeStage(stages, achievements, stage.id)
+    setStages(result.stages)
+    setAchievements(result.achievements)
+    if (result.removedAchievementIds.length > 0) {
+      setTodos(list => detachTasks(list, result.removedAchievementIds))
+    }
   }
 
   return (
@@ -148,7 +168,7 @@ export default function Goal({
 
         <GoalList
           goals={sortedGoals}
-          periods={periods}
+          stages={stages}
           onToggle={id => setGoals(list => toggleGoal(list, id))}
           onUpdate={(id, text) => setGoals(list => updateGoal(list, id, text))}
           onRemove={id => setGoals(list => removeGoal(list, id))}
@@ -161,37 +181,33 @@ export default function Goal({
           </button>
         )}
 
-        <h3 className="goal-section">成就</h3>
+        <h3 className="goal-section">阶段</h3>
 
-        {achievements.length === 0 ? (
-          <p className="placeholder__note">还没有成就，点右下角添加</p>
-        ) : (
-          achievements.map(item => (
-            <AchievementCard
-              key={item.id}
-              achievement={item}
-              tasks={forAchievement(todos, item.id)}
-              onToggleTask={id => setTodos(list => toggleTodo(list, id))}
-              onRemoveTask={id => setTodos(list => removeTodo(list, id))}
-              onAddTask={(text, dueDate) =>
-                setTodos(list => addAchievementTodo(list, text, item.id, dueDate))
-              }
-              onEditTask={(id, text, dueDate) =>
-                setTodos(list => updateTodo(list, id, { text, dueDate }))
-              }
-              onRemove={() => removeOne(item.id)}
-            />
-          ))
-        )}
+        <StageList
+          stages={stages}
+          achievements={achievements}
+          todos={todos}
+          onAddStage={() => setStageOpen(true)}
+          onEditStage={stage => setEditingStage(stage)}
+          onRemoveStage={removeStageItem}
+          onToggleTask={id => setTodos(list => toggleTodo(list, id))}
+          onRemoveTask={id => setTodos(list => removeTodo(list, id))}
+          onAddTask={(achievementId, text, dueDate) =>
+            setTodos(list => addAchievementTodo(list, text, achievementId, dueDate))
+          }
+          onEditTask={(id, text, dueDate) => setTodos(list => updateTodo(list, id, { text, dueDate }))}
+          onRemoveAchievement={removeAchievementItem}
+          onAddAchievement={stageId => setAddingFor({ stageId })}
+        />
       </div>
 
       <button
         type="button"
         className="fab"
-        onClick={() => setAchievementOpen(true)}
+        onClick={() => setAddingFor({ stageId: currentStage(stages)?.id ?? UNSORTED_STAGE_ID })}
         aria-label="添加成就"
         aria-haspopup="dialog"
-        aria-expanded={achievementOpen}
+        aria-expanded={addingFor !== null}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -205,17 +221,38 @@ export default function Goal({
       </button>
 
       {goalOpen && (
-        <GoalAddPanel
-          periods={periods}
-          onClose={() => setGoalOpen(false)}
-          onSubmit={addOne}
+        <GoalAddPanel stages={stages} onClose={() => setGoalOpen(false)} onSubmit={addOne} />
+      )}
+
+      {/* key 让「从 A 阶段加」切到「从 B 阶段加」时重新挂载，预选才会跟着变 */}
+      {addingFor && (
+        <AchievementForm
+          key={addingFor.stageId}
+          stages={stages}
+          defaultStageId={addingFor.stageId}
+          onClose={() => setAddingFor(null)}
+          onAdd={addAchievementItem}
         />
       )}
 
-      {achievementOpen && (
-        <AchievementForm
-          onClose={() => setAchievementOpen(false)}
-          onAdd={addAchievementItem}
+      {stageOpen && (
+        <StageForm
+          onClose={() => setStageOpen(false)}
+          onSubmit={input => {
+            setStages(list => addStage(list, input))
+            setStageOpen(false)
+          }}
+        />
+      )}
+
+      {editingStage && (
+        <StageForm
+          stage={editingStage}
+          onClose={() => setEditingStage(null)}
+          onSubmit={input => {
+            setStages(list => updateStage(list, editingStage.id, input))
+            setEditingStage(null)
+          }}
         />
       )}
     </>

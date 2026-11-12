@@ -1,20 +1,38 @@
 import { useEffect, useRef, useState } from 'react'
+import {
+  UNSORTED_STAGE_ID,
+  UNSORTED_STAGE_TITLE,
+  currentStage,
+  sortStages,
+  stageRangeText,
+} from '../lib/stages'
+import type { Stage } from '../lib/types'
 
 type Props = {
+  stages: Stage[]
+  /** 打开时预选哪个阶段；不传就按当前阶段，再不行就未归类 */
+  defaultStageId?: number
   onClose: () => void
-  onAdd: (title: string, note: string) => void
+  onAdd: (title: string, note: string, stageId: number) => void
 }
 
 /**
  * 新建成就的面板（右下角 + 打开）。只要标题，备注可选。
  *
- * 跟添加任务那个面板同一套壳（`.sheet-layer` / `.sheet`）：底部滑出、点遮罩或
- * 按 Esc 收起、打开就把焦点放进输入框。成就下面挂什么任务不在这儿填 ——
- * 建完在卡片里一条条加，免得一次要填一堆。
+ * 备注就是「做到什么程度算成」的判断标准 —— 卡片上会显示成一行灰字，
+ * 写不写都不影响点亮（点亮只看任务是否全勾完）。
+ *
+ * 阶段要选一个：默认是今天所在的阶段，也可以改，或者先放「未归类」。
+ * 成就下面挂什么任务不在这儿填 —— 建完在卡片里一条条加，免得一次要填一堆。
  */
-export default function AchievementForm({ onClose, onAdd }: Props) {
+export default function AchievementForm({ stages, defaultStageId, onClose, onAdd }: Props) {
   const [title, setTitle] = useState('')
   const [note, setNote] = useState('')
+  const [stageId, setStageId] = useState<number>(() => {
+    if (defaultStageId !== undefined) return defaultStageId
+    const active = currentStage(stages)
+    return active ? active.id : UNSORTED_STAGE_ID
+  })
   const titleRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -34,7 +52,7 @@ export default function AchievementForm({ onClose, onAdd }: Props) {
 
   function submit() {
     if (!canSubmit) return
-    onAdd(title.trim(), note.trim())
+    onAdd(title.trim(), note.trim(), stageId)
   }
 
   return (
@@ -69,10 +87,39 @@ export default function AchievementForm({ onClose, onAdd }: Props) {
           onKeyDown={e => {
             if (e.key === 'Enter') submit()
           }}
-          placeholder="备注（可选）：为什么做、做到什么程度算成"
+          placeholder="备注（可选）：做到什么程度算成"
           aria-label="成就备注"
           maxLength={120}
         />
+
+        <span className="sheet__label">归到哪个阶段</span>
+
+        <div className="sheet__pills">
+          {sortStages(stages).map(item => {
+            const on = stageId === item.id
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={on ? 'choice choice--on' : 'choice'}
+                onClick={() => setStageId(item.id)}
+                aria-pressed={on}
+                title={stageRangeText(item)}
+              >
+                {item.title}
+              </button>
+            )
+          })}
+
+          <button
+            type="button"
+            className={stageId === UNSORTED_STAGE_ID ? 'choice choice--on' : 'choice'}
+            onClick={() => setStageId(UNSORTED_STAGE_ID)}
+            aria-pressed={stageId === UNSORTED_STAGE_ID}
+          >
+            {UNSORTED_STAGE_TITLE}
+          </button>
+        </div>
 
         <button
           type="button"

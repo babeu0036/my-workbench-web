@@ -19,6 +19,8 @@ export function normalizeAchievement(raw: unknown, index = 0): Achievement | nul
   const id =
     typeof item.id === 'number' && Number.isFinite(item.id) ? item.id : Date.now() + index
   const note = typeof item.note === 'string' ? item.note.trim() : ''
+  const stageId =
+    typeof item.stageId === 'number' && Number.isFinite(item.stageId) ? item.stageId : undefined
   const doneAt =
     typeof item.doneAt === 'number' && Number.isFinite(item.doneAt) ? item.doneAt : undefined
 
@@ -27,6 +29,8 @@ export function normalizeAchievement(raw: unknown, index = 0): Achievement | nul
     title,
     // 空备注不留下 `note: ''` 这种半截键，判断处只看有没有这个字段
     ...(note ? { note } : {}),
+    // 没有阶段就不写这个键：目标页会把它放进「未归类」
+    ...(stageId !== undefined ? { stageId } : {}),
     ...(doneAt !== undefined ? { doneAt } : {}),
   }
 }
@@ -44,11 +48,12 @@ export function nextAchievementId(list: Achievement[], now: number = Date.now())
   return now > max ? now : max + 1
 }
 
-/** 加一条成就。标题是唯一必填项，备注可以空 */
+/** 加一条成就。标题是唯一必填项，备注和阶段都可以空 */
 export function addAchievement(
   list: Achievement[],
   title: string,
   note = '',
+  stageId?: number,
   now: number = Date.now(),
 ): Achievement[] {
   const value = title.trim()
@@ -56,8 +61,37 @@ export function addAchievement(
   const remark = note.trim()
   return [
     ...list,
-    { id: nextAchievementId(list, now), title: value, ...(remark ? { note: remark } : {}) },
+    {
+      id: nextAchievementId(list, now),
+      title: value,
+      ...(remark ? { note: remark } : {}),
+      ...(stageId !== undefined ? { stageId } : {}),
+    },
   ]
+}
+
+/** 改标题 / 备注。标题不能被改空；备注改空就把这个键删掉，不留空字符串 */
+export function updateAchievement(
+  list: Achievement[],
+  id: number,
+  patch: { title?: string; note?: string },
+): Achievement[] {
+  return list.map(item => {
+    if (item.id !== id) return item
+
+    const next = { ...item }
+    if (patch.title !== undefined) {
+      const title = patch.title.trim()
+      if (!title) return item
+      next.title = title
+    }
+    if (patch.note !== undefined) {
+      const note = patch.note.trim()
+      if (note) next.note = note
+      else delete next.note
+    }
+    return next
+  })
 }
 
 export function removeAchievement(list: Achievement[], id: number): Achievement[] {
@@ -67,11 +101,16 @@ export function removeAchievement(list: Achievement[], id: number): Achievement[
 /**
  * 删成就时任务不跟着删：只把 achievementId 摘掉，它们退回「未分类」
  * （subjectId 本来就是空的，摘掉标记就会出现在计划·任务里）。
+ *
+ * 收单个 id 或一批 id —— 删阶段时它下面可能有若干条成就。
  */
-export function detachTasks(todos: Todo[], id: number): Todo[] {
+export function detachTasks(todos: Todo[], id: number | number[]): Todo[] {
+  const ids = new Set(Array.isArray(id) ? id : [id])
+  if (ids.size === 0) return todos
+
   let changed = false
   const next = todos.map(todo => {
-    if (todo.achievementId !== id) return todo
+    if (todo.achievementId === undefined || !ids.has(todo.achievementId)) return todo
     changed = true
     const rest = { ...todo }
     delete rest.achievementId

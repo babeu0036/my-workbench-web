@@ -13,7 +13,8 @@ import { DEFAULT_SUBJECTS } from './lib/seed'
 import { normalizeCourses } from './lib/courses'
 import { normalizeDeadlines } from './lib/deadlines'
 import { pendingReminders } from './lib/due'
-import { normalizeGoals, normalizePeriods } from './lib/goals'
+import { normalizeGoals } from './lib/goals'
+import { normalizeStages } from './lib/stages'
 import { normalizeAchievements, withLitState } from './lib/achievements'
 import { normalizeKnowledgeList } from './lib/knowledge'
 import { normalizeFeedCache } from './lib/feed'
@@ -27,9 +28,9 @@ import type {
   Deadline,
   FeedCache,
   Goal,
-  GoalPeriod,
   Knowledge as KnowledgeItem,
   Route,
+  Stage,
   Subject,
   Todo,
 } from './lib/types'
@@ -73,9 +74,10 @@ export default function App() {
     [],
     normalizeDeadlines,
   )
-  // 目标：一个周期（本学期 / 暑假 / 那周）下挂若干条，首页只读当前周期那几条
+  // 目标：一个阶段（大一上 / 大一下 / …）下挂若干条，首页只读当前阶段那几条
   const [goals, setGoals] = useStoredState<Goal[]>(KEYS.goals, [], normalizeGoals)
-  const [periods, setPeriods] = useStoredState<GoalPeriod[]>(KEYS.goalPeriods, [], normalizePeriods)
+  // 阶段是目标页唯一的时间轴：目标条目和成就都挂在它下面
+  const [stages, setStages] = useStoredState<Stage[]>(KEYS.stages, [], normalizeStages)
   // 目标页：成就 + 最上面那行最终目标
   const [achievements, setAchievements] = useStoredState<Achievement[]>(
     KEYS.achievements,
@@ -187,7 +189,7 @@ export default function App() {
               subjects={subjects}
               dueItems={dueItems}
               goals={goals}
-              periods={periods}
+              stages={stages}
               courses={courses}
               semesterStart={semesterStart}
               moods={moods}
@@ -227,7 +229,7 @@ export default function App() {
           {/* 复盘只剩一页（原来的「数据」），不再有二级结构 */}
           {route.page === 'review' && <ReviewData todos={mainTodos} moods={moods} />}
 
-          {/* 目标页：最终目标 → 目标列表 → 成就列表；成就下的任务只在这一页出现 */}
+          {/* 目标页：最终目标 → 目标条目 → 阶段（内含成就）；成就下的任务只在这一页出现 */}
           {route.page === 'goal' && (
             <GoalPage
               todos={todos}
@@ -238,8 +240,8 @@ export default function App() {
               setVision={setVision}
               goals={goals}
               setGoals={setGoals}
-              periods={periods}
-              setPeriods={setPeriods}
+              stages={stages}
+              setStages={setStages}
             />
           )}
           {route.page === 'knowledge' && (

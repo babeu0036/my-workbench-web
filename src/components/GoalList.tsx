@@ -1,12 +1,13 @@
 import { useState } from 'react'
+import ConfirmDelete from './ConfirmDelete'
 import { formatDateCn, dayKey } from '../lib/date'
-import { UNSORTED_TITLE, periodCovers, periodRangeText } from '../lib/goals'
-import type { Goal, GoalPeriod } from '../lib/types'
+import { UNSORTED_STAGE_TITLE, stageCovers, stageRangeText } from '../lib/stages'
+import type { Goal, Stage } from '../lib/types'
 
 type Props = {
   /** 已经排好序的目标（未完成在前、做完的沉底），这个组件不再排序 */
   goals: Goal[]
-  periods: GoalPeriod[]
+  stages: Stage[]
   onToggle: (id: number) => void
   onUpdate: (id: number, text: string) => void
   onRemove: (id: number) => void
@@ -15,13 +16,14 @@ type Props = {
 }
 
 /**
- * 目标列表：扁平一列，每条前面挂一个小标签写明它属于哪个周期。
+ * 目标列表：扁平一列，每条前面挂一个小标签写明它属于哪个阶段。
  *
- * 不按周期分组 —— 想找「这学期还有什么没做」时，分组反而要多扫好几行标题。
+ * 不按阶段分组 —— 阶段那一层在下面管成就，目标再按阶段分组就重复了。
+ * 想找「这学期还有什么没做」时，分组反而要多扫好几行标题。
  * 点正文就地变成输入框改文字（回车保存、Esc 放弃、点别处也算保存），
- * 跟任务行一个手感；周期标签过期了就变灰。
+ * 跟任务行一个手感；阶段过期了就变灰。
  */
-export default function GoalList({ goals, periods, onToggle, onUpdate, onRemove, onAdd }: Props) {
+export default function GoalList({ goals, stages, onToggle, onUpdate, onRemove, onAdd }: Props) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
 
@@ -47,10 +49,10 @@ export default function GoalList({ goals, periods, onToggle, onUpdate, onRemove,
   return (
     <ul className="list">
       {goals.map(goal => {
-        const period = periods.find(item => item.id === goal.periodId)
-        // 没有周期就是「未分组」；周期被删了理论上不会有孤儿目标（删周期会连目标一起删）
-        const title = period?.title ?? UNSORTED_TITLE
-        const past = period ? !periodCovers(period, dayKey()) : false
+        const stage = stages.find(item => item.id === goal.stageId)
+        // 没有阶段就是「未分组」；阶段被删了理论上不会有孤儿目标（删阶段连成就一起删）
+        const title = stage?.title ?? UNSORTED_STAGE_TITLE
+        const past = stage ? !stageCovers(stage, dayKey()) : false
         const editing = editingId === goal.id
 
         return (
@@ -93,7 +95,7 @@ export default function GoalList({ goals, periods, onToggle, onUpdate, onRemove,
                 </span>
                 <span className="row__date goalrow__meta">
                   <span className={past ? 'ptag ptag--past' : 'ptag'}>{title}</span>
-                  {period && <span className="goalrow__range">{periodRangeText(period)}</span>}
+                  {stage && <span className="goalrow__range">{stageRangeText(stage)}</span>}
                   {goal.done && goal.doneAt !== undefined && (
                     <span>· {formatDateCn(dayKey(goal.doneAt))} 完成</span>
                   )}
@@ -102,14 +104,7 @@ export default function GoalList({ goals, periods, onToggle, onUpdate, onRemove,
             )}
 
             <span className="row__actions">
-              <button
-                type="button"
-                className="btn btn--ghost btn--danger"
-                onClick={() => onRemove(goal.id)}
-                aria-label={`删除：${goal.text}`}
-              >
-                删除
-              </button>
+              <ConfirmDelete label="删除" onConfirm={() => onRemove(goal.id)} />
             </span>
           </li>
         )

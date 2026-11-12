@@ -38,8 +38,10 @@ export type Todo = {
 export type Achievement = {
   id: number
   title: string
-  /** 备注，可选。空字符串按没有处理 */
+  /** 备注，可选，也就是「做到什么程度算成」的判断标准。空字符串按没有处理 */
   note?: string
+  /** 挂在哪个阶段下（Stage.id）。没有这个键 = 未归类，目标页排在最后那一组 */
+  stageId?: number
   /** 点亮时间戳。清掉时删键，不置 null */
   doneAt?: number
 }
@@ -150,26 +152,33 @@ export type Subject = {
 }
 
 /**
- * 一段目标周期：本学期、暑假、或者自己起的一个名字。
- * start / end 都是 10 字符日期键（2026-09-01），end 含当天。
- * 周期之间允许重叠 —— 学期里套一个暑假是正常的事。
+ * 一个阶段：大一上 / 大一下 / 大二 / 大三大四，或者自己起的一段。
+ *
+ * 这是目标页上**唯一**的一条时间轴 —— 目标条目和成就都挂在它下面。
+ * `startKey` / `endKey` 都是 10 字符日期键（2026-09-01），endKey 含当天。
+ * 阶段之间允许重叠，也不用首尾相接；「当前阶段」取结束得更近的那个。
+ *
+ * `order` 决定页面上的先后：新建的追加到末尾，不做拖拽。删掉的空号不重排。
  */
-export type GoalPeriod = {
+export type Stage = {
   id: number
-  /** 页面上那个小标签写什么：「本学期」「暑假」「11.02 那周」 */
   title: string
-  start: string
-  end: string
+  startKey: string
+  endKey: string
+  order: number
 }
 
 /**
- * 一条目标。挂在一个周期下，一个周期下想有几条就有几条。
+ * 一条目标。挂在一个阶段下，一个阶段下想有几条就有几条。
  * 没有「结算」这个状态：勾上就是完成，取消勾就回到未完成。
  */
 export type Goal = {
   id: number
-  /** 属于哪个周期（GoalPeriod.id） */
-  periodId: number
+  /**
+   * 属于哪个阶段（Stage.id）。0 = 未分组 —— 加目标不必先建阶段，
+   * 先写下来，之后再归到某个阶段（见 UNSORTED_STAGE_ID）。
+   */
+  stageId: number
   text: string
   done: boolean
   /** 勾上的时间，用来显示「11月6日 完成」；取消勾就清掉 */

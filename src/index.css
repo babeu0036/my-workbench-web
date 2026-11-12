@@ -817,7 +817,9 @@ textarea {
 
 /* 页面底部有 + 按钮时，给内容留出位置，别让最后一行被压住 */
 .page--fab {
-  padding-bottom: 76px;
+  /* 76 是原来看齐 FAB 的数字，但 FAB 宽 56 + 右下留 24，离底 80，
+     底部那块按钮（+ 新建阶段 / + 添加目标）会被压掉一角，多留 16px */
+  padding-bottom: 92px;
 }
 
 .card {
@@ -1030,6 +1032,22 @@ textarea {
   align-items: center;
   gap: 2px;
   flex: 0 0 auto;
+}
+
+/* 带提示时（删阶段要说清会连带删掉几个成就）提示换到按钮下面一整行 */
+.confirm--stack {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 220px;
+}
+
+.confirm__hint {
+  flex: 0 0 100%;
+  margin-top: 2px;
+  color: var(--danger);
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: right;
 }
 
 .btn:disabled {
@@ -2820,8 +2838,8 @@ textarea {
   letter-spacing: 0.04em;
 }
 
-/* 添加目标面板里「+ 自己定一个周期」，没选它时也是虚线一条 */
-.period-new {
+/* 添加目标面板里「+ 自己定一个阶段」，没选它时也是虚线一条 */
+.stage-new {
   width: 100%;
   padding: 9px 12px;
   border: 1px dashed var(--border);
@@ -2834,14 +2852,14 @@ textarea {
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-.period-new:hover,
-.period-new--on {
+.stage-new:hover,
+.stage-new--on {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-/* 自定义周期：名字 + 起止 */
-.periodform {
+/* 自定义阶段：名字 + 起止 */
+.stageform {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2850,13 +2868,13 @@ textarea {
   border-radius: 12px;
 }
 
-.periodform__dates {
+.stageform__dates {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
-.periodform__field {
+.stageform__field {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -2865,7 +2883,7 @@ textarea {
 }
 
 @media (max-width: 400px) {
-  .periodform__dates {
+  .stageform__dates {
     grid-template-columns: 1fr;
   }
 }
@@ -3689,6 +3707,164 @@ textarea {
   margin-top: 8px;
   border-radius: 50%;
   background: var(--border);
+}
+
+/* ---------- 阶段（目标页） ---------- */
+
+.stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stage {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.stage__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+/* 标题这一整块都能点，点开才展开成就；箭头跟着转 90° */
+.stage__toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stage__arrow {
+  flex: none;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  transition: transform 0.15s ease;
+}
+
+.stage--open .stage__arrow {
+  transform: rotate(90deg);
+}
+
+.stage__title {
+  color: var(--text-h);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.stage__range {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+/* x/y：已点亮成就数 / 成就总数。宽屏贴右边，窄屏跟着日期走（见下面媒体查询） */
+.stage__count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage__actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* 窄屏上这两个按钮不能折成「删 / 除」两行 */
+.stage__actions .btn,
+.row__actions .btn {
+  flex: none;
+  white-space: nowrap;
+}
+
+.stage__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+/* 卡片嵌在阶段里：去掉阴影、换浅一档的底，不然是「卡片套卡片」 */
+.stage__body .card {
+  box-shadow: none;
+  background: var(--surface-2);
+}
+
+/* .stage-empty 是整个阶段列表的空态（还没建过阶段），.stage__empty 是阶段里的空态 */
+.stage__empty,
+.stage-empty,
+.stage-add {
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.stage__empty:hover,
+.stage-empty:hover,
+.stage-add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 阶段里已经有成就时，底部这个入口收小，不跟卡片抢地方 */
+.stage__more {
+  align-self: flex-start;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.stage__more:hover {
+  color: var(--accent);
+}
+
+/* 未归类：不是真阶段（没有编辑和删除），虚线 + 淡标题区分开 */
+.stage--orphan {
+  border-style: dashed;
+  background: none;
+}
+
+.stage--orphan .stage__title {
+  color: var(--muted);
+}
+
+/* 窄屏：标题和按钮占第一行，日期和 x/y 折到第二行 —— 不能再让 count 往右飘，
+   否则它会单独占一行、和按钮错开 */
+@media (max-width: 560px) {
+  .stage__count {
+    margin-left: 0;
+  }
 }
 
 .ach {

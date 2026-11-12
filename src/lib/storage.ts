@@ -2,18 +2,19 @@ import { useEffect, useState } from 'react'
 import { dayKeyOffset } from './date'
 import { isLegacyGoal, legacyPeriodTitle } from './goals'
 import type { LegacyGoal } from './goals'
+import { normalizeStages, presetStages } from './stages'
 import { normalizeTodos } from './todos'
-import type { Goal, GoalPeriod, Todo } from './types'
+import type { Goal, Stage, Todo } from './types'
 
 /** localStorage 的几个 key，分开存，互不影响 */
 export const KEYS = {
   todos: 'workbench.todos',
   deadlines: 'workbench.deadlines',
   notes: 'workbench.notes',
-  /** 目标：{ id, periodId, text, done, doneAt? }，挂在下面对应的周期上 */
+  /** 目标条目：{ id, stageId, text, done, doneAt? }，挂在对应的阶段上 */
   goals: 'workbench.goals',
-  /** 目标周期：本学期 / 暑假 / 那周，{ id, title, start, end } */
-  goalPeriods: 'workbench.goalPeriods',
+  /** 阶段：大一上 / 大一下 / …，{ id, title, startKey, endKey, order } */
+  stages: 'workbench.stages',
   /** 首页添加面板上次选的科目，只有一个字符串 */
   lastSubject: 'workbench.lastSubject',
   /** 课程表：课程数组 */
@@ -34,6 +35,12 @@ export const KEYS = {
 
 /** 旧版的最终目标键，只在迁移时读一次，搬完保留不删 */
 const LEGACY_VISION_KEY = 'workbench.finalGoal'
+
+/**
+ * 阶段之前叫「周期」，存在这个键里。只在迁移时读一次，
+ * 搬完不删 —— 跟其它几次迁移一个规矩，万一搬错还能找回来。
+ */
+const LEGACY_PERIODS_KEY = 'workbench.goalPeriods'
 
 /** 读一个 key，读不出来（没有 / 坏了）就返回兜底值 */
 export function readKey<T>(key: string, fallback: T): T {
@@ -83,10 +90,10 @@ export function useStoredState<T>(
 }
 
 /**
- * 旧版目标是一周一条（{ weekKey, text, done, settled }），没有「周期」这一层。
- * 这里按 weekKey 分组，每组升成一个周期「10.26 那周」，每条老目标变成周期里的一条：
+ * 旧版目标是一周一条（{ weekKey, text, done, settled }），没有「阶段」这一层。
+ * 这里按 weekKey 分组，每组升成一个阶段「10.26 那周」，每条老目标变成阶段里的一条：
  * 结算过且打了勾的算完成，其余算没完成 —— 一条都不丢。
- * 已经是新形状（带 periodId）就原样不动。
+ * 已经是新形状（带 stageId / periodId）就原样不动。
  */
 function migrateLegacyGoals(): void {
   const raw = readKey<unknown>(KEYS.goals, null)
@@ -102,18 +109,19 @@ function migrateLegacyGoals(): void {
     groups.set(item.weekKey, list)
   })
 
-  const periods: GoalPeriod[] = []
+  const stages: Stage[] = []
   const goals: Goal[] = []
   let seq = 1
 
-  // weekKey 排序后建周期，读日志时顺序跟当年写目标的顺序一致
-  ;[...groups.keys()].sort().forEach(weekKey => {
-    const periodId = seq++
-    periods.push({
-      id: periodId,
+  // weekKey 排序后建阶段，读日志时顺序跟当年写目标的顺序一致
+  ;[...groups.keys()].sort().forEach((weekKey, index) => {
+    const stageId = seq++
+    stages.push({
+      id: stageId,
       title: legacyPeriodTitle(weekKey),
-      start: weekKey,
-      end: dayKeyOffset(weekKey, 6),
+      startKey: weekKey,
+      endKey: dayKeyOffset(weekKey, 6),
+      order: index,
     })
 
     ;(groups.get(weekKey) ?? []).forEach(item => {
@@ -121,7 +129,7 @@ function migrateLegacyGoals(): void {
       if (!text) return
       goals.push({
         id: seq++,
-        periodId,
+        stageId,
         text,
         // 旧版只有点过「完成 / 没完成」的才算数，没结算的一律当没完成
         done: Boolean(item.settled && item.done),
@@ -129,8 +137,28 @@ function migrateLegacyGoals(): void {
     })
   })
 
-  writeKey(KEYS.goalPeriods, periods)
+  writeKey(KEYS.stages, stages)
   writeKey(KEYS.goals, goals)
+}
+
+/**
+ * 阶段这个键从无到有：老数据在 `workbench.goalPeriods`（字段是 start / end），
+ * 搬过来顺手补上 order；一条老数据都没有才预置四个阶段。
+ *
+ * 判断用「键在不在」而不是「数组空不空」：用户把阶段全删了，
+ * useStoredState 会把 `[]` 写回去，下次读到的是空数组而不是 null，
+ * 所以删掉的阶段不会自己长回来。
+ */
+function migrateStages(): void {
+  if (readKey<unknown>(KEYS.stages, null) !== null) return
+
+  const legacy = readKey<unknown>(LEGACY_PERIODS_KEY, null)
+  if (Array.isArray(legacy)) {
+    writeKey(KEYS.stages, normalizeStages(legacy))
+    return
+  }
+
+  writeKey(KEYS.stages, presetStages())
 }
 
 /**
@@ -154,7 +182,9 @@ function migrateLegacyVision(): void {
  */
 export function migrateLegacyStorage(): void {
   migrateLegacyVision()
+  // 先搬极老的一周一条目标（会写 stages），再搬「周期 → 阶段」，最后才可能预置
   migrateLegacyGoals()
+  migrateStages()
 
   const legacy = readKey<unknown>('todos', null)
   if (!Array.isArray(legacy)) return
