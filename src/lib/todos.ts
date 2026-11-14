@@ -36,6 +36,8 @@ export function normalizeTodo(raw: unknown, index = 0): Todo | null {
       typeof item.achievementId === 'number' && Number.isFinite(item.achievementId)
         ? item.achievementId
         : undefined,
+    // 软关联的里程碑（「服务于」）：算进里程碑进度，但任务本身照旧留在各处
+    goalId: typeof item.goalId === 'number' && Number.isFinite(item.goalId) ? item.goalId : undefined,
   }
 }
 
@@ -113,6 +115,10 @@ export function nextId(list: Todo[], now: number = Date.now()): number {
 /**
  * 加一条。subjectId 由调用方决定（科目页带当前科目，首页带选中的科目，
  * 琐事传空字符串）；dueDate 是必填的截止日期（2026-11-03）。缺任何一项都不加。
+ *
+ * `goalId` 是「服务于」哪个里程碑，可以不传 —— 不传就是日常事务，
+ * 不写这个键（跟 dueDate 空串的处理一个规矩）。它是软关联：任务照旧
+ * 出现在首页和计划里，只是顺便算进里程碑的进度。
  */
 export function addTodo(
   list: Todo[],
@@ -120,23 +126,24 @@ export function addTodo(
   subjectId: string,
   dueDate: string,
   kind: TodoKind = 'study',
+  goalId?: number,
   now: number = Date.now(),
 ): Todo[] {
   const value = text.trim()
   if (!value || !dueDate) return list
-  return [
-    ...list,
-    {
-      id: nextId(list, now),
-      text: value,
-      done: false,
-      // 琐事不归属任何科目，就算调用方传了也按空处理，别留一个半吊子状态
-      subjectId: kind === 'chore' ? UNCATEGORIZED_ID : subjectId,
-      kind,
-      createdAt: now,
-      dueDate,
-    },
-  ]
+
+  const todo: Todo = {
+    id: nextId(list, now),
+    text: value,
+    done: false,
+    // 琐事不归属任何科目，就算调用方传了也按空处理，别留一个半吊子状态
+    subjectId: kind === 'chore' ? UNCATEGORIZED_ID : subjectId,
+    kind,
+    createdAt: now,
+    dueDate,
+  }
+  if (goalId !== undefined) todo.goalId = goalId
+  return [...list, todo]
 }
 
 /**
@@ -196,6 +203,8 @@ export type TodoPatch = {
   subjectId?: string
   kind?: TodoKind
   dueDate?: string
+  /** 「服务于」哪个里程碑。传 null = 改回日常事务（把这个键删掉）；不传则不动 */
+  goalId?: number | null
 }
 
 /**
@@ -230,6 +239,11 @@ export function updateTodo(list: Todo[], id: number, patch: TodoPatch): Todo[] {
     // 没日期就把键删掉，不留一个 undefined 在对象里（跟撤销完成时清 doneAt 一个规矩）
     if (dueDate === undefined) delete next.dueDate
     else next.dueDate = dueDate
+    // 「服务于」：null 是明确要求改回日常事务，跟「没传、别动」是两件事
+    if (patch.goalId !== undefined) {
+      if (patch.goalId === null) delete next.goalId
+      else next.goalId = patch.goalId
+    }
     return next
   })
 }

@@ -27,23 +27,56 @@ export type Todo = {
    * 免得同一件事在三个地方各算一遍。
    */
   achievementId?: number
+  /**
+   * 「服务于」哪个里程碑（Achievement.id）。跟 achievementId 的区别：
+   * 这是**软关联** —— 任务照旧留在首页、计划、科目页，只是顺便算进里程碑的进度；
+   * achievementId 是硬关联，任务会从那些页面搬走，只活在目标页。
+   * 空 = 日常事务，不算进任何里程碑。
+   */
+  goalId?: number
 }
 
 /**
- * 一条成就（目标页上的大块）。下面的任务通过 `Todo.achievementId` 挂过来。
+ * 里程碑的三种存档状态。
  *
- * `doneAt` 有值 = 已点亮。它没有手动按钮：某个成就的任务数 ≥ 1 且全部完成时
- * 自动写时间戳，有任务被取消勾选就删掉这个键（见 lib/achievements.ts）。
+ * `todo` / `doing` 更多是「还没确认完成」的意思 —— 卡片上显示的进行中 / 待确认
+ * 是由任务算出来的（见 lib/milestones.ts），存档里只有 `done` 是手动写的。
+ */
+export type MilestoneStatus = 'todo' | 'doing' | 'done'
+
+/**
+ * 一条成就（目标页上的大块，也就是「里程碑」）。下面的任务通过
+ * `Todo.achievementId`（硬关联）或 `Todo.goalId`（软关联）挂过来。
+ *
+ * `status` / `doneAt` 有值 = 已确认完成 —— 这个只能手动点，而且必须留下证据。
+ * 跟更早版本的区别：以前任务全勾完就自动点亮，现在是「待确认」，
+ * 等人写一句证据再说，免得一堆其实没做成的事自己变绿。
  */
 export type Achievement = {
   id: number
   title: string
-  /** 备注，可选，也就是「做到什么程度算成」的判断标准。空字符串按没有处理 */
-  note?: string
+  /** 判断标准：做到什么程度算成。空字符串 = 还没写 */
+  criteria: string
+  /** 证据：怎么证明做到了（结果、链接、截图说明都行）。标记完成前必须非空 */
+  evidence: string
+  status: MilestoneStatus
   /** 挂在哪个阶段下（Stage.id）。没有这个键 = 未归类，目标页排在最后那一组 */
   stageId?: number
-  /** 点亮时间戳。清掉时删键，不置 null */
+  /** 确认完成的时间戳。撤销完成时删键，不置 null */
   doneAt?: number
+}
+
+/**
+ * 职业目标：首页顶部那张卡，也是目标页最上面那块。
+ * 三样都可以空着，空着就显示灰字提示，不编默认值。
+ */
+export type Career = {
+  /** 一句话愿景：想成为什么样的人 / 做成什么事 */
+  vision: string
+  /** 角色：想去的位置，比如「后端开发实习生」 */
+  role: string
+  /** 目标日期，形如 2028-06-30。空字符串 = 还没定，首页就不算天数 */
+  targetDate: string
 }
 
 export type Deadline = {

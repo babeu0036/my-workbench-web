@@ -1,17 +1,22 @@
 import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
+import ActiveMilestones from '../components/ActiveMilestones'
 import AddTaskPanel from '../components/AddTaskPanel'
+import CareerCard from '../components/CareerCard'
 import DueSoon from '../components/DueSoon'
 import HomeGoal from '../components/HomeGoal'
 import HomeStats from '../components/HomeStats'
 import MoodPicker from '../components/MoodPicker'
+import StageBar from '../components/StageBar'
 import TaskList from '../components/TaskList'
 import TodayCourses from '../components/TodayCourses'
 import TomorrowBlock from '../components/TomorrowBlock'
 import { todayCourses, tomorrowCourses } from '../lib/courses'
 import { dayKey, todayLabel } from '../lib/date'
-import { currentStage } from '../lib/stages'
+import { currentStage, sortStages } from '../lib/stages'
 import { goalsOfStage } from '../lib/goals'
+import { activeMilestones } from '../lib/milestones'
+import type { MilestoneOption } from '../lib/milestones'
 import { moodOf, setMood } from '../lib/mood'
 import type { MoodMap } from '../lib/mood'
 import { streak, todayTasks, todayTotals } from '../lib/stats'
@@ -26,15 +31,22 @@ import {
   toggleTodo,
   updateTodo,
 } from '../lib/todos'
-import type { Course, Goal, Stage, Subject, Todo, TodoKind } from '../lib/types'
+import type { Achievement, Career, Course, Goal, Stage, Subject, Todo, TodoKind } from '../lib/types'
 
 type Props = {
   todos: Todo[]
+  /** 完整的任务（含目标页的成就任务）—— 只用来算里程碑进度，不进下面任何一个列表 */
+  milestoneTodos: Todo[]
   setTodos: Dispatch<SetStateAction<Todo[]>>
   subjects: Subject[]
   /** 该提醒的任务，最急的在前；在 App 里算好传进来，侧边栏角标用的是同一份 */
   dueItems: Todo[]
   goals: Goal[]
+  /** 里程碑卡和「服务于」都从这里取 */
+  achievements: Achievement[]
+  milestones: MilestoneOption[]
+  /** 职业目标：一句话愿景 + 角色 + 目标日期 */
+  career: Career
   /** 阶段：首页只显示「今天落在里面、结束最近」的那一个 */
   stages: Stage[]
   courses: Course[]
@@ -50,22 +62,29 @@ type Props = {
 }
 
 /**
- * 首页。从上到下：本周目标 → 到期提醒 → 今天有课 → 今日进度 → 今天的任务
- * → 明天 → 今日状态。
+ * 首页。从上到下：职业目标 → 当前阶段条 → 进行中的里程碑 → 阶段目标
+ * → 到期提醒 → 今天有课 → 今日进度 → 今天的任务 → 明天 → 今日状态。
+ *
+ * 前三块是这次新加的，把「以后要做什么」和「今天做什么」接在一起：
+ * 里程碑的进度是下面那些任务勾出来的，勾一条，上面立刻变。
  *
  * 任务列表只放「今天到期 + 逾期」：标题写「今天的任务」就得真只放今天的。
  * 没截止日期的老任务不在这儿（在计划页和科目页里还在），所以列表底部留了一句话说明去处。
  *
- * 页面本身只排版，判断全在 lib 里：目标用 goalOf、今天的课用 todayCourses、
- * 明天用 tomorrowCourses / tomorrowTasks、完成环用 todayTotals、连续天数用 streak
- * —— 都有纯函数测试撑着。
+ * 页面本身只排版，判断全在 lib 里：目标用 goalsOfStage、今天的课用 todayCourses、
+ * 明天用 tomorrowCourses / tomorrowTasks、完成环用 todayTotals、连续天数用 streak、
+ * 里程碑进度和进行中那几条用 activeMilestones —— 都有纯函数测试撑着。
  */
 export default function Home({
   todos,
+  milestoneTodos,
   setTodos,
   subjects,
   dueItems,
   goals,
+  achievements,
+  milestones,
+  career,
   stages,
   courses,
   semesterStart,
@@ -92,6 +111,9 @@ export default function Home({
   // 首页只看当前阶段：阶段之间允许重叠时，取结束得更近的那个
   const stage = currentStage(stages)
   const stageGoals = stage ? goalsOfStage(goals, stage.id) : []
+  // 阶段条上的「第 N 阶段」按页面上的先后算，跟目标页的顺序一致
+  const stageIndex = stage ? sortStages(stages).findIndex(item => item.id === stage.id) + 1 : 0
+  const active = activeMilestones(achievements, milestoneTodos, stage?.id)
   const classes = todayCourses(courses, semesterStart)
   const totals = todayTotals(todos)
   const days = streak(todos)
@@ -101,8 +123,14 @@ export default function Home({
   const classesTomorrow = tomorrowCourses(courses, semesterStart)
   const tasksTomorrow = tomorrowTasks(todos)
 
-  function handleAdd(text: string, subjectId: string, dueDate: string, kind: TodoKind) {
-    setTodos(list => addTodo(list, text, subjectId, dueDate, kind))
+  function handleAdd(
+    text: string,
+    subjectId: string,
+    dueDate: string,
+    kind: TodoKind,
+    goalId: number | undefined,
+  ) {
+    setTodos(list => addTodo(list, text, subjectId, dueDate, kind, goalId))
     // 琐事不归属科目，别把「上次选的科目」覆盖成空的
     if (kind === 'study') setLastSubjectId(subjectId)
     setPanelOpen(false)
@@ -113,6 +141,12 @@ export default function Home({
       <div className="page page--fab">
         <h2 className="page__title">首页</h2>
         <p className="page__hint">{todayLabel()} · 今天的任务</p>
+
+        <CareerCard career={career} onOpen={onOpenGoal} />
+
+        <StageBar stage={stage} index={stageIndex} />
+
+        <ActiveMilestones rows={active} onOpen={onOpenGoal} />
 
         <HomeGoal stage={stage} goals={stageGoals} onOpenGoal={onOpenGoal} />
 
@@ -125,6 +159,7 @@ export default function Home({
         <TaskList
           todos={todayList}
           empty="今天没有要做的任务，点右下角的 + 加一条"
+          milestones={milestones}
           onToggle={id => setTodos(list => toggleTodo(list, id))}
           onRemove={id => setTodos(list => removeTodo(list, id))}
           onEdit={id => setEditing(todos.find(todo => todo.id === id) ?? null)}
@@ -182,6 +217,7 @@ export default function Home({
         <AddTaskPanel
           subjects={pickable}
           defaultSubjectId={defaultSubjectId}
+          milestones={milestones}
           onClose={() => setPanelOpen(false)}
           onSubmit={handleAdd}
         />
@@ -191,9 +227,12 @@ export default function Home({
         <AddTaskPanel
           subjects={pickable}
           todo={editing}
+          milestones={milestones}
           onClose={() => setEditing(null)}
-          onSubmit={(text, subjectId, dueDate, kind) => {
-            setTodos(list => updateTodo(list, editing.id, { text, subjectId, dueDate, kind }))
+          onSubmit={(text, subjectId, dueDate, kind, goalId) => {
+            setTodos(list =>
+              updateTodo(list, editing.id, { text, subjectId, dueDate, kind, goalId: goalId ?? null }),
+            )
             setEditing(null)
           }}
         />

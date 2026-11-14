@@ -12,7 +12,8 @@ type Props = {
 const SHOWN = 3
 
 /**
- * 首页的「当前阶段目标」卡。
+ * 首页的「阶段目标」卡。阶段本身由上面那条阶段条交代（第 N 阶段 · 标题 · 还剩几周），
+ * 所以这里不再重复写阶段名，只标一个起止，免得两块内容长得一样。
  *
  * 以前这里是「本周目标」一条，后来变成周期（一个学期 / 一个暑假），
  * 一屏写不下，所以只列没做完的前三条，后面用「还有 N 条」收口，
@@ -28,7 +29,7 @@ export default function HomeGoal({ stage, goals, onOpenGoal }: Props) {
   return (
     <section className="card home-goal" aria-label="当前阶段目标">
       <div className="card__head">
-        <span className="card__title">{stage ? stage.title : '目标'}</span>
+        <span className="card__title">阶段目标</span>
         {stage && <span className="card__note">{stageRangeText(stage)}</span>}
       </div>
 

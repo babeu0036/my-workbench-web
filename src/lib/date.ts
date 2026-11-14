@@ -24,6 +24,16 @@ export function daysUntil(dateStr: string, now: number = Date.now()): number {
   return Math.round((target.getTime() - today.getTime()) / MS_PER_DAY)
 }
 
+/**
+ * 距离某个日期键还有几周（向上取整，过完了就是 0）。
+ * 首页阶段条上的「还剩 M 周」用它 —— 今天到下周三算 1 周，不显示成 0.4 周。
+ */
+export function weeksUntil(dateStr: string, now: number = Date.now()): number {
+  const days = daysUntil(dateStr, now)
+  if (Number.isNaN(days)) return 0
+  return Math.max(0, Math.ceil(days / 7))
+}
+
 /** 2026-11-01 → 2026-11-01 周日 */
 export function formatDate(dateStr: string): string {
   const { y, m, d } = parseDate(dateStr)

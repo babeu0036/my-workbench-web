@@ -10,12 +10,14 @@ import GoalPage from './pages/Goal'
 import Knowledge from './pages/Knowledge'
 import { KEYS, useStoredState } from './lib/storage'
 import { DEFAULT_SUBJECTS } from './lib/seed'
+import { EMPTY_CAREER, normalizeCareer } from './lib/career'
 import { normalizeCourses } from './lib/courses'
 import { normalizeDeadlines } from './lib/deadlines'
 import { pendingReminders } from './lib/due'
 import { normalizeGoals } from './lib/goals'
 import { normalizeStages } from './lib/stages'
-import { normalizeAchievements, withLitState } from './lib/achievements'
+import { normalizeAchievements } from './lib/achievements'
+import { milestoneOptions } from './lib/milestones'
 import { normalizeKnowledgeList } from './lib/knowledge'
 import { normalizeFeedCache } from './lib/feed'
 import { normalizeMoods } from './lib/mood'
@@ -24,6 +26,7 @@ import { startSync } from './lib/sync'
 import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, normalizeTodos, withoutAchievement } from './lib/todos'
 import type {
   Achievement,
+  Career,
   Course,
   Deadline,
   FeedCache,
@@ -84,10 +87,8 @@ export default function App() {
     [],
     normalizeAchievements,
   )
-  // 目标页最上面那行「最终目标」，空字符串 = 还没写
-  const [vision, setVision] = useStoredState<string>(KEYS.vision, '', value =>
-    typeof value === 'string' ? value : '',
-  )
+  // 职业目标：一句话愿景 + 角色 + 目标日期。首页顶部那张卡和目标页最上面那块共用这份
+  const [career, setCareer] = useStoredState<Career>(KEYS.career, EMPTY_CAREER, normalizeCareer)
   // 知识库：学习资料 / 行业动态 / 我的笔记，搜索和筛选不落盘
   const [knowledge, setKnowledge] = useStoredState<KnowledgeItem[]>(
     KEYS.knowledge,
@@ -107,14 +108,10 @@ export default function App() {
   const [moods, setMoods] = useStoredState<MoodMap>(KEYS.mood, {}, normalizeMoods)
 
   // 成就任务只活在目标页：计划·任务、首页、复盘统计都只算这一份，
-  // 否则同一件事会在三处各算一遍，数字还对不上
+  // 否则同一件事会在三处各算一遍，数字还对不上。
+  // 注意「服务于」的软关联任务（goalId）仍然留在这份里 —— 它们要出现在首页和计划，
+  // 只是同时算进里程碑进度，所以首页算进度时还得看完整的 todos。
   const mainTodos = withoutAchievement(todos)
-
-  // 自动点亮 / 熄灭。withLitState 没有变化时返回原数组，setState 一比较就跳过，
-  // 所以这里不会自己触发自己
-  useEffect(() => {
-    setAchievements(list => withLitState(list, todos))
-  }, [todos, setAchievements])
 
   // 科目暂时是三份写死的种子数据；有未分类任务时科目筛选条才多挂一项
   // （琐事的 subjectId 也是空的，但它不属于「未分类」，别为它多出一个胶囊）
@@ -125,6 +122,9 @@ export default function App() {
 
   // 到期提醒只算一次，首页卡片和侧边栏角标共用，数字不会对不上
   const dueItems = pendingReminders(mainTodos)
+
+  // 「服务于」的选项：每条里程碑 + 它属于哪个阶段。算一次，首页 / 计划 / 科目页共用
+  const milestones = milestoneOptions(achievements, stages)
 
   const navigate = (next: Route) => {
     setRoute(next)
@@ -185,10 +185,14 @@ export default function App() {
           {route.page === 'home' && (
             <Home
               todos={mainTodos}
+              milestoneTodos={todos}
               setTodos={setTodos}
               subjects={subjects}
               dueItems={dueItems}
               goals={goals}
+              achievements={achievements}
+              milestones={milestones}
+              career={career}
               stages={stages}
               courses={courses}
               semesterStart={semesterStart}
@@ -206,6 +210,7 @@ export default function App() {
               todos={mainTodos}
               setTodos={setTodos}
               subjects={subjects}
+              milestones={milestones}
               deadlines={deadlines}
               setDeadlines={setDeadlines}
               courses={courses}
@@ -222,6 +227,7 @@ export default function App() {
               seg={route.seg}
               todos={mainTodos}
               setTodos={setTodos}
+              milestones={milestones}
               onSegChange={seg => setRoute({ page: 'subject', id: route.id, seg })}
             />
           )}
@@ -236,8 +242,8 @@ export default function App() {
               setTodos={setTodos}
               achievements={achievements}
               setAchievements={setAchievements}
-              vision={vision}
-              setVision={setVision}
+              career={career}
+              setCareer={setCareer}
               goals={goals}
               setGoals={setGoals}
               stages={stages}

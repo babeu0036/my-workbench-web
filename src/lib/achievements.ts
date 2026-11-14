@@ -1,34 +1,56 @@
-import type { Achievement, Todo } from './types'
+import type { Achievement, MilestoneStatus, Todo } from './types'
 
 /**
- * 成就。目标页上的大块，一条成就下面挂若干任务（`Todo.achievementId`）。
+ * 成就（也就是「里程碑」）。目标页上的大块，一条下面挂若干任务：
  *
- * 这里只放纯函数：读盘兜底、增删、按成就分组、算进度、自动点亮。
- * 「已点亮」没有手动按钮 —— 任务数 ≥ 1 且全部完成就写 doneAt，
- * 有任务被取消勾选就把 doneAt 删掉，页面上看到的三种状态全是算出来的。
+ * - `Todo.achievementId` 硬关联：任务只活在目标页；
+ * - `Todo.goalId` 软关联：任务照旧留在首页 / 计划 / 科目页，也顺便算进度。
+ *
+ * 这里只放纯函数：读盘兜底、增删、证据门槛。**进度和状态不在这里算** ——
+ * 那些要同时看任务，统一在 lib/milestones.ts。
+ *
+ * 跟更早版本的区别：以前任务全勾完就自动点亮（withLitState），现在不会了，
+ * 全勾完只是「待确认」，得人写一句证据再点「标记完成」。
  */
+
+const STATUSES: MilestoneStatus[] = ['todo', 'doing', 'done']
 
 /** 一条成就长什么样都可能，逐个字段兜底；没有标题的直接丢掉（认不出是什么） */
 export function normalizeAchievement(raw: unknown, index = 0): Achievement | null {
   if (!raw || typeof raw !== 'object') return null
-  const item = raw as Partial<Achievement>
+  // note / done 是更早版本的字段：note 就是现在的「判断标准」，搬过来不丢
+  const item = raw as Partial<Achievement> & { note?: unknown; done?: unknown }
 
   const title = typeof item.title === 'string' ? item.title.trim() : ''
   if (!title) return null
 
   const id =
     typeof item.id === 'number' && Number.isFinite(item.id) ? item.id : Date.now() + index
-  const note = typeof item.note === 'string' ? item.note.trim() : ''
+  const criteria = (
+    typeof item.criteria === 'string'
+      ? item.criteria
+      : typeof item.note === 'string'
+        ? item.note
+        : ''
+  ).trim()
+  const evidence = typeof item.evidence === 'string' ? item.evidence.trim() : ''
   const stageId =
     typeof item.stageId === 'number' && Number.isFinite(item.stageId) ? item.stageId : undefined
   const doneAt =
     typeof item.doneAt === 'number' && Number.isFinite(item.doneAt) ? item.doneAt : undefined
 
+  // 有 doneAt 就是已完成（老数据是自动点亮的，不能因为没写 status 就退回未完成）
+  const stored = STATUSES.includes(item.status as MilestoneStatus)
+    ? (item.status as MilestoneStatus)
+    : undefined
+  const status: MilestoneStatus = doneAt !== undefined ? 'done' : (stored ?? 'todo')
+
   return {
     id,
     title,
-    // 空备注不留下 `note: ''` 这种半截键，判断处只看有没有这个字段
-    ...(note ? { note } : {}),
+    criteria,
+    evidence,
+    status,
     // 没有阶段就不写这个键：目标页会把它放进「未归类」
     ...(stageId !== undefined ? { stageId } : {}),
     ...(doneAt !== undefined ? { doneAt } : {}),
@@ -48,33 +70,37 @@ export function nextAchievementId(list: Achievement[], now: number = Date.now())
   return now > max ? now : max + 1
 }
 
-/** 加一条成就。标题是唯一必填项，备注和阶段都可以空 */
+/** 加一条成就。标题是唯一必填项，判断标准、证据、阶段都可以空 */
 export function addAchievement(
   list: Achievement[],
   title: string,
-  note = '',
+  criteria = '',
   stageId?: number,
   now: number = Date.now(),
 ): Achievement[] {
   const value = title.trim()
   if (!value) return list
-  const remark = note.trim()
   return [
     ...list,
     {
       id: nextAchievementId(list, now),
       title: value,
-      ...(remark ? { note: remark } : {}),
+      criteria: criteria.trim(),
+      evidence: '',
+      status: 'todo',
       ...(stageId !== undefined ? { stageId } : {}),
     },
   ]
 }
 
-/** 改标题 / 备注。标题不能被改空；备注改空就把这个键删掉，不留空字符串 */
+/**
+ * 改标题 / 判断标准 / 证据。标题不能被改空；
+ * 标准和证据可以改空（还没想清楚就先空着，卡片上显示灰字提示）。
+ */
 export function updateAchievement(
   list: Achievement[],
   id: number,
-  patch: { title?: string; note?: string },
+  patch: { title?: string; criteria?: string; evidence?: string },
 ): Achievement[] {
   return list.map(item => {
     if (item.id !== id) return item
@@ -85,11 +111,8 @@ export function updateAchievement(
       if (!title) return item
       next.title = title
     }
-    if (patch.note !== undefined) {
-      const note = patch.note.trim()
-      if (note) next.note = note
-      else delete next.note
-    }
+    if (patch.criteria !== undefined) next.criteria = patch.criteria.trim()
+    if (patch.evidence !== undefined) next.evidence = patch.evidence.trim()
     return next
   })
 }
@@ -99,7 +122,7 @@ export function removeAchievement(list: Achievement[], id: number): Achievement[
 }
 
 /**
- * 删成就时任务不跟着删：只把 achievementId 摘掉，它们退回「未分类」
+ * 删成就时任务不跟着删：把 achievementId 和 goalId 都摘掉，它们退回普通任务
  * （subjectId 本来就是空的，摘掉标记就会出现在计划·任务里）。
  *
  * 收单个 id 或一批 id —— 删阶段时它下面可能有若干条成就。
@@ -110,75 +133,45 @@ export function detachTasks(todos: Todo[], id: number | number[]): Todo[] {
 
   let changed = false
   const next = todos.map(todo => {
-    if (todo.achievementId === undefined || !ids.has(todo.achievementId)) return todo
+    const hard = todo.achievementId !== undefined && ids.has(todo.achievementId)
+    const soft = todo.goalId !== undefined && ids.has(todo.goalId)
+    if (!hard && !soft) return todo
+
     changed = true
     const rest = { ...todo }
-    delete rest.achievementId
+    if (hard) delete rest.achievementId
+    if (soft) delete rest.goalId
     return rest
   })
   return changed ? next : todos
 }
 
-/** 某个成就下的任务，按创建时间从早到晚 —— 列表顺序跟添加顺序一致 */
-export function forAchievement(todos: Todo[], id: number): Todo[] {
-  return todos
-    .filter(todo => todo.achievementId === id)
-    .sort((a, b) => a.createdAt - b.createdAt || a.id - b.id)
-}
-
-export type AchievementStats = {
-  done: number
-  total: number
-  /** 0-100 的整数。total 为 0 时给 0，不显示成 100% */
-  percent: number
-}
-
-/** 一组任务的完成情况 —— 卡片手里只有已经筛好的任务，所以单独留一个入口 */
-export function statsOf(tasks: Todo[]): AchievementStats {
-  const done = tasks.filter(todo => todo.done).length
-  const total = tasks.length
-  return { done, total, percent: total === 0 ? 0 : Math.round((done / total) * 100) }
-}
-
-export type AchievementState = 'empty' | 'running' | 'lit'
-
-/**
- * 卡片的三态。已点亮以 doneAt 为准，但「全都勾上了、doneAt 还没写进去」
- * 的那一帧也算点亮，免得卡片先闪一下「进行中」。
- */
-export function achievementState(item: Achievement, tasks: Todo[]): AchievementState {
-  if (tasks.length === 0) return 'empty'
-  if (item.doneAt !== undefined) return 'lit'
-  return tasks.every(todo => todo.done) ? 'lit' : 'running'
+/** 证据写了没有。空字符串、全是空格都算没写 */
+export function hasEvidence(item: Achievement): boolean {
+  return item.evidence.trim().length > 0
 }
 
 /**
- * 自动点亮 / 熄灭。返回的还是同一个数组引用时表示什么都没变 ——
- * App 里那个 effect 靠这个判断要不要写盘，不然 setState 会自己触发自己。
+ * 标记完成。证据为空时**原样返回**（返回同一个数组引用，App 里能靠这个判断
+ * 要不要写盘），按钮那边也会禁用，两层都拦住。
  */
-export function withLitState(
+export function markAchievementDone(
   list: Achievement[],
-  todos: Todo[],
+  id: number,
   now: number = Date.now(),
 ): Achievement[] {
-  let changed = false
+  const target = list.find(item => item.id === id)
+  if (!target || !hasEvidence(target) || target.status === 'done') return list
 
-  const next = list.map(item => {
-    const tasks = forAchievement(todos, item.id)
-    const lit = tasks.length > 0 && tasks.every(todo => todo.done)
+  return list.map(item => (item.id === id ? { ...item, status: 'done', doneAt: now } : item))
+}
 
-    if (lit && item.doneAt === undefined) {
-      changed = true
-      return { ...item, doneAt: now }
-    }
-    if (!lit && item.doneAt !== undefined) {
-      changed = true
-      const rest = { ...item }
-      delete rest.doneAt
-      return rest
-    }
-    return item
+/** 撤销完成：状态退回未确认，时间戳删掉，证据和标准都留着 */
+export function reopenAchievement(list: Achievement[], id: number): Achievement[] {
+  return list.map(item => {
+    if (item.id !== id || item.status !== 'done') return item
+    const rest = { ...item, status: 'todo' as MilestoneStatus }
+    delete rest.doneAt
+    return rest
   })
-
-  return changed ? next : list
 }

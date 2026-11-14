@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import AchievementCard from './AchievementCard'
 import ConfirmDelete from './ConfirmDelete'
-import { forAchievement } from '../lib/achievements'
+import { tasksOf } from '../lib/milestones'
 import {
   UNSORTED_STAGE_ID,
   UNSORTED_STAGE_TITLE,
@@ -27,6 +27,11 @@ type Props = {
   onAddTask: (achievementId: number, text: string, dueDate: string) => void
   onEditTask: (id: number, text: string, dueDate: string) => void
   onRemoveAchievement: (id: number) => void
+  /** 改判断标准 / 证据 */
+  onUpdateAchievement: (id: number, patch: { criteria?: string; evidence?: string }) => void
+  /** 写了证据才能确认完成 */
+  onCompleteAchievement: (id: number) => void
+  onReopenAchievement: (id: number) => void
   /** 点某个阶段里的「加一条成就」，面板打开时预选这个阶段 */
   onAddAchievement: (stageId: number) => void
 }
@@ -53,6 +58,9 @@ export default function StageList({
   onAddTask,
   onEditTask,
   onRemoveAchievement,
+  onUpdateAchievement,
+  onCompleteAchievement,
+  onReopenAchievement,
   onAddAchievement,
 }: Props) {
   const sorted = sortStages(stages)
@@ -96,21 +104,65 @@ export default function StageList({
       <AchievementCard
         key={item.id}
         achievement={item}
-        tasks={forAchievement(todos, item.id)}
+        tasks={tasksOf(todos, item.id)}
         onToggleTask={onToggleTask}
         onRemoveTask={onRemoveTask}
         onAddTask={(text, dueDate) => onAddTask(item.id, text, dueDate)}
         onEditTask={onEditTask}
+        onUpdate={patch => onUpdateAchievement(item.id, patch)}
+        onComplete={() => onCompleteAchievement(item.id)}
+        onReopen={() => onReopenAchievement(item.id)}
         onRemove={() => onRemoveAchievement(item.id)}
       />
     ))
   }
 
+  /**
+   * 「未归类」那一组：没有 stageId、或者挂的阶段已经被删掉的成就都落在这儿。
+   * 它不是真阶段，所以没有编辑和删除，也没有折叠记忆的意义 —— 只是在列表末尾兜住。
+   *
+   * 阶段被全删光时也要画出来（forceOpen）：不然那些任务和成就还在，
+   * 页面上却一个入口都没有，只能去 localStorage 里捞。
+   */
+  function orphanBlock(forceOpen = false) {
+    if (orphans.length === 0) return null
+
+    const done = orphans.filter(item => item.doneAt !== undefined).length
+    const isOpen = forceOpen || open.has(UNSORTED_STAGE_ID)
+    return (
+      <section className={isOpen ? 'stage stage--orphan stage--open' : 'stage stage--orphan'}>
+        <div className="stage__head">
+          <button
+            type="button"
+            className="stage__toggle"
+            onClick={() => toggle(UNSORTED_STAGE_ID)}
+            aria-expanded={isOpen}
+            aria-label={`${isOpen ? '收起' : '展开'}：${UNSORTED_STAGE_TITLE}`}
+          >
+            <span className="stage__arrow" aria-hidden="true">
+              ▸
+            </span>
+            <span className="stage__title">{UNSORTED_STAGE_TITLE}</span>
+            <span className="stage__range">没归到阶段的成就</span>
+            <span className="stage__count">
+              {done}/{orphans.length}
+            </span>
+          </button>
+        </div>
+
+        {isOpen && <div className="stage__body">{cards(orphans)}</div>}
+      </section>
+    )
+  }
+
   if (sorted.length === 0) {
     return (
-      <button type="button" className="stage-empty" onClick={onAddStage}>
-        还没有阶段，点这里新建
-      </button>
+      <div className="stage-list">
+        <button type="button" className="stage-empty" onClick={onAddStage}>
+          还没有阶段，点这里新建
+        </button>
+        {orphanBlock(true)}
+      </div>
     )
   }
 
@@ -190,37 +242,7 @@ export default function StageList({
         )
       })}
 
-      {orphans.length > 0 &&
-        (() => {
-          // 未归类这一组要把「阶段被删了、stageId 悬空」的也算进来，
-          // 所以不能直接用 stageStats（那只按 stageId 匹配）
-          const done = orphans.filter(item => item.doneAt !== undefined).length
-          const isOpen = open.has(UNSORTED_STAGE_ID)
-          return (
-            <section className={isOpen ? 'stage stage--orphan stage--open' : 'stage stage--orphan'}>
-              <div className="stage__head">
-                <button
-                  type="button"
-                  className="stage__toggle"
-                  onClick={() => toggle(UNSORTED_STAGE_ID)}
-                  aria-expanded={isOpen}
-                  aria-label={`${isOpen ? '收起' : '展开'}：${UNSORTED_STAGE_TITLE}`}
-                >
-                  <span className="stage__arrow" aria-hidden="true">
-                    ▸
-                  </span>
-                  <span className="stage__title">{UNSORTED_STAGE_TITLE}</span>
-                  <span className="stage__range">没归到阶段的成就</span>
-                  <span className="stage__count">
-                    {done}/{orphans.length}
-                  </span>
-                </button>
-              </div>
-
-              {isOpen && <div className="stage__body">{cards(orphans)}</div>}
-            </section>
-          )
-        })()}
+      {orphanBlock()}
 
       <button type="button" className="stage-add" onClick={onAddStage}>
         + 新建阶段

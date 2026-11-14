@@ -12,6 +12,7 @@ import {
   updateTodo,
   weekStats,
 } from '../lib/todos'
+import type { MilestoneOption } from '../lib/milestones'
 import type { Subject, SubjectSegment, Todo } from '../lib/types'
 
 type Props = {
@@ -21,6 +22,8 @@ type Props = {
   seg: SubjectSegment
   todos: Todo[]
   setTodos: Dispatch<SetStateAction<Todo[]>>
+  /** 「服务于」的选项：行右侧的小标签和编辑面板共用 */
+  milestones: MilestoneOption[]
   onSegChange: (seg: SubjectSegment) => void
 }
 
@@ -35,6 +38,7 @@ export default function SubjectPage({
   seg,
   todos,
   setTodos,
+  milestones,
   onSegChange,
 }: Props) {
   const [editing, setEditing] = useState<Todo | null>(null)
@@ -90,6 +94,7 @@ export default function SubjectPage({
           <TaskList
             todos={mine}
             empty={`${subject.name}还没有任务，在下面加一条`}
+            milestones={milestones}
             onToggle={id => setTodos(list => toggleTodo(list, id))}
             onRemove={id => setTodos(list => removeTodo(list, id))}
             onEdit={id => setEditing(todos.find(todo => todo.id === id) ?? null)}
@@ -114,9 +119,12 @@ export default function SubjectPage({
         <AddTaskPanel
           subjects={pickable}
           todo={editing}
+          milestones={milestones}
           onClose={() => setEditing(null)}
-          onSubmit={(text, subjectId, dueDate, kind) => {
-            setTodos(list => updateTodo(list, editing.id, { text, subjectId, dueDate, kind }))
+          onSubmit={(text, subjectId, dueDate, kind, goalId) => {
+            setTodos(list =>
+              updateTodo(list, editing.id, { text, subjectId, dueDate, kind, goalId: goalId ?? null }),
+            )
             setEditing(null)
           }}
         />

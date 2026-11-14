@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import DuePicker from './DuePicker'
 import { dayKey } from '../lib/date'
+import type { MilestoneOption } from '../lib/milestones'
 import type { Subject, Todo, TodoKind } from '../lib/types'
 
 type Props = {
@@ -10,9 +11,17 @@ type Props = {
   defaultSubjectId?: string
   /** 有值 = 编辑这条任务：字段预填，标题和按钮换字 */
   todo?: Todo
+  /** 「服务于」的选项：各阶段的里程碑。没有可选的就整行不显示 */
+  milestones?: MilestoneOption[]
   onClose: () => void
-  /** 新增和编辑共用：父层拿到这四个值，自己决定是 addTodo 还是 updateTodo */
-  onSubmit: (text: string, subjectId: string, dueDate: string, kind: TodoKind) => void
+  /** 新增和编辑共用：父层拿到这几个值，自己决定是 addTodo 还是 updateTodo */
+  onSubmit: (
+    text: string,
+    subjectId: string,
+    dueDate: string,
+    kind: TodoKind,
+    goalId: number | undefined,
+  ) => void
 }
 
 /**
@@ -27,12 +36,16 @@ type Props = {
  * 放开会让它变成某个科目的任务，破坏「成就任务只活在目标页」。
  * 日期也可以不填（`locked` 时走可选日期），成就是激励，不是催办。
  *
+ * 「服务于」是一个软关联：选一条里程碑，这条任务就顺手算进它的进度，
+ * 但任务本身照旧留在首页 / 计划里。默认「日常事务」，也就是不挂任何里程碑。
+ *
  * 打开时才挂载（父层条件渲染），所以草稿和选中科目不用 effect 去重置。
  */
 export default function AddTaskPanel({
   subjects,
   defaultSubjectId = '',
   todo,
+  milestones = [],
   onClose,
   onSubmit,
 }: Props) {
@@ -42,6 +55,7 @@ export default function AddTaskPanel({
   const [text, setText] = useState(todo?.text ?? '')
   const [kind, setKind] = useState<TodoKind>(locked ? 'study' : (todo?.kind ?? 'study'))
   const [subjectId, setSubjectId] = useState(locked ? '' : (todo?.subjectId ?? defaultSubjectId))
+  const [goalId, setGoalId] = useState<number | undefined>(todo?.goalId)
   // 老任务本来没截止日期时给今天：面板上看得见，不是偷偷补的。
   // 成就任务例外 —— 它们可以没日期，不替人补一个。
   const [dueDate, setDueDate] = useState(todo?.dueDate ?? (locked ? '' : dayKey()))
@@ -74,9 +88,20 @@ export default function AddTaskPanel({
     text.trim().length > 0 && (locked || dueDate !== '') && (!needSubject || subjectId !== '')
   const title = todo ? '编辑任务' : '添加任务'
 
+  // 「服务于」按阶段分组：里程碑可能横跨四个阶段，平铺成一条长列表反而难找。
+  // 成就任务本身已经硬关联了，不再给第二个归属。
+  const groups: { stage: string; items: MilestoneOption[] }[] = []
+  if (!locked) {
+    for (const option of milestones) {
+      const last = groups[groups.length - 1]
+      if (last && last.stage === option.stageTitle) last.items.push(option)
+      else groups.push({ stage: option.stageTitle, items: [option] })
+    }
+  }
+
   function submit() {
     if (!canSubmit) return
-    onSubmit(text.trim(), needSubject ? subjectId : '', dueDate, kind)
+    onSubmit(text.trim(), needSubject ? subjectId : '', dueDate, kind, locked ? undefined : goalId)
   }
 
   return (
@@ -144,6 +169,31 @@ export default function AddTaskPanel({
               )
             })}
           </div>
+        )}
+
+        {groups.length > 0 && (
+          <>
+            <label className="sheet__label" htmlFor="task-goal">
+              服务于
+            </label>
+            <select
+              id="task-goal"
+              className="input sheet__select"
+              value={goalId === undefined ? '' : String(goalId)}
+              onChange={e => setGoalId(e.target.value === '' ? undefined : Number(e.target.value))}
+            >
+              <option value="">日常事务</option>
+              {groups.map(group => (
+                <optgroup key={group.stage} label={group.stage}>
+                  {group.items.map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.title}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </>
         )}
 
         <DuePicker

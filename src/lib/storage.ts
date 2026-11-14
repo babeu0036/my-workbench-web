@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { normalizeCareer } from './career'
 import { dayKeyOffset } from './date'
 import { isLegacyGoal, legacyPeriodTitle } from './goals'
 import type { LegacyGoal } from './goals'
@@ -27,6 +28,11 @@ export const KEYS = {
   achievements: 'workbench.achievements',
   /** 目标页最上面那行「最终目标」（vision），只有一个字符串 */
   vision: 'workbench.vision',
+  /**
+   * 职业目标：{ vision, role, targetDate }。首页顶部那张卡读的就是它。
+   * 老数据在 `workbench.vision` / `workbench.finalGoal`，迁移时抄一次，老键不删。
+   */
+  career: 'workbench.career',
   /** 知识库：{ id, type, title, url?, summary, createdAt } 的数组 */
   knowledge: 'workbench.knowledge',
   /** 行业动态的缓存：{ fetchedAt, items }。几 KB，跟着云同步一起走 */
@@ -177,11 +183,35 @@ function migrateLegacyVision(): void {
 }
 
 /**
+ * 职业目标从「一句话」升级成三样（愿景 / 角色 / 目标日期），存在新键
+ * `workbench.career` 里。第一次打开时把老的 vision（再早是 finalGoal）
+ * 抄进 career.vision —— 用户写过的那句话不会因为换了个结构就消失。
+ *
+ * 判断同样是「键在不在」：三样都被清空也会写 `{vision:'',...}` 回来，
+ * 下次不会又把老愿景抄一遍。
+ */
+function migrateCareer(): void {
+  if (readKey<unknown>(KEYS.career, null) !== null) return
+
+  const current = readKey<unknown>(KEYS.vision, '')
+  const older = readKey<unknown>(LEGACY_VISION_KEY, '')
+  const vision =
+    typeof current === 'string' && current.trim()
+      ? current
+      : typeof older === 'string'
+        ? older
+        : ''
+
+  writeKey(KEYS.career, normalizeCareer({ vision }))
+}
+
+/**
  * 老版本的待办存在 'todos' 里，这里搬到 'workbench.todos'，
  * 保证改造前加的待办不会丢。老 key 保留不删。
  */
 export function migrateLegacyStorage(): void {
   migrateLegacyVision()
+  migrateCareer()
   // 先搬极老的一周一条目标（会写 stages），再搬「周期 → 阶段」，最后才可能预置
   migrateLegacyGoals()
   migrateStages()

@@ -5,7 +5,15 @@ import GoalAddPanel from '../components/GoalAddPanel'
 import GoalList from '../components/GoalList'
 import StageForm from '../components/StageForm'
 import StageList from '../components/StageList'
-import { addAchievement, detachTasks, removeAchievement } from '../lib/achievements'
+import {
+  addAchievement,
+  detachTasks,
+  markAchievementDone,
+  removeAchievement,
+  reopenAchievement,
+  updateAchievement,
+} from '../lib/achievements'
+import { countdownText, targetDays } from '../lib/career'
 import { addGoal, removeGoal, sortForGoalList, toggleGoal, updateGoal } from '../lib/goals'
 import {
   UNSORTED_STAGE_ID,
@@ -16,7 +24,16 @@ import {
   updateStage,
 } from '../lib/stages'
 import { addAchievementTodo, removeTodo, toggleTodo, updateTodo } from '../lib/todos'
-import type { Achievement, Goal as GoalItem, Stage, Todo } from '../lib/types'
+import type { Achievement, Career, Goal as GoalItem, Stage, Todo } from '../lib/types'
+
+type CareerField = 'vision' | 'role' | 'targetDate'
+
+const CAREER_ROWS: { key: CareerField; label: string; placeholder: string; type: 'text' | 'date' }[] =
+  [
+    { key: 'vision', label: '愿景', placeholder: '想成为什么样的人、做成什么事', type: 'text' },
+    { key: 'role', label: '角色', placeholder: '想去的位置，比如「后端开发实习生」', type: 'text' },
+    { key: 'targetDate', label: '目标日期', placeholder: '还没定', type: 'date' },
+  ]
 
 type Props = {
   /** 全部任务。这个页面是唯一看得见成就任务的地方 */
@@ -24,9 +41,9 @@ type Props = {
   setTodos: Dispatch<SetStateAction<Todo[]>>
   achievements: Achievement[]
   setAchievements: Dispatch<SetStateAction<Achievement[]>>
-  /** 最上面那行最终目标，空字符串 = 还没写 */
-  vision: string
-  setVision: Dispatch<SetStateAction<string>>
+  /** 职业目标：愿景 / 角色 / 目标日期。首页那张卡读的是同一份 */
+  career: Career
+  setCareer: Dispatch<SetStateAction<Career>>
   goals: GoalItem[]
   setGoals: Dispatch<SetStateAction<GoalItem[]>>
   /** 阶段：目标页唯一的时间轴，目标条目和成就都挂在它下面 */
@@ -35,21 +52,24 @@ type Props = {
 }
 
 /**
- * 目标。从上到下：最终目标一行 → 目标条目 → 阶段（每个阶段里是成就卡）。
+ * 目标。从上到下：职业目标（三行）→ 目标条目 → 阶段（每个阶段里是成就卡）。
+ *
+ * 职业目标就是首页顶部那张卡的数据源：愿景一句话、角色、目标日期。
+ * 三行都是点一下就地改，改完回车或点保存，Esc 放弃 —— 跟目标条目一个手感。
  *
  * 目标条目仍然是扁平一列、每条前面挂阶段标签，**不塞进阶段里** ——
  * 阶段那一层负责成就，目标再按阶段分组就成了两层一样的结构。
  *
  * 成就按阶段折叠：当前阶段默认展开，其余收着。任务只在这一页出现
- * （见 withoutAchievement），所以这里拿到的是完整的 todos，别的页面拿的是剔过的那份。
+ * （见 withoutAchievement），所以这里拿到的是完整的 todos。
  */
 export default function Goal({
   todos,
   setTodos,
   achievements,
   setAchievements,
-  vision,
-  setVision,
+  career,
+  setCareer,
   goals,
   setGoals,
   stages,
@@ -60,19 +80,22 @@ export default function Goal({
   const [goalOpen, setGoalOpen] = useState(false)
   const [stageOpen, setStageOpen] = useState(false)
   const [editingStage, setEditingStage] = useState<Stage | null>(null)
-  const [editingVision, setEditingVision] = useState(false)
-  const [visionDraft, setVisionDraft] = useState('')
+  const [careerField, setCareerField] = useState<CareerField | null>(null)
+  const [careerDraft, setCareerDraft] = useState('')
 
   const sortedGoals = sortForGoalList(goals, stages)
 
-  function startEditVision() {
-    setVisionDraft(vision)
-    setEditingVision(true)
+  function startEditCareer(field: CareerField) {
+    setCareerDraft(career[field])
+    setCareerField(field)
   }
 
-  function commitVision() {
-    setVision(visionDraft.trim())
-    setEditingVision(false)
+  function commitCareer() {
+    if (!careerField) return
+    const field = careerField
+    const value = careerDraft.trim()
+    setCareer(current => ({ ...current, [field]: value }))
+    setCareerField(null)
   }
 
   /**
@@ -102,12 +125,12 @@ export default function Goal({
     setGoalOpen(false)
   }
 
-  function addAchievementItem(title: string, note: string, stageId: number) {
-    setAchievements(list => addAchievement(list, title, note, stageId))
+  function addAchievementItem(title: string, criteria: string, stageId: number) {
+    setAchievements(list => addAchievement(list, title, criteria, stageId))
     setAddingFor(null)
   }
 
-  /** 删成就：任务不跟着删，只摘掉 achievementId，它们退回「未分类」 */
+  /** 删成就：任务不跟着删，只摘掉归属，它们退回普通任务 */
   function removeAchievementItem(id: number) {
     setAchievements(list => removeAchievement(list, id))
     setTodos(list => detachTasks(list, id))
@@ -115,7 +138,7 @@ export default function Goal({
 
   /**
    * 删阶段：它下面的成就一起删（removeStage 已经把新数组算好了），
-   * 这些成就的任务只摘掉 achievementId —— 任务本身留在计划·任务里，
+   * 这些成就的任务只摘掉归属 —— 任务本身留在计划·任务里，
    * 不然会变成一批谁也看不见的孤儿任务。
    */
   function removeStageItem(stage: Stage) {
@@ -132,38 +155,58 @@ export default function Goal({
       <div className="page page--fab">
         <h2 className="page__title">目标</h2>
 
-        <section className="final" aria-label="最终目标">
-          <span className="final__label">最终目标</span>
+        <section className="career career--edit" aria-label="职业目标">
+          {CAREER_ROWS.map(row => {
+            const value = career[row.key]
+            const editing = careerField === row.key
+            const days = row.key === 'targetDate' && value ? targetDays(career) : undefined
+            const hint = days === undefined ? '' : countdownText(days)
 
-          {editingVision ? (
-            <span className="final__edit">
-              <input
-                className="input final__input"
-                value={visionDraft}
-                onChange={event => setVisionDraft(event.target.value)}
-                onKeyDown={event => {
-                  if (event.key === 'Enter') commitVision()
-                  if (event.key === 'Escape') setEditingVision(false)
-                }}
-                placeholder="想做成的那件大事…"
-                aria-label="最终目标"
-                maxLength={120}
-                autoFocus
-              />
-              <button type="button" className="btn btn--primary final__save" onClick={commitVision}>
-                保存
-              </button>
-            </span>
-          ) : (
-            <>
-              <span className={vision ? 'final__text' : 'final__text final__text--empty'}>
-                {vision || '还没写'}
-              </span>
-              <button type="button" className="btn btn--ghost final__btn" onClick={startEditVision}>
-                编辑
-              </button>
-            </>
-          )}
+            return (
+              <div className="career__row" key={row.key}>
+                <span className="career__key">{row.label}</span>
+
+                {editing ? (
+                  <span className="career__editline">
+                    <input
+                      className={
+                        row.type === 'date'
+                          ? 'input input--date career__input'
+                          : 'input career__input'
+                      }
+                      type={row.type}
+                      value={careerDraft}
+                      onChange={event => setCareerDraft(event.target.value)}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter') commitCareer()
+                        if (event.key === 'Escape') setCareerField(null)
+                      }}
+                      aria-label={row.label}
+                      placeholder={row.placeholder}
+                      maxLength={row.type === 'date' ? undefined : 120}
+                      autoFocus
+                    />
+                    <button type="button" className="btn btn--primary final__save" onClick={commitCareer}>
+                      保存
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className="career__valbtn"
+                    onClick={() => startEditCareer(row.key)}
+                  >
+                    {value ? (
+                      <span className="career__val">{value}</span>
+                    ) : (
+                      <span className="career__val career__val--empty">{row.placeholder}</span>
+                    )}
+                    {hint && <span className="career__hint">{hint}</span>}
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </section>
 
         <GoalList
@@ -196,6 +239,11 @@ export default function Goal({
             setTodos(list => addAchievementTodo(list, text, achievementId, dueDate))
           }
           onEditTask={(id, text, dueDate) => setTodos(list => updateTodo(list, id, { text, dueDate }))}
+          onUpdateAchievement={(id, patch) =>
+            setAchievements(list => updateAchievement(list, id, patch))
+          }
+          onCompleteAchievement={id => setAchievements(list => markAchievementDone(list, id))}
+          onReopenAchievement={id => setAchievements(list => reopenAchievement(list, id))}
           onRemoveAchievement={removeAchievementItem}
           onAddAchievement={stageId => setAddingFor({ stageId })}
         />

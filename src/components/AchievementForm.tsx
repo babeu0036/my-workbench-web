@@ -13,21 +13,21 @@ type Props = {
   /** 打开时预选哪个阶段；不传就按当前阶段，再不行就未归类 */
   defaultStageId?: number
   onClose: () => void
-  onAdd: (title: string, note: string, stageId: number) => void
+  onAdd: (title: string, criteria: string, stageId: number) => void
 }
 
 /**
- * 新建成就的面板（右下角 + 打开）。只要标题，备注可选。
+ * 新建成就（里程碑）的面板（右下角 + 打开）。只要标题，判断标准可选。
  *
- * 备注就是「做到什么程度算成」的判断标准 —— 卡片上会显示成一行灰字，
- * 写不写都不影响点亮（点亮只看任务是否全勾完）。
+ * 判断标准就是「做到什么程度算成」—— 卡片上会显示成一行灰字，也可以之后在卡里补。
+ * 证据不在这儿填：那得等事情真做完了才有东西写。
  *
  * 阶段要选一个：默认是今天所在的阶段，也可以改，或者先放「未归类」。
  * 成就下面挂什么任务不在这儿填 —— 建完在卡片里一条条加，免得一次要填一堆。
  */
 export default function AchievementForm({ stages, defaultStageId, onClose, onAdd }: Props) {
   const [title, setTitle] = useState('')
-  const [note, setNote] = useState('')
+  const [criteria, setCriteria] = useState('')
   const [stageId, setStageId] = useState<number>(() => {
     if (defaultStageId !== undefined) return defaultStageId
     const active = currentStage(stages)
@@ -52,7 +52,7 @@ export default function AchievementForm({ stages, defaultStageId, onClose, onAdd
 
   function submit() {
     if (!canSubmit) return
-    onAdd(title.trim(), note.trim(), stageId)
+    onAdd(title.trim(), criteria.trim(), stageId)
   }
 
   return (
@@ -82,13 +82,13 @@ export default function AchievementForm({ stages, defaultStageId, onClose, onAdd
 
         <input
           className="input"
-          value={note}
-          onChange={e => setNote(e.target.value)}
+          value={criteria}
+          onChange={e => setCriteria(e.target.value)}
           onKeyDown={e => {
             if (e.key === 'Enter') submit()
           }}
-          placeholder="备注（可选）：做到什么程度算成"
-          aria-label="成就备注"
+          placeholder="判断标准（可选）：做到什么程度算成"
+          aria-label="判断标准"
           maxLength={120}
         />
 

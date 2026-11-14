@@ -13,6 +13,7 @@ import {
   updateTodo,
 } from '../lib/todos'
 import type { TaskFilter } from '../lib/todos'
+import type { MilestoneOption } from '../lib/milestones'
 import type { Subject, Todo, TodoKind } from '../lib/types'
 
 /** label 是胶囊上的字（长科目用短名），full 是空状态里说人话用的全名 */
@@ -22,6 +23,8 @@ type Props = {
   todos: Todo[]
   setTodos: Dispatch<SetStateAction<Todo[]>>
   subjects: Subject[]
+  /** 「服务于」的选项：行右侧的小标签和添加面板共用 */
+  milestones: MilestoneOption[]
 }
 
 /**
@@ -34,7 +37,7 @@ type Props = {
  *
  * 右下角的 + 复用首页那个添加面板，加进来的任务和首页加的完全一样。
  */
-export default function PlanTasks({ todos, setTodos, subjects }: Props) {
+export default function PlanTasks({ todos, setTodos, subjects, milestones }: Props) {
   const [filter, setFilter] = useState<TaskFilter>('all')
   // 只影响这一屏画不画已完成的，不删数据、也不落盘：刷新回到默认的「显示」
   const [hideDone, setHideDone] = useState(false)
@@ -82,8 +85,14 @@ export default function PlanTasks({ todos, setTodos, subjects }: Props) {
             ? '没有未分类的学习任务'
             : `还没有${active.full}的任务`
 
-  function handleAdd(text: string, subjectId: string, dueDate: string, kind: TodoKind) {
-    setTodos(list => addTodo(list, text, subjectId, dueDate, kind))
+  function handleAdd(
+    text: string,
+    subjectId: string,
+    dueDate: string,
+    kind: TodoKind,
+    goalId: number | undefined,
+  ) {
+    setTodos(list => addTodo(list, text, subjectId, dueDate, kind, goalId))
     if (kind === 'study') setLastSubjectId(subjectId)
     setPanelOpen(false)
   }
@@ -133,6 +142,7 @@ export default function PlanTasks({ todos, setTodos, subjects }: Props) {
         <TaskList
           todos={shown}
           empty={empty}
+          milestones={milestones}
           onToggle={id => setTodos(list => toggleTodo(list, id))}
           onRemove={id => setTodos(list => removeTodo(list, id))}
           onEdit={id => setEditing(todos.find(todo => todo.id === id) ?? null)}
@@ -162,6 +172,7 @@ export default function PlanTasks({ todos, setTodos, subjects }: Props) {
         <AddTaskPanel
           subjects={pickable}
           defaultSubjectId={defaultSubjectId}
+          milestones={milestones}
           onClose={() => setPanelOpen(false)}
           onSubmit={handleAdd}
         />
@@ -171,9 +182,12 @@ export default function PlanTasks({ todos, setTodos, subjects }: Props) {
         <AddTaskPanel
           subjects={pickable}
           todo={editing}
+          milestones={milestones}
           onClose={() => setEditing(null)}
-          onSubmit={(text, subjectId, dueDate, kind) => {
-            setTodos(list => updateTodo(list, editing.id, { text, subjectId, dueDate, kind }))
+          onSubmit={(text, subjectId, dueDate, kind, goalId) => {
+            setTodos(list =>
+              updateTodo(list, editing.id, { text, subjectId, dueDate, kind, goalId: goalId ?? null }),
+            )
             setEditing(null)
           }}
         />

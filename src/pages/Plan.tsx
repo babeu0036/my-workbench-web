@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import Deadlines from './Deadlines'
 import PlanCourses from './PlanCourses'
 import PlanTasks from './PlanTasks'
+import type { MilestoneOption } from '../lib/milestones'
 import type { Course, Deadline, PlanSegment, Subject, Todo } from '../lib/types'
 
 const TITLES: Record<PlanSegment, string> = {
@@ -15,6 +16,8 @@ type Props = {
   todos: Todo[]
   setTodos: Dispatch<SetStateAction<Todo[]>>
   subjects: Subject[]
+  /** 「服务于」的选项，任务列表和添加面板都要用 */
+  milestones: MilestoneOption[]
   deadlines: Deadline[]
   setDeadlines: Dispatch<SetStateAction<Deadline[]>>
   courses: Course[]
@@ -33,6 +36,7 @@ export default function Plan({
   todos,
   setTodos,
   subjects,
+  milestones,
   deadlines,
   setDeadlines,
   courses,
@@ -54,7 +58,9 @@ export default function Plan({
         />
       )}
 
-      {seg === 'tasks' && <PlanTasks todos={todos} setTodos={setTodos} subjects={subjects} />}
+      {seg === 'tasks' && (
+        <PlanTasks todos={todos} setTodos={setTodos} subjects={subjects} milestones={milestones} />
+      )}
 
       {seg === 'deadlines' && <Deadlines deadlines={deadlines} setDeadlines={setDeadlines} />}
     </div>

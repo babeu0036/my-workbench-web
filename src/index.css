@@ -3897,13 +3897,19 @@ textarea {
   white-space: nowrap;
 }
 
-.ach__badge--running {
+.ach__badge--doing {
   background: var(--accent-soft);
   color: var(--accent);
 }
 
-/* 已点亮的绿跟完成环、心情柱是同一个 --done */
-.ach__badge--lit {
+/* 任务都勾完了但还没确认：橙色，提醒人去写证据 */
+.ach__badge--confirm {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+/* 已确认完成的绿跟完成环、心情柱是同一个 --done */
+.ach__badge--done {
   background: var(--done-soft);
   color: var(--done);
 }
@@ -3987,6 +3993,8 @@ textarea {
   height: 6px;
   border-radius: 999px;
   background: var(--surface-2);
+  /* 0 条完成时轨道几乎是白的，描一圈才看得出这是个进度条 */
+  box-shadow: inset 0 0 0 1px var(--border);
   overflow: hidden;
 }
 
@@ -3998,8 +4006,13 @@ textarea {
   transition: width 0.25s ease;
 }
 
-.ach--lit .ach__bar-fill {
+.ach--done .ach__bar-fill {
   background: var(--done);
+}
+
+/* 待确认：进度条走满但还没变绿，一眼看得出「事做完了、话还没说清」 */
+.ach--confirm .ach__bar-fill {
+  background: var(--warn);
 }
 
 .ach__count {
@@ -4017,4 +4030,386 @@ textarea {
   border: 0;
   border-radius: 0;
   box-shadow: none;
+}
+
+/* ---------- 职业目标（首页卡 + 目标页三行） ---------- */
+
+.career {
+  gap: 8px;
+}
+
+.career__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* 卡片头上那个「去设置」比默认按钮小一号，别抢走愿景的注意力 */
+.career__btn {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.career__vision {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.career__vision--empty {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.career__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* 角色用一颗浅色胶囊，跟任务的「服务于」标签是同一套视觉 */
+.career__role {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.career__role--empty {
+  padding: 0;
+  background: none;
+  color: var(--muted);
+}
+
+.career__count {
+  font-variant-numeric: tabular-nums;
+}
+
+.career__count--near {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.career__count--over {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.career__count--empty {
+  color: var(--muted);
+}
+
+/* 目标页那块不是卡片：页面标题下面三行小字，每行都能点开改 */
+.career--edit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: -6px;
+  padding: 0 2px;
+}
+
+.career__row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* 三个字、四个字的标签都要放得下，别让「目标日期」折成两行 */
+.career__key {
+  flex: none;
+  width: 52px;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.career__valbtn {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.career__val {
+  min-width: 0;
+  color: var(--text);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.career__val--empty {
+  color: var(--muted);
+}
+
+.career__valbtn:hover .career__val {
+  color: var(--accent);
+}
+
+.career__hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.career__editline {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.career__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+/* ---------- 首页阶段条 ---------- */
+
+.stagebar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.stagebar__no {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.stagebar__title {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.stagebar__dot {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+/* ---------- 首页「进行中的里程碑」 ---------- */
+
+.ms {
+  gap: 8px;
+}
+
+.ms__more {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.ms__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ms__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ms__item:hover {
+  background: var(--surface-2);
+}
+
+.ms__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ms__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text-h);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms__badge {
+  flex: none;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.ms__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ms__count {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 任务行右侧的「服务于」小标签 ---------- */
+
+/* 窄屏时会把正文挤窄，所以给死上限 + 省略号，超长里程碑名不会把行撑破 */
+.row__goal {
+  align-self: flex-start;
+  max-width: 96px;
+  margin-top: 2px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- 里程碑卡里的判断标准 / 证据 / 完成按钮 ---------- */
+
+.ach__field {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 标签列定宽：判断标准和证据两行的内容左边对齐，读起来是一张表而不是两句话 */
+.ach__field-key {
+  flex: none;
+  width: 52px;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.ach__field-val {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.ach__field-val--empty {
+  color: var(--muted);
+}
+
+.ach__field:hover .ach__field-val {
+  color: var(--accent);
+}
+
+/* 编辑态那一行不再是指针手型，输入框自己在闪光标 */
+.ach__field--edit {
+  cursor: default;
+}
+
+.ach__field-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 9px;
+  font-size: 13px;
+}
+
+/* 一条任务都没有：灰字，不显示 0% 那种看着像「已经落后」的数 */
+.ach__none {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ach__foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ach__done {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.ach__hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ach__reopen {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-color: var(--border);
+  font-size: 13px;
+}
+
+/* ---------- 添加任务面板里的「服务于」下拉 ---------- */
+
+/* 原生 select 在这套表单里最稳：360px 下不折、手机上直接起系统选择器 */
+.sheet__select {
+  flex: none;
+  width: 100%;
+  padding: 9px 10px;
+  font-size: 15px;
+}
+
+@media (max-width: 560px) {
+  .career__vision {
+    font-size: 16px;
+  }
+
+  /* 窄屏上正文本来就紧，标签再短一点，别把一句话挤成三行 */
+  .row__goal {
+    max-width: 72px;
+  }
 }
