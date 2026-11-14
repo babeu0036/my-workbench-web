@@ -35,19 +35,22 @@ type Props = {
   /** 写了证据才能确认完成 */
   onCompleteAchievement: (id: number) => void
   onReopenAchievement: (id: number) => void
-  /** 点某个阶段里的「加一条成就」，面板打开时预选这个阶段 */
+  /** 点某个阶段里的「添加里程碑」，面板打开时预选这个阶段 */
   onAddAchievement: (stageId: number) => void
 }
 
 /**
- * 阶段列表 + 每个阶段下面的成就卡。
+ * 阶段列表 + 每个阶段下面的里程碑卡。
  *
  * 当前阶段（今天落在起止之间那个）默认展开，其余折叠 —— 一屏里同时摊开
  * 四个阶段的所有任务，翻起来比折叠更累。手动折叠/展开的结果记在这次会话里，
  * 刷新后回到按日期算的默认值。
  *
- * 没有阶段字段的老成就放进最后那个「未归类」组，可以之后一条条归过去；
- * 这个组不是真阶段，所以没有编辑和删除，只有「加一条成就」。
+ * 「添加里程碑」在每张阶段卡里（展开后最下面那颗），页面不再有全局的
+ * 悬浮按钮 —— 加的东西总得落在某个阶段下，入口贴着阶段走更直接。
+ *
+ * 没有阶段字段的老里程碑放进最后那个「未归类」组，可以之后一条条归过去；
+ * 这个组不是真阶段，所以没有编辑和删除。
  */
 export default function StageList({
   stages,
@@ -101,7 +104,7 @@ export default function StageList({
     })
   }
 
-  /** 一组成就卡：任务、勾选、编辑、删除都从页面透传下来 */
+  /** 一组里程碑卡：任务、勾选、编辑、删除都从页面透传下来 */
   function cards(list: Achievement[]) {
     return list.map(item => (
       <AchievementCard
@@ -121,10 +124,10 @@ export default function StageList({
   }
 
   /**
-   * 「未归类」那一组：没有 stageId、或者挂的阶段已经被删掉的成就都落在这儿。
+   * 「未归类」那一组：没有 stageId、或者挂的阶段已经被删掉的里程碑都落在这儿。
    * 它不是真阶段，所以没有编辑和删除，也没有折叠记忆的意义 —— 只是在列表末尾兜住。
    *
-   * 阶段被全删光时也要画出来（forceOpen）：不然那些任务和成就还在，
+   * 阶段被全删光时也要画出来（forceOpen）：不然那些任务和里程碑还在，
    * 页面上却一个入口都没有，只能去 localStorage 里捞。
    */
   function orphanBlock(forceOpen = false) {
@@ -146,7 +149,7 @@ export default function StageList({
               ▸
             </span>
             <span className="stage__title">{UNSORTED_STAGE_TITLE}</span>
-            <span className="stage__range">没归到阶段的成就</span>
+            <span className="stage__range">没归到阶段的里程碑</span>
             <span className="stage__count">
               {done}/{orphans.length}
             </span>
@@ -209,8 +212,8 @@ export default function StageList({
                   label="删除"
                   hint={
                     list.length === 0
-                      ? '这个阶段下没有成就'
-                      : `该阶段下有 ${list.length} 个成就，将一并删除`
+                      ? '这个阶段下没有里程碑'
+                      : `该阶段下有 ${list.length} 个里程碑，将一并删除`
                   }
                   onConfirm={() => onRemoveStage(stage)}
                 />
@@ -225,7 +228,7 @@ export default function StageList({
                     className="stage__empty"
                     onClick={() => onAddAchievement(stage.id)}
                   >
-                    这个阶段还没有成就，点这里加一条
+                    这个阶段还没有里程碑，点这里加一条
                   </button>
                 ) : (
                   <>
@@ -235,7 +238,7 @@ export default function StageList({
                       className="stage__more"
                       onClick={() => onAddAchievement(stage.id)}
                     >
-                      + 加一条成就
+                      + 添加里程碑
                     </button>
                   </>
                 )}

@@ -31,7 +31,7 @@ export function normalizeTodo(raw: unknown, index = 0): Todo | null {
     // 加日期之前建的任务没有截止日期：就让它没有，不去拿创建时间冒充，
     // 否则一堆早就做完的旧任务会突然全部变成「逾期」
     dueDate: isDateKey(item.dueDate) ? item.dueDate : undefined,
-    // 目标页的成就任务；老数据没有这一项，就是普通任务
+    // 目标页的里程碑任务；老数据没有这一项，就是普通任务
     achievementId:
       typeof item.achievementId === 'number' && Number.isFinite(item.achievementId)
         ? item.achievementId
@@ -64,9 +64,9 @@ export function forSubject(todos: Todo[], subjectId: string): Todo[] {
 }
 
 /**
- * 去掉挂在成就下的任务。
+ * 去掉挂在里程碑下的任务。
  *
- * 成就任务是「目标页的东西」，不该在计划·任务里当未分类再列一遍，
+ * 里程碑任务是「目标页的东西」，不该在计划·任务里当未分类再列一遍，
  * 也不该混进首页今日任务、复盘的本周完成率和活跃天数。
  * App 里算一份 mainTodos 传给这三个页面，四处口径就是同一个。
  */
@@ -147,11 +147,11 @@ export function addTodo(
 }
 
 /**
- * 给成就加一条任务。科目恒为空（成就任务不进科目页、也不算未分类），
+ * 给里程碑加一条任务。科目恒为空（里程碑任务不进科目页、也不算未分类），
  * kind 恒为 study，只多挂一个 achievementId。
  *
  * 截止日期可以不填：传空串（或者不传）就不写 dueDate 这个键。
- * 成就任务本来也不进到期提醒（App 传给别的页面的是 withoutAchievement 那份），
+ * 里程碑任务本来也不进到期提醒（App 传给别的页面的是 withoutAchievement 那份），
  * 所以没日期不会漏提醒什么事，有日期也只是列表里多一行日子。
  */
 export function addAchievementTodo(
@@ -212,7 +212,7 @@ export type TodoPatch = {
  *
  * 三条硬规矩：
  * - 琐事的科目恒为空，切回学习再由调用方给科目，别留半吊子状态；
- * - 成就任务的科目也恒为空（它们只活在目标页，不进科目页、不算未分类），
+ * - 里程碑任务的科目也恒为空（它们只活在目标页，不进科目页、不算未分类），
  *   所以在目标页改文字不会把它变成某个科目的任务；
  * - `createdAt` / `doneAt` / `achievementId` / `done` 一概不动 ——
  *   改个错字不该让已完成的任务变回未完成，也不该改掉它「哪天完成的」。

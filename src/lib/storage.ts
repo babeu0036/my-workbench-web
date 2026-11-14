@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react'
+import { appendAchievements, normalizeAchievements } from './achievements'
 import { normalizeCareer } from './career'
-import { dayKeyOffset } from './date'
-import { isLegacyGoal, legacyPeriodTitle } from './goals'
-import type { LegacyGoal } from './goals'
+import { goalsToDrafts, isLegacyGoal, weeklyGoalsToData } from './legacyGoals'
 import { normalizeStages, presetStages } from './stages'
 import { normalizeTodos } from './todos'
-import type { Goal, Stage, Todo } from './types'
+import type { Todo } from './types'
 
 /** localStorage 的几个 key，分开存，互不影响 */
 export const KEYS = {
   todos: 'workbench.todos',
   deadlines: 'workbench.deadlines',
   notes: 'workbench.notes',
-  /** 目标条目：{ id, stageId, text, done, doneAt? }，挂在对应的阶段上 */
-  goals: 'workbench.goals',
   /** 阶段：大一上 / 大一下 / …，{ id, title, startKey, endKey, order } */
   stages: 'workbench.stages',
   /** 首页添加面板上次选的科目，只有一个字符串 */
@@ -24,7 +21,7 @@ export const KEYS = {
   semesterStart: 'workbench.semesterStart',
   /** 今日状态，按日期键存一份：{ '2026-11-01': 'good' } */
   mood: 'workbench.mood',
-  /** 成就（目标页），数组 */
+  /** 里程碑（目标页），数组。老的目标条目也搬进这里，全站只剩这一套 */
   achievements: 'workbench.achievements',
   /** 目标页最上面那行「最终目标」（vision），只有一个字符串 */
   vision: 'workbench.vision',
@@ -47,6 +44,21 @@ const LEGACY_VISION_KEY = 'workbench.finalGoal'
  * 搬完不删 —— 跟其它几次迁移一个规矩，万一搬错还能找回来。
  */
 const LEGACY_PERIODS_KEY = 'workbench.goalPeriods'
+
+/**
+ * 目标条目（扁平那一列）的老键。已经不读也不写了，只在启动时搬一次，
+ * 搬完保留不删 —— 用户原来的条目还在，万一搬错还能找回来。
+ */
+const LEGACY_GOALS_KEY = 'workbench.goals'
+
+/**
+ * 已经搬过的老目标 token：普通目标条目的原 id（没 id 的用 `idx-下标`），
+ * 一周一条那批用 `w<id>` / `w-idx-<周>-<下标>`。
+ *
+ * 迁移只做一次：用户之后把搬进来的里程碑删掉、或者清空 achievements，
+ * 都不会因为「goals 还在」又长出来一遍。这个键本身也跟着云同步走。
+ */
+const MERGED_GOALS_KEY = 'workbench.legacyGoalsMerged'
 
 /** 读一个 key，读不出来（没有 / 坏了）就返回兜底值 */
 export function readKey<T>(key: string, fallback: T): T {
@@ -96,55 +108,67 @@ export function useStoredState<T>(
 }
 
 /**
- * 旧版目标是一周一条（{ weekKey, text, done, settled }），没有「阶段」这一层。
- * 这里按 weekKey 分组，每组升成一个阶段「10.26 那周」，每条老目标变成阶段里的一条：
- * 结算过且打了勾的算完成，其余算没完成 —— 一条都不丢。
- * 已经是新形状（带 stageId / periodId）就原样不动。
+ * 已经搬过的老目标 token（原 goal id / `idx-下标` / 周目标的 `w<id>`）。
+ * 两个迁移函数共用这一份记录，读一次、追加一次。
  */
-function migrateLegacyGoals(): void {
-  const raw = readKey<unknown>(KEYS.goals, null)
+function readMergedTokens(): Set<string> {
+  const raw = readKey<unknown>(MERGED_GOALS_KEY, [])
+  return new Set(
+    (Array.isArray(raw) ? raw : []).filter((item): item is string => typeof item === 'string'),
+  )
+}
+
+function rememberTokens(previous: Set<string>, fresh: string[]): void {
+  if (fresh.length === 0) return
+  writeKey(MERGED_GOALS_KEY, [...previous, ...fresh])
+}
+
+/**
+ * 极老的数据是一周一条（{ weekKey, text, done, settled }），没有「阶段」这一层。
+ * 这里按 weekKey 分组升出阶段「10.26 那周」，每条直接变成那个阶段下的一条里程碑。
+ *
+ * 以前这一步是先写 `workbench.goals`，再由下面那步并进里程碑；现在中间那份不用再生成了。
+ */
+function migrateWeeklyGoals(): void {
+  const raw = readKey<unknown>(LEGACY_GOALS_KEY, null)
+  if (!Array.isArray(raw) || raw.length === 0) return
+  if (!raw.some(isLegacyGoal)) return
+
+  const merged = readMergedTokens()
+  const existingStages = normalizeStages(readKey<unknown>(KEYS.stages, []))
+  // 新阶段的 id 从现有最大值往上排（跟 appendAchievements 一个规矩），不覆盖已有阶段
+  const base = existingStages.reduce((acc, stage) => (stage.id > acc ? stage.id : acc), Date.now()) + 1
+
+  const { stages, drafts, tokens } = weeklyGoalsToData(raw, merged, Date.now(), base)
+  if (tokens.length === 0) return
+
+  if (stages.length > 0) writeKey(KEYS.stages, [...existingStages, ...stages])
+  const existing = normalizeAchievements(readKey<unknown>(KEYS.achievements, []))
+  writeKey(KEYS.achievements, appendAchievements(existing, drafts))
+  rememberTokens(merged, tokens)
+}
+
+/**
+ * 把 `workbench.goals` 里剩下的目标条目并进里程碑 —— 之后全站只读写 achievements。
+ *
+ * 每条：title 取 text、stageId 原样保留（0 这种「未分组」落成没有阶段）、
+ * done 过的记 status='done' 并补 doneAt（阶段表头的 x/y 认的是 doneAt）、
+ * criteria 和 evidence 留空。
+ *
+ * 幂等靠 MERGED_GOALS_KEY 记 token，不靠「goals 空了没有」——老键按要求保留不删。
+ * 搬进来的条目一律拿新 id（appendAchievements），不沿用目标 id。
+ */
+function mergeGoalsIntoAchievements(): void {
+  const raw = readKey<unknown>(LEGACY_GOALS_KEY, null)
   if (!Array.isArray(raw) || raw.length === 0) return
 
-  const legacy = raw.filter(isLegacyGoal)
-  if (legacy.length === 0) return
+  const merged = readMergedTokens()
+  const { drafts, tokens } = goalsToDrafts(raw, merged)
+  if (tokens.length === 0) return
 
-  const groups = new Map<string, LegacyGoal[]>()
-  legacy.forEach(item => {
-    const list = groups.get(item.weekKey) ?? []
-    list.push(item)
-    groups.set(item.weekKey, list)
-  })
-
-  const stages: Stage[] = []
-  const goals: Goal[] = []
-  let seq = 1
-
-  // weekKey 排序后建阶段，读日志时顺序跟当年写目标的顺序一致
-  ;[...groups.keys()].sort().forEach((weekKey, index) => {
-    const stageId = seq++
-    stages.push({
-      id: stageId,
-      title: legacyPeriodTitle(weekKey),
-      startKey: weekKey,
-      endKey: dayKeyOffset(weekKey, 6),
-      order: index,
-    })
-
-    ;(groups.get(weekKey) ?? []).forEach(item => {
-      const text = typeof item.text === 'string' ? item.text.trim() : ''
-      if (!text) return
-      goals.push({
-        id: seq++,
-        stageId,
-        text,
-        // 旧版只有点过「完成 / 没完成」的才算数，没结算的一律当没完成
-        done: Boolean(item.settled && item.done),
-      })
-    })
-  })
-
-  writeKey(KEYS.stages, stages)
-  writeKey(KEYS.goals, goals)
+  const existing = normalizeAchievements(readKey<unknown>(KEYS.achievements, []))
+  writeKey(KEYS.achievements, appendAchievements(existing, drafts))
+  rememberTokens(merged, tokens)
 }
 
 /**
@@ -212,9 +236,11 @@ function migrateCareer(): void {
 export function migrateLegacyStorage(): void {
   migrateLegacyVision()
   migrateCareer()
-  // 先搬极老的一周一条目标（会写 stages），再搬「周期 → 阶段」，最后才可能预置
-  migrateLegacyGoals()
+  // 顺序有讲究：先把极老的一周一条目标升成阶段（会写 stages），
+  // 再搬「周期 → 阶段」，最后才可能预置；然后才把目标条目并进里程碑
+  migrateWeeklyGoals()
   migrateStages()
+  mergeGoalsIntoAchievements()
 
   const legacy = readKey<unknown>('todos', null)
   if (!Array.isArray(legacy)) return

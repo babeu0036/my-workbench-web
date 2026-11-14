@@ -2,16 +2,16 @@ import { dayKey, formatDateRange } from './date'
 import type { Achievement, Stage } from './types'
 
 /**
- * 阶段。目标页上**唯一**的一条时间轴：目标条目和成就都挂在它下面。
+ * 阶段。目标页上**唯一**的一条时间轴：里程碑都挂在它下面。
  *
  * 以前叫「周期」（GoalPeriod，字段 start / end），只挂目标条目；
- * 现在升级成阶段，多一个 order，并接管成就的归属。
+ * 目标条目并进里程碑之后，它只负责给里程碑分组。
  * 老数据由 storage.ts 的 migrateStages 搬一次，字段名在这里兜底兼容。
  *
  * 除读写 localStorage 的部分外都是纯函数，能单独跑测试。
  */
 
-/** 没选阶段的目标、没归阶段的成就都落到这里。阶段 id 由时间戳生成，不可能是 0 */
+/** 没归阶段的里程碑落到这里（`stageId` 缺省或指向已删的阶段）。阶段 id 由时间戳生成，不可能是 0 */
 export const UNSORTED_STAGE_ID = 0
 export const UNSORTED_STAGE_TITLE = '未归类'
 
@@ -122,7 +122,7 @@ export function updateStage(
 }
 
 /**
- * 删阶段：它下面的成就一起删，并把被删的成就 id 交出去 ——
+ * 删阶段：它下面的里程碑一起删，并把被删的里程碑 id 交出去 ——
  * 页面拿这份 id 去把任务的 achievementId 摘掉（任务本身保留）。
  */
 export function removeStage(
@@ -182,9 +182,9 @@ export function currentStage(list: Stage[], now: number = Date.now()): Stage | u
     }, undefined)
 }
 
-/* ---------- 成就归属 ---------- */
+/* ---------- 里程碑归属 ---------- */
 
-/** 某个阶段下的成就，按添加顺序 —— 跟卡片出现的顺序一致 */
+/** 某个阶段下的里程碑，按添加顺序 —— 跟卡片出现的顺序一致 */
 export function achievementsOf(list: Achievement[], stageId: number): Achievement[] {
   return list.filter(item => (item.stageId ?? UNSORTED_STAGE_ID) === stageId)
 }
@@ -196,15 +196,15 @@ export function orphanAchievements(list: Achievement[], stages: Stage[]): Achiev
 }
 
 export type StageStats = {
-  /** 已点亮的成就数 */
+  /** 已点亮的里程碑数 */
   done: number
-  /** 这个阶段下的成就总数 */
+  /** 这个阶段下的里程碑总数 */
   total: number
   /** 0-100 的整数。total 为 0 时给 0 */
   percent: number
 }
 
-/** 阶段表头上的 x/y：已点亮成就数 / 成就总数（不是任务数） */
+/** 阶段表头上的 x/y：已点亮里程碑数 / 里程碑总数（不是任务数） */
 export function stageStats(list: Achievement[], stageId: number): StageStats {
   const items = achievementsOf(list, stageId)
   const done = items.filter(item => item.doneAt !== undefined).length

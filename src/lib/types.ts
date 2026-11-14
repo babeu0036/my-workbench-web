@@ -22,15 +22,17 @@ export type Todo = {
    */
   dueDate?: string
   /**
-   * 挂在哪个成就下。有值 = 目标页的任务，只在目标页出现 ——
+   * 挂在哪个里程碑下。有值 = 目标页的任务，只在目标页出现 ——
    * 计划·任务、首页、复盘统计都按 `withoutAchievement` 把它们排除掉，
    * 免得同一件事在三个地方各算一遍。
    */
   achievementId?: number
   /**
-   * 「服务于」哪个里程碑（Achievement.id）。跟 achievementId 的区别：
-   * 这是**软关联** —— 任务照旧留在首页、计划、科目页，只是顺便算进里程碑的进度；
-   * achievementId 是硬关联，任务会从那些页面搬走，只活在目标页。
+   * 「服务于」哪条里程碑（Achievement.id）。字段名是历史遗留（以前这里指向
+   * 目标条目），从目标条目并进里程碑之后，它和 achievementId 指向的是同一张表。
+   * 跟 achievementId 的区别只在显示范围：这是**软关联** —— 任务照旧留在
+   * 首页、计划、科目页，只是顺便算进里程碑的进度；achievementId 是硬关联，
+   * 任务会从那些页面搬走，只活在目标页。
    * 空 = 日常事务，不算进任何里程碑。
    */
   goalId?: number
@@ -45,8 +47,11 @@ export type Todo = {
 export type MilestoneStatus = 'todo' | 'doing' | 'done'
 
 /**
- * 一条成就（目标页上的大块，也就是「里程碑」）。下面的任务通过
+ * 一条里程碑（目标页上的大块）。下面的任务通过
  * `Todo.achievementId`（硬关联）或 `Todo.goalId`（软关联）挂过来。
+ *
+ * 它同时承担了以前「目标条目」（workbench.goals）的职责 —— 一个阶段下想放
+ * 几条放几条，不再有第二份扁平的清单。老的目标条目由 storage.ts 一次性并进来。
  *
  * `status` / `doneAt` 有值 = 已确认完成 —— 这个只能手动点，而且必须留下证据。
  * 跟更早版本的区别：以前任务全勾完就自动点亮，现在是「待确认」，
@@ -71,6 +76,13 @@ export type Achievement = {
   /** 确认完成的时间戳。撤销完成时删键，不置 null */
   doneAt?: number
 }
+
+/**
+ * 迁移时用的「待写入里程碑」：字段跟 Achievement 一样，就是还没有 id ——
+ * id 由 `appendAchievements` 按现有最大值统一分配，不会跟已有条目撞号。
+ * 只有 storage.ts 的启动迁移会造这种值。
+ */
+export type AchievementDraft = Omit<Achievement, 'id'>
 
 /**
  * 职业目标：首页顶部那张卡，也是目标页最上面那块。
@@ -198,7 +210,7 @@ export type Subject = {
 /**
  * 一个阶段：大一上 / 大一下 / 大二 / 大三大四，或者自己起的一段。
  *
- * 这是目标页上**唯一**的一条时间轴 —— 目标条目和成就都挂在它下面。
+ * 这是目标页上**唯一**的一条时间轴 —— 里程碑都挂在它下面。
  * `startKey` / `endKey` 都是 10 字符日期键（2026-09-01），endKey 含当天。
  * 阶段之间允许重叠，也不用首尾相接；「当前阶段」取结束得更近的那个。
  *
@@ -210,23 +222,6 @@ export type Stage = {
   startKey: string
   endKey: string
   order: number
-}
-
-/**
- * 一条目标。挂在一个阶段下，一个阶段下想有几条就有几条。
- * 没有「结算」这个状态：勾上就是完成，取消勾就回到未完成。
- */
-export type Goal = {
-  id: number
-  /**
-   * 属于哪个阶段（Stage.id）。0 = 未分组 —— 加目标不必先建阶段，
-   * 先写下来，之后再归到某个阶段（见 UNSORTED_STAGE_ID）。
-   */
-  stageId: number
-  text: string
-  done: boolean
-  /** 勾上的时间，用来显示「11月6日 完成」；取消勾就清掉 */
-  doneAt?: number
 }
 
 /**

@@ -1,11 +1,14 @@
 import { MILESTONE_SHORT_MAX } from './milestones'
-import type { Achievement, MilestoneStatus, Todo } from './types'
+import type { Achievement, AchievementDraft, MilestoneStatus, Todo } from './types'
 
 /**
- * 成就（也就是「里程碑」）。目标页上的大块，一条下面挂若干任务：
+ * 里程碑（Achievement，字段名沿用老叫法）。目标页上的大块，一条下面挂若干任务：
  *
  * - `Todo.achievementId` 硬关联：任务只活在目标页；
  * - `Todo.goalId` 软关联：任务照旧留在首页 / 计划 / 科目页，也顺便算进度。
+ *
+ * 它同时也吃掉了以前「目标条目」（workbench.goals）那一层 —— 目标页上
+ * 不再有第二份扁平清单，一个阶段下想放几条里程碑就放几条。
  *
  * 这里只放纯函数：读盘兜底、增删、证据门槛。**进度和状态不在这里算** ——
  * 那些要同时看任务，统一在 lib/milestones.ts。
@@ -16,7 +19,7 @@ import type { Achievement, MilestoneStatus, Todo } from './types'
 
 const STATUSES: MilestoneStatus[] = ['todo', 'doing', 'done']
 
-/** 一条成就长什么样都可能，逐个字段兜底；没有标题的直接丢掉（认不出是什么） */
+/** 一条里程碑长什么样都可能，逐个字段兜底；没有标题的直接丢掉（认不出是什么） */
 export function normalizeAchievement(raw: unknown, index = 0): Achievement | null {
   if (!raw || typeof raw !== 'object') return null
   // note / done 是更早版本的字段：note 就是现在的「判断标准」，搬过来不丢
@@ -68,13 +71,38 @@ export function normalizeAchievements(list: unknown): Achievement[] {
     .filter((item): item is Achievement => item !== null)
 }
 
-/** 新成就的 id：同一毫秒里连点两次也不会撞 */
+/** 新里程碑的 id：同一毫秒里连点两次也不会撞 */
 export function nextAchievementId(list: Achievement[], now: number = Date.now()): number {
   const max = list.reduce((acc, item) => (item.id > acc ? item.id : acc), 0)
   return now > max ? now : max + 1
 }
 
-/** 加一条成就。标题是唯一必填项，判断标准、证据、阶段都可以空 */
+/**
+ * 把一批「没有 id 的里程碑」追加到现有列表末尾，id 从现有最大值往上排。
+ * 只给启动迁移用（老的 goals 并进来）：搬进来的条目一律拿新 id，
+ * 不沿用原来的目标 id —— 那些 id 可能正好被某个任务的 goalId 指着，
+ * 复用它会让一条早就没归属的任务突然挂到这条新里程碑下面。
+ */
+export function appendAchievements(
+  list: Achievement[],
+  drafts: AchievementDraft[],
+  now: number = Date.now(),
+): Achievement[] {
+  if (drafts.length === 0) return list
+
+  let max = list.reduce((acc, item) => (item.id > acc ? item.id : acc), 0)
+  if (now > max) max = now
+
+  return [
+    ...list,
+    ...drafts.map(draft => {
+      max += 1
+      return { ...draft, id: max }
+    }),
+  ]
+}
+
+/** 加一条里程碑。标题是唯一必填项，判断标准、证据、阶段都可以空 */
 export function addAchievement(
   list: Achievement[],
   title: string,
@@ -132,10 +160,10 @@ export function removeAchievement(list: Achievement[], id: number): Achievement[
 }
 
 /**
- * 删成就时任务不跟着删：把 achievementId 和 goalId 都摘掉，它们退回普通任务
+ * 删里程碑时任务不跟着删：把 achievementId 和 goalId 都摘掉，它们退回普通任务
  * （subjectId 本来就是空的，摘掉标记就会出现在计划·任务里）。
  *
- * 收单个 id 或一批 id —— 删阶段时它下面可能有若干条成就。
+ * 收单个 id 或一批 id —— 删阶段时它下面可能有若干条里程碑。
  */
 export function detachTasks(todos: Todo[], id: number | number[]): Todo[] {
   const ids = new Set(Array.isArray(id) ? id : [id])

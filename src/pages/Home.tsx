@@ -4,7 +4,6 @@ import ActiveMilestones from '../components/ActiveMilestones'
 import AddTaskPanel from '../components/AddTaskPanel'
 import CareerCard from '../components/CareerCard'
 import DueSoon from '../components/DueSoon'
-import HomeGoal from '../components/HomeGoal'
 import HomeStats from '../components/HomeStats'
 import MoodPicker from '../components/MoodPicker'
 import StageBar from '../components/StageBar'
@@ -14,7 +13,6 @@ import TomorrowBlock from '../components/TomorrowBlock'
 import { todayCourses, tomorrowCourses } from '../lib/courses'
 import { dayKey, todayLabel } from '../lib/date'
 import { currentStage, sortStages } from '../lib/stages'
-import { goalsOfStage } from '../lib/goals'
 import { activeMilestones } from '../lib/milestones'
 import type { MilestoneOption } from '../lib/milestones'
 import { moodOf, setMood } from '../lib/mood'
@@ -31,17 +29,24 @@ import {
   toggleTodo,
   updateTodo,
 } from '../lib/todos'
-import type { Achievement, Career, Course, Goal, Stage, Subject, Todo, TodoKind } from '../lib/types'
+import type {
+  Achievement,
+  Career,
+  Course,
+  Stage,
+  Subject,
+  Todo,
+  TodoKind,
+} from '../lib/types'
 
 type Props = {
   todos: Todo[]
-  /** 完整的任务（含目标页的成就任务）—— 只用来算里程碑进度，不进下面任何一个列表 */
+  /** 完整的任务（含目标页的里程碑任务）—— 只用来算里程碑进度，不进下面任何一个列表 */
   milestoneTodos: Todo[]
   setTodos: Dispatch<SetStateAction<Todo[]>>
   subjects: Subject[]
   /** 该提醒的任务，最急的在前；在 App 里算好传进来，侧边栏角标用的是同一份 */
   dueItems: Todo[]
-  goals: Goal[]
   /** 里程碑卡和「服务于」都从这里取 */
   achievements: Achievement[]
   milestones: MilestoneOption[]
@@ -62,16 +67,19 @@ type Props = {
 }
 
 /**
- * 首页。从上到下：职业目标 → 当前阶段条 → 进行中的里程碑 → 阶段目标
+ * 首页。从上到下：职业目标 → 当前阶段条 → 进行中的里程碑
  * → 到期提醒 → 今天有课 → 今日进度 → 今天的任务 → 明天 → 今日状态。
  *
- * 前三块是这次新加的，把「以后要做什么」和「今天做什么」接在一起：
+ * 前三块把「以后要做什么」和「今天做什么」接在一起：
  * 里程碑的进度是下面那些任务勾出来的，勾一条，上面立刻变。
+ *
+ * 以前夹在里程碑和提醒之间还有一张「阶段目标」卡，读的是已经不存在的
+ * 目标条目；目标条目并进里程碑之后那张卡永远是空的，就一起删了。
  *
  * 任务列表只放「今天到期 + 逾期」：标题写「今天的任务」就得真只放今天的。
  * 没截止日期的老任务不在这儿（在计划页和科目页里还在），所以列表底部留了一句话说明去处。
  *
- * 页面本身只排版，判断全在 lib 里：目标用 goalsOfStage、今天的课用 todayCourses、
+ * 页面本身只排版，判断全在 lib 里：今天的课用 todayCourses、
  * 明天用 tomorrowCourses / tomorrowTasks、完成环用 todayTotals、连续天数用 streak、
  * 里程碑进度和进行中那几条用 activeMilestones —— 都有纯函数测试撑着。
  */
@@ -81,7 +89,6 @@ export default function Home({
   setTodos,
   subjects,
   dueItems,
-  goals,
   achievements,
   milestones,
   career,
@@ -110,7 +117,6 @@ export default function Home({
   const mood = moodOf(moods, today)
   // 首页只看当前阶段：阶段之间允许重叠时，取结束得更近的那个
   const stage = currentStage(stages)
-  const stageGoals = stage ? goalsOfStage(goals, stage.id) : []
   // 阶段条上的「第 N 阶段」按页面上的先后算，跟目标页的顺序一致
   const stageIndex = stage ? sortStages(stages).findIndex(item => item.id === stage.id) + 1 : 0
   const active = activeMilestones(achievements, milestoneTodos, stage?.id)
@@ -147,8 +153,6 @@ export default function Home({
         <StageBar stage={stage} index={stageIndex} />
 
         <ActiveMilestones rows={active} onOpen={onOpenGoal} />
-
-        <HomeGoal stage={stage} goals={stageGoals} onOpenGoal={onOpenGoal} />
 
         <DueSoon items={dueItems} subjects={subjects} onOpenSubject={onOpenSubject} />
 

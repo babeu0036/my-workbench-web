@@ -14,7 +14,6 @@ import { EMPTY_CAREER, normalizeCareer } from './lib/career'
 import { normalizeCourses } from './lib/courses'
 import { normalizeDeadlines } from './lib/deadlines'
 import { pendingReminders } from './lib/due'
-import { normalizeGoals } from './lib/goals'
 import { normalizeStages } from './lib/stages'
 import { normalizeAchievements } from './lib/achievements'
 import { milestoneOptions } from './lib/milestones'
@@ -30,7 +29,6 @@ import type {
   Course,
   Deadline,
   FeedCache,
-  Goal,
   Knowledge as KnowledgeItem,
   Route,
   Stage,
@@ -77,11 +75,9 @@ export default function App() {
     [],
     normalizeDeadlines,
   )
-  // 目标：一个阶段（大一上 / 大一下 / …）下挂若干条，首页只读当前阶段那几条
-  const [goals, setGoals] = useStoredState<Goal[]>(KEYS.goals, [], normalizeGoals)
-  // 阶段是目标页唯一的时间轴：目标条目和成就都挂在它下面
+  // 阶段是目标页唯一的时间轴：里程碑都挂在它下面
   const [stages, setStages] = useStoredState<Stage[]>(KEYS.stages, [], normalizeStages)
-  // 目标页：成就 + 最上面那行最终目标
+  // 目标页：里程碑（含从老「目标条目」搬进来的那些）
   const [achievements, setAchievements] = useStoredState<Achievement[]>(
     KEYS.achievements,
     [],
@@ -107,7 +103,7 @@ export default function App() {
   // 今日状态：首页写、复盘页读，所以放在最外层，两边看到的是同一份
   const [moods, setMoods] = useStoredState<MoodMap>(KEYS.mood, {}, normalizeMoods)
 
-  // 成就任务只活在目标页：计划·任务、首页、复盘统计都只算这一份，
+  // 里程碑任务只活在目标页：计划·任务、首页、复盘统计都只算这一份，
   // 否则同一件事会在三处各算一遍，数字还对不上。
   // 注意「服务于」的软关联任务（goalId）仍然留在这份里 —— 它们要出现在首页和计划，
   // 只是同时算进里程碑进度，所以首页算进度时还得看完整的 todos。
@@ -189,7 +185,6 @@ export default function App() {
               setTodos={setTodos}
               subjects={subjects}
               dueItems={dueItems}
-              goals={goals}
               achievements={achievements}
               milestones={milestones}
               career={career}
@@ -235,7 +230,7 @@ export default function App() {
           {/* 复盘只剩一页（原来的「数据」），不再有二级结构 */}
           {route.page === 'review' && <ReviewData todos={mainTodos} moods={moods} />}
 
-          {/* 目标页：最终目标 → 目标条目 → 阶段（内含成就）；成就下的任务只在这一页出现 */}
+          {/* 目标页：职业目标 → 阶段（每个阶段里是里程碑卡）；里程碑下的任务只在这一页出现 */}
           {route.page === 'goal' && (
             <GoalPage
               todos={todos}
@@ -244,8 +239,6 @@ export default function App() {
               setAchievements={setAchievements}
               career={career}
               setCareer={setCareer}
-              goals={goals}
-              setGoals={setGoals}
               stages={stages}
               setStages={setStages}
             />

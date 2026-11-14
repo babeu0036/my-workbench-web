@@ -19,14 +19,14 @@ type Props = {
   onToggleTask: (id: number) => void
   onRemoveTask: (id: number) => void
   onAddTask: (text: string, dueDate: string) => void
-  /** 改文字和日期。成就任务的科目和类型不给改，所以只收这两项 */
+  /** 改文字和日期。里程碑任务的科目和类型不给改，所以只收这两项 */
   onEditTask: (id: number, text: string, dueDate: string) => void
   /** 改短名 / 判断标准 / 证据 */
   onUpdate: (patch: { short?: string; criteria?: string; evidence?: string }) => void
   /** 写够证据以后才能点这里 */
   onComplete: () => void
   onReopen: () => void
-  /** 删除这条成就（任务会退回未分类，不跟着删） */
+  /** 删除这条里程碑（任务会退回未分类，不跟着删） */
   onRemove: () => void
 }
 
@@ -269,7 +269,7 @@ export default function AchievementCard({
         </button>
       )}
 
-      {/* 编辑的是成就任务：科目和类型都锁住，只改文字和日期 */}
+      {/* 编辑的是里程碑任务：科目和类型都锁住，只改文字和日期 */}
       {editing && (
         <AddTaskPanel
           subjects={[]}

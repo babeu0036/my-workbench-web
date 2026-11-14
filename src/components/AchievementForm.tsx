@@ -17,13 +17,13 @@ type Props = {
 }
 
 /**
- * 新建成就（里程碑）的面板（右下角 + 打开）。只要标题，判断标准可选。
+ * 新建里程碑的面板（阶段卡里的「+ 添加里程碑」打开）。只要标题，判断标准可选。
  *
  * 判断标准就是「做到什么程度算成」—— 卡片上会显示成一行灰字，也可以之后在卡里补。
  * 证据不在这儿填：那得等事情真做完了才有东西写。
  *
- * 阶段要选一个：默认是今天所在的阶段，也可以改，或者先放「未归类」。
- * 成就下面挂什么任务不在这儿填 —— 建完在卡片里一条条加，免得一次要填一堆。
+ * 阶段要选一个：默认是打开它的那个阶段，也可以改，或者先放「未归类」。
+ * 里程碑下面挂什么任务不在这儿填 —— 建完在卡片里一条条加，免得一次要填一堆。
  */
 export default function AchievementForm({ stages, defaultStageId, onClose, onAdd }: Props) {
   const [title, setTitle] = useState('')
@@ -59,9 +59,9 @@ export default function AchievementForm({ stages, defaultStageId, onClose, onAdd
     <div className="sheet-layer">
       <div className="sheet-mask" onClick={onClose} aria-hidden="true" />
 
-      <div className="sheet" role="dialog" aria-modal="true" aria-label="添加成就">
+      <div className="sheet" role="dialog" aria-modal="true" aria-label="添加里程碑">
         <div className="sheet__head">
-          <span className="sheet__title">添加成就</span>
+          <span className="sheet__title">添加里程碑</span>
           <button type="button" className="sheet__close" onClick={onClose} aria-label="收起">
             ×
           </button>
@@ -76,7 +76,7 @@ export default function AchievementForm({ stages, defaultStageId, onClose, onAdd
             if (e.key === 'Enter') submit()
           }}
           placeholder="想做成的一件事，比如「拿下数学建模国赛」"
-          aria-label="成就名称"
+          aria-label="里程碑名称"
           maxLength={60}
         />
 
