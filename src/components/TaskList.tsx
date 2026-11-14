@@ -21,8 +21,9 @@ type Props = {
  * 文字下面那行是截止日期和剩余天数 —— 没完成的会按紧急程度变色，
  * 已完成的就只剩一个灰色日期，不再吵人。
  *
- * 任务挂了里程碑（「服务于」）就在右侧多一个小标签，只显示标题；
- * goalId 为空（日常事务）或者那条里程碑已经被删了，就什么都不显示。
+ * 任务挂了里程碑（「服务于」）就在右侧多一个小标签，写的是里程碑的短名
+ * （全名放在 title 里，鼠标停上去能看）；goalId 为空（日常事务）或者那条
+ * 里程碑已经被删了，就什么都不显示。
  * 状态全部由外部传进来，这里只渲染，不做任何过滤和计算。
  */
 export default function TaskList({ todos, empty, onToggle, onRemove, onEdit, milestones }: Props) {
@@ -30,7 +31,7 @@ export default function TaskList({ todos, empty, onToggle, onRemove, onEdit, mil
     return <p className="empty">{empty}</p>
   }
 
-  const titles = new Map((milestones ?? []).map(item => [item.id, item.title]))
+  const byId = new Map((milestones ?? []).map(item => [item.id, item]))
 
   return (
     <ul className="list">
@@ -38,7 +39,7 @@ export default function TaskList({ todos, empty, onToggle, onRemove, onEdit, mil
         const days = dueDays(todo)
         // 老任务没有 dueDate，这一行就不显示，不硬塞一个「无日期」
         const dateText = todo.dueDate ? formatDateCn(todo.dueDate) : ''
-        const goalTitle = todo.goalId === undefined ? undefined : titles.get(todo.goalId)
+        const goal = todo.goalId === undefined ? undefined : byId.get(todo.goalId)
 
         const body = (
           <>
@@ -86,9 +87,10 @@ export default function TaskList({ todos, empty, onToggle, onRemove, onEdit, mil
             )}
 
             <span className="row__actions">
-              {goalTitle && (
-                <span className="row__goal" title={`服务于：${goalTitle}`}>
-                  {goalTitle}
+              {goal && (
+                // 行尾只放短名，全名留给 title —— 十几个字的标题会把正文挤成三行
+                <span className="row__goal" title={`服务于：${goal.title}`}>
+                  {goal.short}
                 </span>
               )}
               <button

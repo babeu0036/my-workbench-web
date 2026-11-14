@@ -22,6 +22,26 @@ import type { Achievement, Stage, Todo } from './types'
 
 export type MilestoneState = 'empty' | 'doing' | 'confirm' | 'done'
 
+/** 短名最多几个字。卡片上的输入框和读盘兜底都用这一个数 */
+export const MILESTONE_SHORT_MAX = 6
+
+/** 没填短名时，自动取标题的前几个字 */
+const AUTO_SHORT_KEEP = 4
+
+/**
+ * 里程碑的短名：任务行、比赛行右侧那个小标签显示的就是它。
+ *
+ * 填了就用填的（读盘时已经截到 6 字以内）；没填就取标题前 4 个字加省略号。
+ * 标题本来就不超过 4 个字的话不再补省略号 —— 「学游泳…」看着像是被截断了。
+ */
+export function shortOf(item: Achievement): string {
+  const short = item.short?.trim() ?? ''
+  // 这里再截一刀：读盘和改的时候都截过，但内存里的值也可能从别处来
+  if (short) return short.slice(0, MILESTONE_SHORT_MAX)
+  const title = item.title.trim()
+  return title.length <= AUTO_SHORT_KEEP ? title : `${title.slice(0, AUTO_SHORT_KEEP)}…`
+}
+
 /** 算进这条里程碑的任务，按创建时间从早到晚 */
 export function tasksOf(todos: Todo[], id: number): Todo[] {
   return todos
@@ -116,6 +136,8 @@ export function activeMilestones(
 export type MilestoneOption = {
   id: number
   title: string
+  /** 行尾小标签用的短名；下拉里还是显示全名，免得选的时候看不出是哪条 */
+  short: string
   /** 所属阶段名，下拉里用它做分组标题 */
   stageTitle: string
   /** 阶段顺序，排序用 */
@@ -133,6 +155,7 @@ export function milestoneOptions(list: Achievement[], stages: Stage[]): Mileston
       return {
         id: item.id,
         title: item.title,
+        short: shortOf(item),
         stageTitle: titleOf.get(stageId) ?? UNSORTED_STAGE_TITLE,
         order: rank.get(stageId) ?? ordered.length,
       }

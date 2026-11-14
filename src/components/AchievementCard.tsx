@@ -3,11 +3,14 @@ import AddTaskPanel from './AddTaskPanel'
 import ConfirmDelete from './ConfirmDelete'
 import TaskInput from './TaskInput'
 import TaskList from './TaskList'
-import { hasEvidence } from '../lib/achievements'
 import { dayKey, formatDateCn } from '../lib/date'
-import { milestoneState, statsOf } from '../lib/milestones'
+import { MILESTONE_SHORT_MAX, milestoneState, shortOf, statsOf } from '../lib/milestones'
 import type { MilestoneState } from '../lib/milestones'
+import { isHttpUrl, middleEllipsis } from '../lib/text'
 import type { Achievement, Todo } from '../lib/types'
+
+/** 卡片上点一下就能就地改的三行 */
+type FieldKey = 'short' | 'criteria' | 'evidence'
 
 type Props = {
   achievement: Achievement
@@ -18,8 +21,8 @@ type Props = {
   onAddTask: (text: string, dueDate: string) => void
   /** 改文字和日期。成就任务的科目和类型不给改，所以只收这两项 */
   onEditTask: (id: number, text: string, dueDate: string) => void
-  /** 改判断标准 / 证据 */
-  onUpdate: (patch: { criteria?: string; evidence?: string }) => void
+  /** 改短名 / 判断标准 / 证据 */
+  onUpdate: (patch: { short?: string; criteria?: string; evidence?: string }) => void
   /** 写够证据以后才能点这里 */
   onComplete: () => void
   onReopen: () => void
@@ -41,9 +44,11 @@ const STATE_LABEL: Record<MilestoneState, string> = {
  * - 进行中 / 待确认：完成 x / y + 进度条 + 任务列表，可以直接勾；
  * - 已完成：任务全勾完、而且写了证据、手动确认过。
  *
- * 判断标准和证据都是点一下就地改（回车保存、Esc 放弃、失焦也算保存）。
- * 「标记完成」在证据为空时是禁用的，旁边写着为什么 —— 免得一堆其实没做成
- * 的事自己变绿。
+ * 简称、判断标准、证据都是点一下就地改（回车保存、Esc 放弃、失焦也算保存）。
+ * 简称留空就跟着标题走：自动取前 4 个字加省略号，任务行的小标签显示的就是它。
+ *
+ * 「标记完成」会先弹出证据输入框 —— 证据为空时那个「确定完成」是禁用的，
+ * 下面写着为什么。不让人在没证据的情况下把里程碑点绿。
  */
 export default function AchievementCard({
   achievement,
@@ -59,18 +64,26 @@ export default function AchievementCard({
 }: Props) {
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Todo | null>(null)
-  const [field, setField] = useState<'criteria' | 'evidence' | null>(null)
+  const [field, setField] = useState<FieldKey | null>(null)
   const [draft, setDraft] = useState('')
+  // 「标记完成」弹出来的那层：草稿预填现有证据，通常本来就是空的
+  const [confirming, setConfirming] = useState(false)
+  const [evidenceDraft, setEvidenceDraft] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const fieldRef = useRef<HTMLInputElement>(null)
+  const evidenceRef = useRef<HTMLInputElement>(null)
 
   const state = milestoneState(achievement, tasks)
   const stats = statsOf(tasks)
-  const ready = hasEvidence(achievement)
+  const autoShort = shortOf(achievement)
 
   useEffect(() => {
     if (field) fieldRef.current?.focus()
   }, [field])
+
+  useEffect(() => {
+    if (confirming) evidenceRef.current?.focus()
+  }, [confirming])
 
   function startAdd() {
     setAdding(true)
@@ -78,20 +91,39 @@ export default function AchievementCard({
     window.setTimeout(() => inputRef.current?.focus(), 20)
   }
 
-  function startEdit(next: 'criteria' | 'evidence') {
+  function startEdit(next: FieldKey) {
     setField(next)
-    setDraft(next === 'criteria' ? achievement.criteria : achievement.evidence)
+    // 简称的草稿只认手填的那个值：留空 = 继续跟着标题自动走
+    setDraft(next === 'short' ? (achievement.short ?? '') : achievement[next])
   }
 
   function commit() {
     if (!field) return
-    onUpdate({ [field]: draft } as { criteria?: string; evidence?: string })
+    onUpdate({ [field]: draft } as { short?: string; criteria?: string; evidence?: string })
     setField(null)
   }
 
-  /** 标准和证据共用同一种输入行：一行字，回车保存，失焦也保存 */
-  const fieldRow = (key: 'criteria' | 'evidence', label: string, placeholder: string) => {
-    const value = key === 'criteria' ? achievement.criteria : achievement.evidence
+  function openConfirm() {
+    setEvidenceDraft(achievement.evidence)
+    setConfirming(true)
+  }
+
+  function submitComplete() {
+    const evidence = evidenceDraft.trim()
+    if (!evidence) return
+    // 先写证据再置完成：两个都是函数式更新，按顺序排队，
+    // 第二条看到的就是刚写进去的证据（markAchievementDone 那边会再校验一次）
+    onUpdate({ evidence })
+    onComplete()
+    setConfirming(false)
+  }
+
+  /** 三行共用同一种输入行：一行字，回车保存，失焦也保存 */
+  const fieldRow = (key: FieldKey, label: string, placeholder: string) => {
+    const value = key === 'short' ? (achievement.short ?? '') : achievement[key]
+    // 简称没填时显示的是自动截出来的那个，不然这一行会空着、看不出标签长什么样
+    const shown = key === 'short' ? autoShort : value
+
     if (field === key) {
       return (
         <div className="ach__field ach__field--edit">
@@ -107,9 +139,37 @@ export default function AchievementCard({
             }}
             onBlur={commit}
             aria-label={label}
-            maxLength={200}
-            placeholder={placeholder}
+            maxLength={key === 'short' ? MILESTONE_SHORT_MAX : 200}
+            placeholder={
+              key === 'short' ? `留空自动取「${autoShort}」，最多 ${MILESTONE_SHORT_MAX} 个字` : placeholder
+            }
           />
+        </div>
+      )
+    }
+
+    // 证据是网址就渲染成链接：点开是新窗口，文字中间省略，全名放在 title 里
+    if (key === 'evidence' && isHttpUrl(shown)) {
+      return (
+        <div className="ach__field ach__field--link">
+          <span className="ach__field-key">{label}</span>
+          <a
+            className="ach__link"
+            href={shown}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={shown}
+          >
+            {middleEllipsis(shown, 24, 12)}
+          </a>
+          <button
+            type="button"
+            className="ach__field-edit"
+            onClick={() => startEdit(key)}
+            aria-label={`修改${label}`}
+          >
+            改
+          </button>
         </div>
       )
     }
@@ -117,8 +177,8 @@ export default function AchievementCard({
     return (
       <button type="button" className="ach__field" onClick={() => startEdit(key)}>
         <span className="ach__field-key">{label}</span>
-        <span className={value ? 'ach__field-val' : 'ach__field-val ach__field-val--empty'}>
-          {value || placeholder}
+        <span className={shown ? 'ach__field-val' : 'ach__field-val ach__field-val--empty'}>
+          {shown || placeholder}
         </span>
       </button>
     )
@@ -132,6 +192,7 @@ export default function AchievementCard({
         <ConfirmDelete className="ach__remove" label="删除" onConfirm={onRemove} />
       </div>
 
+      {fieldRow('short', '简称', '')}
       {fieldRow('criteria', '判断标准', '做到什么程度算成')}
       {fieldRow('evidence', '证据', '怎么证明做到了')}
 
@@ -179,15 +240,10 @@ export default function AchievementCard({
         </button>
       ) : (
         <div className="ach__foot">
-          <button
-            type="button"
-            className="btn btn--primary ach__done"
-            onClick={onComplete}
-            disabled={!ready}
-          >
+          {/* 先弹证据框，证据空着就确定不了 —— 门槛在弹窗里，不在这颗按钮上 */}
+          <button type="button" className="btn btn--primary ach__done" onClick={openConfirm}>
             标记完成
           </button>
-          {!ready && <span className="ach__hint">完成一个里程碑，得留下证据</span>}
         </div>
       )}
 
@@ -224,6 +280,55 @@ export default function AchievementCard({
             setEditing(null)
           }}
         />
+      )}
+
+      {/* 标记完成：先让写证据，写不出就不让点确定 */}
+      {confirming && (
+        <div className="sheet-layer">
+          <div className="sheet-mask" onClick={() => setConfirming(false)} aria-hidden="true" />
+          <div className="sheet" role="dialog" aria-modal="true" aria-label="标记完成">
+            <div className="sheet__head">
+              <span className="sheet__title">标记完成</span>
+              <button
+                type="button"
+                className="sheet__close"
+                onClick={() => setConfirming(false)}
+                aria-label="收起"
+              >
+                ×
+              </button>
+            </div>
+
+            <p className="sheet__hint">「{achievement.title}」怎么证明做到了？留一句再确认。</p>
+
+            <input
+              ref={evidenceRef}
+              className="input"
+              value={evidenceDraft}
+              onChange={event => setEvidenceDraft(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === 'Enter') submitComplete()
+                if (event.key === 'Escape') setConfirming(false)
+              }}
+              placeholder="链接、结果、截图说明都行"
+              aria-label="证据"
+              maxLength={200}
+            />
+
+            {!evidenceDraft.trim() && (
+              <p className="sheet__hint">完成一个里程碑，得留下证据</p>
+            )}
+
+            <button
+              type="button"
+              className="btn btn--primary sheet__submit"
+              onClick={submitComplete}
+              disabled={!evidenceDraft.trim()}
+            >
+              确定完成
+            </button>
+          </div>
+        </div>
       )}
     </article>
   )

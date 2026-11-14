@@ -4292,10 +4292,11 @@ textarea {
 
 /* ---------- 任务行右侧的「服务于」小标签 ---------- */
 
-/* 窄屏时会把正文挤窄，所以给死上限 + 省略号，超长里程碑名不会把行撑破 */
+/* 窄屏时会把正文挤窄，所以给死上限 + 省略号，超长里程碑名不会把行撑破。
+   现在显示的是短名（最多 6 个字），140 基本够一整条；真超了也还是省略号兜底 */
 .row__goal {
   align-self: flex-start;
-  max-width: 96px;
+  max-width: 140px;
   margin-top: 2px;
   padding: 0 7px;
   border-radius: 999px;
@@ -4381,9 +4382,47 @@ textarea {
   font-size: 13px;
 }
 
-.ach__hint {
+/* 证据是网址那一行：链接自己吃掉剩余宽度，右边留一颗「改」 */
+.ach__field--link {
+  align-items: baseline;
+  cursor: default;
+}
+
+/* 中间已经省略过了，这里只管不出界：网址不带空格，不换行就得 overflow */
+.ach__link {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--accent);
+  font-size: 13px;
+  line-height: 1.55;
+  text-decoration: underline;
+  text-decoration-color: var(--accent-soft);
+  text-underline-offset: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ach__link:hover {
+  text-decoration-color: currentColor;
+}
+
+/* 链接本身要能点开，所以改这一行得另给一个入口 */
+.ach__field-edit {
+  flex: none;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+
+.ach__field-edit:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .ach__reopen {
@@ -4403,13 +4442,25 @@ textarea {
   font-size: 15px;
 }
 
+/* 比赛页那个内联表单里的下拉，跟日期框一样别被列方向的 flex 撑高 */
+.field .input--select {
+  flex: none;
+  width: 100%;
+}
+
+/* .field 的 flex-basis 是给 .field-row 里并排用的；直接摆在 .form（列方向）里
+   会占 140px 的高度，把下拉和按钮之间撑出一大块空白 */
+.form > .field {
+  flex: none;
+}
+
 @media (max-width: 560px) {
   .career__vision {
     font-size: 16px;
   }
 
-  /* 窄屏上正文本来就紧，标签再短一点，别把一句话挤成三行 */
+  /* 窄屏上正文本来就紧，标签再收一档，别把一句话挤成三行 */
   .row__goal {
-    max-width: 72px;
+    max-width: 110px;
   }
 }

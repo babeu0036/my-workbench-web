@@ -21,6 +21,8 @@ export type DeadlineInput = {
   signupEnd: string
   startDate?: string
   endDate?: string
+  /** 「服务于」哪条里程碑；undefined = 日常事务，不写这个键 */
+  goalId?: number
 }
 
 function isDateKey(value: unknown): value is string {
@@ -47,12 +49,17 @@ export function normalizeDeadline(raw: unknown, index = 0): Deadline | null {
   const id =
     typeof item.id === 'number' && Number.isFinite(item.id) ? item.id : Date.now() + index
 
+  // 老数据没有 goalId，缺这个键就是日常事务，不该报错
+  const goalId =
+    typeof item.goalId === 'number' && Number.isFinite(item.goalId) ? item.goalId : undefined
+
   return {
     id,
     name,
     signupEnd,
     startDate: isDateKey(item.startDate) ? item.startDate : undefined,
     endDate: isDateKey(item.endDate) ? item.endDate : undefined,
+    ...(goalId !== undefined ? { goalId } : {}),
   }
 }
 
@@ -168,6 +175,8 @@ export function addDeadline(
       signupEnd: input.signupEnd,
       startDate: input.startDate || undefined,
       endDate: input.endDate || undefined,
+      // 不选里程碑就不写这个键，跟任务那边的 goalId 一个规矩
+      ...(input.goalId !== undefined ? { goalId: input.goalId } : {}),
     },
   ]
 }

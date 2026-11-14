@@ -62,7 +62,13 @@ export default function Plan({
         <PlanTasks todos={todos} setTodos={setTodos} subjects={subjects} milestones={milestones} />
       )}
 
-      {seg === 'deadlines' && <Deadlines deadlines={deadlines} setDeadlines={setDeadlines} />}
+      {seg === 'deadlines' && (
+        <Deadlines
+          deadlines={deadlines}
+          setDeadlines={setDeadlines}
+          milestones={milestones}
+        />
+      )}
     </div>
   )
 }

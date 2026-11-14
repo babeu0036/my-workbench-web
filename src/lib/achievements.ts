@@ -1,3 +1,4 @@
+import { MILESTONE_SHORT_MAX } from './milestones'
 import type { Achievement, MilestoneStatus, Todo } from './types'
 
 /**
@@ -34,6 +35,8 @@ export function normalizeAchievement(raw: unknown, index = 0): Achievement | nul
         : ''
   ).trim()
   const evidence = typeof item.evidence === 'string' ? item.evidence.trim() : ''
+  // 短名只在真写了的时候留：空字符串存下来没意义，删掉键就回到「自动取标题前 4 字」
+  const short = typeof item.short === 'string' ? item.short.trim().slice(0, MILESTONE_SHORT_MAX) : ''
   const stageId =
     typeof item.stageId === 'number' && Number.isFinite(item.stageId) ? item.stageId : undefined
   const doneAt =
@@ -54,6 +57,7 @@ export function normalizeAchievement(raw: unknown, index = 0): Achievement | nul
     // 没有阶段就不写这个键：目标页会把它放进「未归类」
     ...(stageId !== undefined ? { stageId } : {}),
     ...(doneAt !== undefined ? { doneAt } : {}),
+    ...(short ? { short } : {}),
   }
 }
 
@@ -94,13 +98,14 @@ export function addAchievement(
 }
 
 /**
- * 改标题 / 判断标准 / 证据。标题不能被改空；
- * 标准和证据可以改空（还没想清楚就先空着，卡片上显示灰字提示）。
+ * 改标题 / 判断标准 / 证据 / 短名。标题不能被改空；
+ * 标准和证据可以改空（还没想清楚就先空着，卡片上显示灰字提示）；
+ * 短名改空就删掉这个键，回到自动取标题前 4 个字。
  */
 export function updateAchievement(
   list: Achievement[],
   id: number,
-  patch: { title?: string; criteria?: string; evidence?: string },
+  patch: { title?: string; short?: string; criteria?: string; evidence?: string },
 ): Achievement[] {
   return list.map(item => {
     if (item.id !== id) return item
@@ -110,6 +115,11 @@ export function updateAchievement(
       const title = patch.title.trim()
       if (!title) return item
       next.title = title
+    }
+    if (patch.short !== undefined) {
+      const short = patch.short.trim().slice(0, MILESTONE_SHORT_MAX)
+      if (short) next.short = short
+      else delete next.short
     }
     if (patch.criteria !== undefined) next.criteria = patch.criteria.trim()
     if (patch.evidence !== undefined) next.evidence = patch.evidence.trim()

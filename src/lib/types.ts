@@ -55,6 +55,12 @@ export type MilestoneStatus = 'todo' | 'doing' | 'done'
 export type Achievement = {
   id: number
   title: string
+  /**
+   * 短名，最多 6 个字，用在任务 / 比赛行右侧那个小标签上（标题动不动十几个字，
+   * 挤在行尾会把正文压成三行）。没有这个键 = 自动取标题前 4 个字 + …，
+   * 见 lib/milestones.ts 的 shortOf。空字符串按没写处理。
+   */
+  short?: string
   /** 判断标准：做到什么程度算成。空字符串 = 还没写 */
   criteria: string
   /** 证据：怎么证明做到了（结果、链接、截图说明都行）。标记完成前必须非空 */
@@ -87,6 +93,11 @@ export type Deadline = {
   /** 比赛开始 / 结束，都是可选的 */
   startDate?: string
   endDate?: string
+  /**
+   * 「服务于」哪个里程碑（Achievement.id），跟 Todo.goalId 一个意思 ——
+   * 只是给这场比赛标个归属，不影响截止提醒。没有 = 日常事务。
+   */
+  goalId?: number
 }
 
 /**
