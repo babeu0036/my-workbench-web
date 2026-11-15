@@ -15,12 +15,14 @@ type FieldKey = 'short' | 'criteria' | 'why' | 'evidence'
 
 type Props = {
   achievement: Achievement
-  /** 这条里程碑下的任务（硬关联 + 软关联都算），外部已经按创建时间排好 */
+  /** 这条阶段目标下的任务（硬关联 + 软关联都算），外部已经按创建时间排好 */
   tasks: Todo[]
+  /** 它挂在哪个阶段下：点任务编辑时用来说清「属于哪个阶段目标、哪个阶段」 */
+  stageTitle?: string
   onToggleTask: (id: number) => void
   onRemoveTask: (id: number) => void
   onAddTask: (text: string, dueDate: string) => void
-  /** 改文字和日期。里程碑任务的科目和类型不给改，所以只收这两项 */
+  /** 改文字和日期。阶段目标任务的科目和类型不给改，所以只收这两项 */
   onEditTask: (id: number, text: string, dueDate: string) => void
   /** 改短名 / 判断标准 / 留下什么 / 证据 / 类型 */
   onUpdate: (patch: {
@@ -33,7 +35,7 @@ type Props = {
   /** 写够证据以后才能点这里 */
   onComplete: () => void
   onReopen: () => void
-  /** 删除这条里程碑（任务会退回未分类，不跟着删） */
+  /** 删除这条阶段目标（任务会退回未分类，不跟着删） */
   onRemove: () => void
 }
 
@@ -45,10 +47,10 @@ const STATE_LABEL: Record<MilestoneState, string> = {
 }
 
 /**
- * 一张里程碑卡，状态由 `milestoneState` 从关联任务算出来：
+ * 一张阶段目标卡，状态由 `milestoneState` 从关联任务算出来：
  *
- * - 未开始：还没有任务，进度那行是灰字「还没有行动」，不显示 0%；
- * - 进行中 / 待确认：完成 x / y + 进度条 + 任务列表，可以直接勾；
+ * - 未开始：还没有任务，标题下面那行写「还没有任务」，不显示 0%；
+ * - 进行中 / 待确认：标题下面直接是「x/y 条任务已完成」+ 进度条，任务列表缩进排在下面；
  * - 已完成：任务全勾完、而且写了证据、手动确认过。
  *
  * 简称、判断标准、留下什么、证据都是点一下就地改（回车保存、Esc 放弃、失焦也算保存）；
@@ -56,11 +58,12 @@ const STATE_LABEL: Record<MilestoneState, string> = {
  * 简称留空就跟着标题走：自动取前 4 个字加省略号，任务行的小标签显示的就是它。
  *
  * 「标记完成」会先弹出证据输入框 —— 证据为空时那个「确定完成」是禁用的，
- * 下面写着为什么。不让人在没证据的情况下把里程碑点绿。
+ * 下面写着为什么。不让人在没证据的情况下把阶段目标点绿。
  */
 export default function AchievementCard({
   achievement,
   tasks,
+  stageTitle,
   onToggleTask,
   onRemoveTask,
   onAddTask,
@@ -200,11 +203,30 @@ export default function AchievementCard({
   }
 
   return (
-    <article className={`card ach ach--${state}`} aria-label={`里程碑：${achievement.title}`}>
+    <article className={`card ach ach--${state}`} aria-label={`阶段目标：${achievement.title}`}>
       <div className="ach__head">
         <span className="ach__title">{achievement.title}</span>
         <span className={`ach__badge ach__badge--${state}`}>{STATE_LABEL[state]}</span>
         <ConfirmDelete className="ach__remove" label="删除" onConfirm={onRemove} />
+      </div>
+
+      {/* 标题下面第一行就说清这个目标下有多少活：x/y 条任务已完成 */}
+      <div className="ach__progress">
+        <span className="ach__count">
+          {stats.total === 0 ? '还没有任务' : `${stats.done}/${stats.total} 条任务已完成`}
+        </span>
+        {stats.total > 0 && (
+          <div
+            className="ach__bar"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={stats.total}
+            aria-valuenow={stats.done}
+            aria-label="完成进度"
+          >
+            <span className="ach__bar-fill" style={{ width: `${stats.percent}%` }} />
+          </div>
+        )}
       </div>
 
       {fieldRow('short', '简称', '')}
@@ -238,31 +260,13 @@ export default function AchievementCard({
         </p>
       )}
 
-      {/* 一条任务都没有就只写「还没有行动」：0/0 和 0% 看着像「已经落后」 */}
-      {stats.total === 0 ? (
-        <p className="ach__none">还没有行动</p>
-      ) : (
-        <div className="ach__progress">
-          <div
-            className="ach__bar"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={stats.total}
-            aria-valuenow={stats.done}
-            aria-label="完成进度"
-          >
-            <span className="ach__bar-fill" style={{ width: `${stats.percent}%` }} />
-          </div>
-          <span className="ach__count">
-            {stats.done}/{stats.total}
-          </span>
-        </div>
-      )}
-
+      {/* 任务缩进排在这张卡下面：左侧一条竖线 + 每行一个圆点，
+          一眼看出它们是「这个阶段目标」的，不是另一份平铺清单 */}
       {tasks.length > 0 && (
         <TaskList
           todos={tasks}
           empty=""
+          nested
           onToggle={onToggleTask}
           onRemove={onRemoveTask}
           onEdit={id => setEditing(tasks.find(todo => todo.id === id) ?? null)}
@@ -296,19 +300,21 @@ export default function AchievementCard({
         />
       ) : state === 'empty' ? (
         <button type="button" className="ach__empty" onClick={startAdd}>
-          还没有任务，点这里添加
+          给这个目标加任务
         </button>
       ) : (
         <button type="button" className="ach__add" onClick={startAdd}>
-          + 加任务
+          + 给这个目标加任务
         </button>
       )}
 
-      {/* 编辑的是里程碑任务：科目和类型都锁住，只改文字和日期 */}
+      {/* 编辑的是阶段目标任务：科目和类型都锁住，只改文字和日期；
+          顶部那行「属于」是需求里的「点一条任务就知道它在哪一层」 */}
       {editing && (
         <AddTaskPanel
           subjects={[]}
           todo={editing}
+          owner={{ stage: stageTitle ?? '未归类', goal: achievement.title }}
           onClose={() => setEditing(null)}
           onSubmit={(text, _subjectId, dueDate) => {
             onEditTask(editing.id, text, dueDate)
@@ -351,7 +357,7 @@ export default function AchievementCard({
             />
 
             {!evidenceDraft.trim() && (
-              <p className="sheet__hint">完成一个里程碑，得留下证据</p>
+              <p className="sheet__hint">完成一个阶段目标，得留下证据</p>
             )}
 
             <button

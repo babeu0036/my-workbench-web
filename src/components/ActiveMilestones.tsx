@@ -8,7 +8,7 @@ type Props = {
 }
 
 /**
- * 首页「进行中的里程碑」：最多三条，每条是标题 + 进度 x/y + 最近完成时间。
+ * 首页「进行中的阶段目标」：最多三条，每条是标题 + 进度 x/y + 最近完成时间。
  *
  * 进度是从关联任务现算的（见 lib/milestones.ts），不另存一份 ——
  * 勾一条任务，这里立刻跟着变。任务全勾完但还没确认的挂一个「待确认」角标，
@@ -18,16 +18,16 @@ type Props = {
  */
 export default function ActiveMilestones({ rows, onOpen }: Props) {
   return (
-    <section className="card ms" aria-label="进行中的里程碑">
+    <section className="card ms" aria-label="进行中的阶段目标">
       <div className="card__head">
-        <span className="card__title">进行中的里程碑</span>
+        <span className="card__title">进行中的阶段目标</span>
         <button type="button" className="btn btn--ghost ms__more" onClick={onOpen}>
           去查看
         </button>
       </div>
 
       {rows.length === 0 ? (
-        <p className="card__empty">当前阶段还没有在推进的里程碑</p>
+        <p className="card__empty">当前阶段还没有在推进的阶段目标</p>
       ) : (
         <ul className="ms__list">
           {rows.map(row => (
@@ -36,7 +36,7 @@ export default function ActiveMilestones({ rows, onOpen }: Props) {
                 type="button"
                 className="ms__item"
                 onClick={onOpen}
-                aria-label={`里程碑：${row.item.title}，完成 ${row.stats.done} / ${row.stats.total}`}
+                aria-label={`阶段目标：${row.item.title}，完成 ${row.stats.done} / ${row.stats.total}`}
               >
                 <span className="ms__head">
                   <span className="ms__title">{row.item.title}</span>

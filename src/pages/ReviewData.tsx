@@ -17,7 +17,7 @@ import { KEYS, readKey, removeKey, writeKey } from '../lib/storage'
 import type { Achievement, Review, ReviewDraft, Stage, Todo } from '../lib/types'
 
 type Props = {
-  /** 完整任务（含目标页的里程碑任务）：本周闭环要数挂了 achievementId 的那些 */
+  /** 完整任务（含目标页的阶段目标任务）：本周闭环要数挂了 achievementId 的那些 */
   todos: Todo[]
   achievements: Achievement[]
   stages: Stage[]
@@ -45,8 +45,8 @@ function summaryOf(review: Review): string {
 /**
  * 复盘。从上到下四块，回答四个问题：
  *
- * A. 本周做了多少、其中多少真挂在里程碑上 —— 一条一句话的数；
- * B. 这周哪些里程碑根本没动 —— 下周先补这些；
+ * A. 本周做了多少、其中多少真挂在阶段目标上 —— 一条一句话的数；
+ * B. 这周哪些阶段目标根本没动 —— 下周先补这些；
  * C. 这周最有价值的一件事 / 卡在哪 / 下周最重要的一件事；
  * D. 以前写的那些周。
  *
@@ -136,7 +136,7 @@ export default function ReviewData({
       <h2 className="page__title">复盘</h2>
       <p className="page__hint">本周 {formatWeekRange(weekKey)}</p>
 
-      {/* A. 一句话：本周完成了多少，多少真挂了里程碑 */}
+      {/* A. 一句话：本周完成了多少，多少真挂了阶段目标 */}
       <section className="card week" aria-labelledby="week-title">
         <div className="card__head">
           <span className="card__title" id="week-title">
@@ -147,7 +147,7 @@ export default function ReviewData({
         <p className="week__line">
           {closure.done === 0
             ? '这周还没有完成任何任务'
-            : `本周完成 ${closure.done} 条，其中 ${closure.linked} 条挂在里程碑上（${closure.percent}%）`}
+            : `本周完成 ${closure.done} 条，其中 ${closure.linked} 条挂在阶段目标上（${closure.percent}%）`}
         </p>
         <p className="week__new">这周新加了 {closure.created} 条任务</p>
         <div
@@ -156,18 +156,18 @@ export default function ReviewData({
           aria-label={
             closure.done === 0
               ? '本周还没有完成任何任务'
-              : `本周完成 ${closure.done} 条，其中 ${closure.linked} 条挂在里程碑上，百分之 ${closure.percent}`
+              : `本周完成 ${closure.done} 条，其中 ${closure.linked} 条挂在阶段目标上，百分之 ${closure.percent}`
           }
         >
           <div className="meter__fill" style={{ width: `${closure.percent}%` }} />
         </div>
       </section>
 
-      {/* B. 这周没动的里程碑 */}
+      {/* B. 这周没动的阶段目标 */}
       <section className="card stallcard" aria-labelledby="stall-title">
         <div className="card__head">
           <span className="card__title" id="stall-title">
-            这周没动的里程碑
+            这周没动的阶段目标
           </span>
           {scope.totalCount > 0 && (
             <span className="card__note">
@@ -177,13 +177,13 @@ export default function ReviewData({
         </div>
 
         {!scope.hasMilestones ? (
-          <p className="card__empty">还没有里程碑，先去目标页定一个</p>
+          <p className="card__empty">还没有阶段目标，先去目标页定一个</p>
         ) : rows.length === 0 ? (
-          <p className="card__empty">这个阶段的里程碑这周都推进了</p>
+          <p className="card__empty">这个阶段的阶段目标这周都推进了</p>
         ) : (
           <ul className="stall">
             {rows.map(row => {
-              // 这条里程碑上还有没做完的活就算「已加入下周」，全做完/删掉了自动退回可点
+              // 这条阶段目标上还有没做完的活就算「已加入下周」，全做完/删掉了自动退回可点
               const done = hasOpenPlan(todos, row.item.id)
               return (
                 <li key={row.item.id} className="stall__row">
@@ -307,7 +307,7 @@ export default function ReviewData({
                         {item.next || '—'}
                       </p>
                       <p className="hist__foot">
-                        当时推进 {item.movedCount}/{item.totalCount} 条里程碑
+                        当时推进 {item.movedCount}/{item.totalCount} 条阶段目标
                         {item.generated.length > 0 && ` · 排了 ${item.generated.length} 件事到下周`}
                       </p>
                     </div>

@@ -3676,11 +3676,12 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
-/* x/y：已点亮成就数 / 成就总数。宽屏贴右边，窄屏跟着日期走（见下面媒体查询） */
+/* x/y：已点亮阶段目标数 / 阶段目标总数。宽屏贴右边，窄屏跟着日期走（见下面媒体查询） */
 .stage__count {
   margin-left: auto;
   color: var(--muted);
   font-size: 12px;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
@@ -3929,6 +3930,31 @@ textarea {
   border: 0;
   border-radius: 0;
   box-shadow: none;
+}
+
+/* 阶段目标下的任务：整体缩进 24px（含 2px 竖线），左侧一条引导线，
+   每行前面一个小圆点 —— 一眼看出这些任务挂在上面那个阶段目标下面，
+   而不是另一份平铺的任务清单 */
+.ach .list--nested {
+  padding-left: 22px;
+  border-left: 2px solid var(--border);
+}
+
+.ach .list--nested .row {
+  position: relative;
+}
+
+.ach .list--nested .row::before {
+  content: '';
+  position: absolute;
+  left: -13px;
+  top: 20px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  /* 竖线按需求用 --border，圆点比线重一档，缩略看也能认出「这里有个点」 */
+  background: var(--muted);
+  opacity: 0.45;
 }
 
 /* ---------- 职业目标（首页卡 + 目标页三行） ---------- */
@@ -4191,8 +4217,8 @@ textarea {
 
 /* ---------- 任务行右侧的「服务于」小标签 ---------- */
 
-/* 窄屏时会把正文挤窄，所以给死上限 + 省略号，超长里程碑名不会把行撑破。
-   现在显示的是短名（最多 6 个字），140 基本够一整条；真超了也还是省略号兜底 */
+/* 窄屏时会把正文挤窄，所以给死上限 + 省略号，超长名字不会把行撑破。
+   默认显示短名（最多 6 个字），140 基本够一整条；真超了也还是省略号兜底 */
 .row__goal {
   align-self: flex-start;
   max-width: 140px;
@@ -4206,6 +4232,28 @@ textarea {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 首页今日任务：「属于：全名」。名字太长时省略号截的是名字，
+   「属于：」这三个字永远留在前面（省略号只出现在末尾） */
+.row__goal--belongs {
+  max-width: 150px;
+}
+
+/* 手机：卡片内宽只有 260 上下，缩进和标签都收一档。
+   缩进 2 + 12 = 14px，正是「手机端缩进改为 14px」 */
+@media (max-width: 560px) {
+  .ach .list--nested {
+    padding-left: 12px;
+  }
+
+  .ach .list--nested .row::before {
+    left: -8px;
+  }
+
+  .row__goal--belongs {
+    max-width: 118px;
+  }
 }
 
 /* ---------- 里程碑卡里的判断标准 / 证据 / 完成按钮 ---------- */
@@ -4297,12 +4345,6 @@ textarea {
 }
 
 /* 一条任务都没有：灰字，不显示 0% 那种看着像「已经落后」的数 */
-.ach__none {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-
 .ach__foot {
   display: flex;
   align-items: center;
@@ -4627,6 +4669,15 @@ textarea {
   color: var(--text);
   font-size: 13px;
   line-height: 1.6;
+}
+
+/* 编辑任务时顶部那行「属于：阶段 · 阶段目标」：灰字，不抢正文 */
+.sheet__owner {
+  margin: -2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 560px) {

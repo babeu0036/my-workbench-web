@@ -20,7 +20,7 @@ function snapshot(): Record<string, string> {
 function describeRoadmap(added: RoadmapResult['added']): string {
   const bits: string[] = []
   if (added.stages > 0) bits.push(`${added.stages} 个阶段`)
-  if (added.milestones > 0) bits.push(`${added.milestones} 个里程碑`)
+  if (added.milestones > 0) bits.push(`${added.milestones} 个阶段目标`)
 
   if (bits.length === 0) {
     return added.career > 0
@@ -34,7 +34,7 @@ function describeRoadmap(added: RoadmapResult['added']): string {
 
 type Props = {
   /**
-   * 「一键生成我的路线」：四个阶段 + 第一阶段的三个里程碑 + 职业目标。
+   * 「一键生成我的路线」：四个阶段 + 第一阶段的三个阶段目标 + 职业目标。
    * 合并式，返回这次补了几条（没变化时三个都是 0）。
    */
   onGenerateRoadmap: () => RoadmapResult['added']
@@ -112,7 +112,7 @@ export default function Settings({ onGenerateRoadmap }: Props) {
 
       <h3 className="page__hint">我的路线</h3>
       <p className="meta">
-        四个阶段、第一阶段的三条里程碑，再顺手填好职业目标。已经有的不会重复添加，也不会盖掉你自己写的内容。
+        四个阶段、第一阶段的三条阶段目标，再顺手填好职业目标。已经有的不会重复添加，也不会盖掉你自己写的内容。
       </p>
       <button
         type="button"

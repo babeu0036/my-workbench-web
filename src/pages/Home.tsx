@@ -174,6 +174,7 @@ export default function Home({
           todos={todayList}
           empty="今天没有要做的任务，点右下角的 + 加一条"
           milestones={milestones}
+          goalLabel="belongs"
           onToggle={id => setTodos(list => toggleTodo(list, id))}
           onRemove={id => setTodos(list => removeTodo(list, id))}
           onEdit={id => setEditing(todos.find(todo => todo.id === id) ?? null)}
