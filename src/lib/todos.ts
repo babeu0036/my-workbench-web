@@ -178,6 +178,54 @@ export function addAchievementTodo(
   return [...list, todo]
 }
 
+/**
+ * 「下周做它」生成的任务：一条普通的待办，挂在里程碑上。
+ *
+ * 用 goalId（软关联）而不是 achievementId：硬关联的任务只活在目标页，
+ * 而复盘里排出来的事下周是要在首页 / 计划里勾掉的 —— 软关联才会两边都出现，
+ * 同时也照样算进那条里程碑的进度（tasksOf 两种都认）。
+ *
+ * id 由调用方给（先看当前数据算好），这样复盘那边能把 todoId 一起记进
+ * 本周的 generated，按钮立刻变成「已加入下周」。
+ */
+export function plannedTodo(
+  id: number,
+  text: string,
+  achievementId: number,
+  dueDate: string,
+  now: number = Date.now(),
+): Todo {
+  const todo: Todo = {
+    id,
+    text: text.trim(),
+    done: false,
+    subjectId: UNCATEGORIZED_ID,
+    kind: 'study',
+    createdAt: now,
+    goalId: achievementId,
+  }
+  if (dueDate) todo.dueDate = dueDate
+  return todo
+}
+
+/** 下周还没做的、挂在里程碑上的事 —— 首页「下周要做」那块用 */
+export function nextWeekMilestoneTasks(
+  list: Todo[],
+  nextWeekKey: string,
+  nextNextWeekKey: string,
+): Todo[] {
+  return list
+    .filter(
+      todo =>
+        !todo.done &&
+        todo.goalId !== undefined &&
+        todo.dueDate !== undefined &&
+        todo.dueDate >= nextWeekKey &&
+        todo.dueDate < nextNextWeekKey,
+    )
+    .sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? '') || a.id - b.id)
+}
+
 /** 勾选 / 撤销。完成时写 doneAt，撤销时清掉，绝不留旧时间 */
 export function toggleTodo(list: Todo[], id: number, now: number = Date.now()): Todo[] {
   return list.map(todo => {

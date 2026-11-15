@@ -1,148 +1,306 @@
-import { formatWeekRange, weekKeyOf } from '../lib/date'
-import { MOOD_OPTIONS, moodEmoji, moodOf, weekMoodCounts } from '../lib/mood'
-import type { MoodMap } from '../lib/mood'
-import { activeDays, dailyCounts, streak, weekTotals } from '../lib/stats'
-import type { Todo } from '../lib/types'
+import { useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
+import PlanNextWeek from '../components/PlanNextWeek'
+import { formatWeekRange } from '../lib/date'
+import {
+  closureScope,
+  nextWeekSundayKey,
+  reviewOf,
+  saveReview,
+  sortedReviews,
+  thisWeekKey,
+  weekClosure,
+} from '../lib/reviews'
+import type { Achievement, Review, Stage, Todo } from '../lib/types'
 
 type Props = {
+  /** 完整任务（含目标页的里程碑任务）：本周闭环要数挂了 achievementId 的那些 */
   todos: Todo[]
-  /** 今日状态按日期键存的那张表，App 传进来 */
-  moods: MoodMap
+  achievements: Achievement[]
+  stages: Stage[]
+  reviews: Review[]
+  setReviews: Dispatch<SetStateAction<Review[]>>
+  /**
+   * 把「下周具体做什么」变成一条待办，并把 todoId 记进本周复盘。
+   * 写 todos 和写 reviews 都在 App 里，这一页只负责收集输入。
+   */
+  onPlanNextWeek: (
+    achievementId: number,
+    text: string,
+    dueDate: string,
+    snapshot: { movedCount: number; totalCount: number },
+  ) => void
+}
+
+/** 一句话摘要：三句里第一句有内容的，长了截断 */
+function summaryOf(review: Review): string {
+  const line = review.best || review.stuck || review.next
+  if (!line) return '这周只把任务排进了下周'
+  return line.length > 40 ? `${line.slice(0, 40)}…` : line
 }
 
 /**
- * 复盘 · 数据。只放统计，完全不碰目标 ——
- * 目标和它是两个独立页面，改一边的排版不会牵连另一边。
+ * 复盘。从上到下四块，回答四个问题：
+ *
+ * A. 本周做了多少、其中多少真挂在里程碑上 —— 一条一句话的数；
+ * B. 这周哪些里程碑根本没动 —— 下周先补这些；
+ * C. 这周最有价值的一件事 / 卡在哪 / 下周最重要的一件事；
+ * D. 以前写的那些周。
+ *
+ * 这里不再有 7 天柱状图和情绪分布：复盘的重点从「统计」换成了「下一周做什么」，
+ * 首页已经有完成环和连续天数，重复的数字多了只会让人跳过这一页。
+ *
+ * 一周一条（`weekStart` = 周一日期键），再保存就覆盖；「下周做它」生成的
+ * 任务也记在这一周的 generated 里，所以按钮点过就一直是「已加入下周」。
  */
-export default function ReviewData({ todos, moods }: Props) {
-  const totals = weekTotals(todos)
-  const active = activeDays(todos)
-  const days = streak(todos)
-  const daily = dailyCounts(todos)
-  // 和上面那组一样是「本周一到周日」，所以两个数字放在一起不会打架
-  const moodWeek = weekMoodCounts(moods)
+export default function ReviewData({
+  todos,
+  achievements,
+  stages,
+  reviews,
+  setReviews,
+  onPlanNextWeek,
+}: Props) {
+  const now = Date.now()
+  const weekKey = thisWeekKey(now)
+  const review = reviewOf(reviews, weekKey)
 
-  // 最高那天决定柱子满格多高；全是 0 时 peak = 0，下面的除法要绕开
-  const peak = daily.reduce((acc, day) => (day.count > acc ? day.count : acc), 0)
-  const weekSum = daily.reduce((acc, day) => acc + day.count, 0)
+  const closure = weekClosure(todos, now)
+  const scope = closureScope(achievements, todos, stages, now)
+
+  const [best, setBest] = useState(review?.best ?? '')
+  const [stuck, setStuck] = useState(review?.stuck ?? '')
+  const [next, setNext] = useState(review?.next ?? '')
+  const [saved, setSaved] = useState(false)
+  const [planning, setPlanning] = useState<Achievement | null>(null)
+  const [openWeek, setOpenWeek] = useState<string | null>(null)
+
+  // 本周已经排进下周的里程碑：按钮据此变成「已加入下周」
+  const planned = new Set((review?.generated ?? []).map(entry => entry.achievementId))
+  const rows = scope.rows.slice(0, 3)
+  const history = sortedReviews(reviews)
+
+  function touch(setter: (value: string) => void) {
+    return (value: string) => {
+      setter(value)
+      setSaved(false)
+    }
+  }
+
+  function handleSave() {
+    setReviews(list =>
+      saveReview(list, {
+        weekStart: weekKey,
+        best,
+        stuck,
+        next,
+        movedCount: scope.movedCount,
+        totalCount: scope.totalCount,
+      }),
+    )
+    setSaved(true)
+  }
 
   return (
     <div className="page">
       <h2 className="page__title">复盘</h2>
-      <p className="page__hint">本周 {formatWeekRange(weekKeyOf())}</p>
+      <p className="page__hint">本周 {formatWeekRange(weekKey)}</p>
 
-      <div className="stat-grid">
-        <div className="stat stat--wide">
-          <div className="stat__row">
-            <span className="stat__num">
-              {totals.done}
-              <span className="stat__sep">/</span>
-              {totals.total}
-            </span>
-            <span className="stat__pct">{totals.percent}%</span>
-          </div>
-          <span className="stat__label">本周完成</span>
-          {/* 进度条只是把百分比画出来，读屏仍然读上面那句 */}
-          <div
-            className="meter"
-            role="img"
-            aria-label={`本周完成 ${totals.done} 件，共 ${totals.total} 件，百分之 ${totals.percent}`}
-          >
-            <div className="meter__fill" style={{ width: `${totals.percent}%` }} />
-          </div>
-        </div>
-
-        <div className="stat">
-          <span className="stat__num">
-            {active}
-            <span className="stat__sep">/</span>7
-          </span>
-          <span className="stat__label">本周活跃天数</span>
-        </div>
-
-        <div className="stat">
-          <span className="stat__num">{days}</span>
-          <span className="stat__label">连续天数</span>
-        </div>
-      </div>
-
-      {totals.total === 0 && (
-        <p className="meta">本周还没有任务。去首页加一条，这里就有数了。</p>
-      )}
-
-      <section className="card moodstat" aria-labelledby="moodstat-title">
+      {/* A. 一句话：本周完成了多少，多少真挂了里程碑 */}
+      <section className="card week" aria-labelledby="week-title">
         <div className="card__head">
-          <span className="card__title" id="moodstat-title">
-            状态分布
+          <span className="card__title" id="week-title">
+            本周
           </span>
-          <span className="card__note">本周 {formatWeekRange(weekKeyOf())}</span>
+          <span className="week__pct">{closure.done === 0 ? '—' : `${closure.percent}%`}</span>
+        </div>
+        <p className="week__line">
+          {closure.done === 0
+            ? '这周还没有完成任何任务'
+            : `本周完成 ${closure.done} 条，其中 ${closure.linked} 条挂在里程碑上（${closure.percent}%）`}
+        </p>
+        <div
+          className="meter"
+          role="img"
+          aria-label={
+            closure.done === 0
+              ? '本周还没有完成任何任务'
+              : `本周完成 ${closure.done} 条，其中 ${closure.linked} 条挂在里程碑上，百分之 ${closure.percent}`
+          }
+        >
+          <div className="meter__fill" style={{ width: `${closure.percent}%` }} />
+        </div>
+      </section>
+
+      {/* B. 这周没动的里程碑 */}
+      <section className="card stallcard" aria-labelledby="stall-title">
+        <div className="card__head">
+          <span className="card__title" id="stall-title">
+            这周没动的里程碑
+          </span>
+          {scope.totalCount > 0 && (
+            <span className="card__note">
+              推进 {scope.movedCount}/{scope.totalCount}
+            </span>
+          )}
         </div>
 
-        {moodWeek.total === 0 ? (
-          <p className="card__empty">这周还没记状态</p>
+        {!scope.hasMilestones ? (
+          <p className="card__empty">还没有里程碑，先去目标页定一个</p>
+        ) : rows.length === 0 ? (
+          <p className="card__empty">这个阶段的里程碑这周都推进了</p>
         ) : (
-          <ul className="moodstat__list">
-            {MOOD_OPTIONS.map(option => (
-              <li key={option.value} className="moodstat__row">
-                <span className="moodstat__emoji" aria-hidden="true">
-                  {option.emoji}
-                </span>
-                <span className="moodstat__label">{option.short}</span>
-                <span className="moodstat__days">{moodWeek[option.value]} 天</span>
-              </li>
-            ))}
+          <ul className="stall">
+            {rows.map(row => {
+              const done = planned.has(row.item.id)
+              return (
+                <li key={row.item.id} className="stall__row">
+                  <div className="stall__main">
+                    <span className="stall__title">{row.item.title}</span>
+                    <span className="stall__meta">
+                      {row.stageTitle}
+                      {' · '}
+                      {row.days === undefined
+                        ? '还没有行动'
+                        : row.days === 0
+                          ? '上次推进：今天'
+                          : `上次推进：${row.days} 天前`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn--ghost stall__btn"
+                    onClick={() => setPlanning(row.item)}
+                    disabled={done}
+                  >
+                    {done ? '已加入下周' : '下周做它'}
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>
 
-      <section className="card days" aria-labelledby="days-title">
-        <div className="days__head">
-          <span className="card__title" id="days-title">
-            最近 7 天
+      {/* C. 三句话 */}
+      <section className="card reviewform" aria-labelledby="reviewform-title">
+        <div className="card__head">
+          <span className="card__title" id="reviewform-title">
+            这周写三句
           </span>
-          <span className="days__sum">共 {weekSum} 件</span>
+          {saved && <span className="card__note">已保存到这一周</span>}
         </div>
 
-        <div className="days__chart">
-          {daily.map(day => {
-            // 有完成的至少给 12% 高，否则 1 件和 5 件在低分辨率下看不出区别
-            const height = day.count === 0 ? 0 : Math.max(12, Math.round((day.count / peak) * 100))
-            // 那天记了心情就给颗 emoji，顺便把柱子染成对应颜色；没记就两样都不加
-            const mood = moodOf(moods, day.key)
-            const moodFace = moodEmoji(mood)
-            const barClass = [
-              'day__bar',
-              day.count === 0 ? 'day__bar--zero' : '',
-              mood ? `day__bar--${mood}` : '',
-              day.isToday ? 'day__bar--today' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')
+        <label className="reviewform__field">
+          <span className="reviewform__label">这周最有价值的一件事</span>
+          <textarea
+            className="input reviewform__input"
+            value={best}
+            onChange={event => touch(setBest)(event.target.value)}
+            placeholder="哪件事让这周没白过"
+            maxLength={200}
+            rows={2}
+          />
+        </label>
 
-            return (
-              <div
-                key={day.key}
-                className={day.isToday ? 'day day--today' : 'day'}
-                aria-label={`${day.weekday} 完成 ${day.count} 件${mood ? `，状态${MOOD_OPTIONS.find(item => item.value === mood)?.label}` : ''}`}
-              >
-                <span className="day__num">{day.count === 0 ? '' : day.count}</span>
-                <span className="day__track">
-                  <span className={barClass} style={{ height: `${height}%` }} />
-                </span>
-                {/* 没记心情时不画空框也不留符号，但这一格照旧占位 —— 7 个星期几要对齐 */}
-                <span className="day__mood" aria-hidden="true">
-                  {moodFace}
-                </span>
-                <span className="day__label">{day.weekday}</span>
-              </div>
-            )
-          })}
-        </div>
+        <label className="reviewform__field">
+          <span className="reviewform__label">卡在哪</span>
+          <textarea
+            className="input reviewform__input"
+            value={stuck}
+            onChange={event => touch(setStuck)(event.target.value)}
+            placeholder="哪个环节一直过不去"
+            maxLength={200}
+            rows={2}
+          />
+        </label>
 
-        <p className="meta">
-          滚动的 7 天，可能跨周，所以和上面「本周完成」不一定对得上；只认完成时间，撤销完成就不算了。
-        </p>
+        <label className="reviewform__field">
+          <span className="reviewform__label">下周最重要的一件事</span>
+          <textarea
+            className="input reviewform__input"
+            value={next}
+            onChange={event => touch(setNext)(event.target.value)}
+            placeholder="只写一件，写多了等于没写"
+            maxLength={200}
+            rows={2}
+          />
+        </label>
+
+        <button type="button" className="btn btn--primary form__submit" onClick={handleSave}>
+          保存这周复盘
+        </button>
       </section>
+
+      {/* D. 历史 */}
+      {history.length > 0 && (
+        <section className="card" aria-labelledby="history-title">
+          <div className="card__head">
+            <span className="card__title" id="history-title">
+              以前的复盘
+            </span>
+            <span className="card__note">{history.length} 周</span>
+          </div>
+
+          <ul className="hist">
+            {history.map(item => {
+              const open = openWeek === item.weekStart
+              return (
+                <li key={item.weekStart} className="hist__item">
+                  <button
+                    type="button"
+                    className="hist__head"
+                    onClick={() => setOpenWeek(open ? null : item.weekStart)}
+                    aria-expanded={open}
+                  >
+                    <span className="hist__week">{formatWeekRange(item.weekStart)}</span>
+                    <span className="hist__sum">{summaryOf(item)}</span>
+                    <span className="hist__arrow" aria-hidden="true">
+                      {open ? '▾' : '▸'}
+                    </span>
+                  </button>
+
+                  {open && (
+                    <div className="hist__body">
+                      <p className="hist__line">
+                        <span className="hist__key">最有价值</span>
+                        {item.best || '—'}
+                      </p>
+                      <p className="hist__line">
+                        <span className="hist__key">卡在哪</span>
+                        {item.stuck || '—'}
+                      </p>
+                      <p className="hist__line">
+                        <span className="hist__key">下周最重要</span>
+                        {item.next || '—'}
+                      </p>
+                      <p className="hist__foot">
+                        当时推进 {item.movedCount}/{item.totalCount} 条里程碑
+                        {item.generated.length > 0 && ` · 排了 ${item.generated.length} 件事到下周`}
+                      </p>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
+
+      {planning && (
+        <PlanNextWeek
+          achievement={planning}
+          defaultDate={nextWeekSundayKey(now)}
+          onClose={() => setPlanning(null)}
+          onSubmit={(text, dueDate) => {
+            onPlanNextWeek(planning.id, text, dueDate, {
+              movedCount: scope.movedCount,
+              totalCount: scope.totalCount,
+            })
+            setPlanning(null)
+          }}
+        />
+      )}
     </div>
   )
 }

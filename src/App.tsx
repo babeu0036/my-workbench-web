@@ -21,9 +21,11 @@ import { normalizeKnowledgeList } from './lib/knowledge'
 import { normalizeFeedCache } from './lib/feed'
 import { normalizeMoods } from './lib/mood'
 import type { MoodMap } from './lib/mood'
+import { normalizeReviews } from './lib/reviews'
 import { applyPresetRoadmap } from './lib/roadmap'
+import { addGenerated, thisWeekKey } from './lib/reviews'
 import { startSync } from './lib/sync'
-import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, normalizeTodos, withoutAchievement } from './lib/todos'
+import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, nextId, normalizeTodos, plannedTodo, withoutAchievement } from './lib/todos'
 import type {
   Achievement,
   Career,
@@ -31,6 +33,7 @@ import type {
   Deadline,
   FeedCache,
   Knowledge as KnowledgeItem,
+  Review,
   Route,
   Stage,
   Subject,
@@ -103,6 +106,8 @@ export default function App() {
   const [semesterStart, setSemesterStart] = useStoredState<string>(KEYS.semesterStart, '')
   // 今日状态：首页写、复盘页读，所以放在最外层，两边看到的是同一份
   const [moods, setMoods] = useStoredState<MoodMap>(KEYS.mood, {}, normalizeMoods)
+  // 每周复盘：一周一条，认 weekStart。以 workbench. 开头，跟着云同步一起走
+  const [reviews, setReviews] = useStoredState<Review[]>(KEYS.reviews, [], normalizeReviews)
 
   // 里程碑任务只活在目标页：计划·任务、首页、复盘统计都只算这一份，
   // 否则同一件事会在三处各算一遍，数字还对不上。
@@ -142,6 +147,42 @@ export default function App() {
     if (result.achievements !== achievements) setAchievements(result.achievements)
     if (result.career !== career) setCareer(result.career)
     return result.added
+  }
+
+  /**
+   * 复盘里点「下周做它」：生成一条挂在里程碑上的待办，并把 todoId 记进本周复盘。
+   *
+   * id 按当前数据先算好，两个 setState 才指向同一条 —— 它们在这个事件里一起排队，
+   * 用户看到的是「任务排进下周」和「按钮变成已加入下周」同时发生。
+   * 任务用 goalId 软关联（见 plannedTodo 的注释），所以首页 / 计划里也看得见。
+   *
+   * 已经有一条「同一条里程碑、同样的话、还没做完」的任务就不再建 —— 直接把那条
+   * 的 id 记进复盘，按钮照样变成已加入下周，列表里不会多出一条一模一样的。
+   */
+  const planNextWeek = (
+    achievementId: number,
+    text: string,
+    dueDate: string,
+    snapshot: { movedCount: number; totalCount: number },
+  ) => {
+    const now = Date.now()
+    const value = text.trim()
+    const existing = todos.find(
+      todo =>
+        !todo.done &&
+        todo.text === value &&
+        (todo.goalId === achievementId || todo.achievementId === achievementId),
+    )
+    if (existing) {
+      setReviews(list =>
+        addGenerated(list, thisWeekKey(now), { achievementId, todoId: existing.id }, snapshot, now),
+      )
+      return
+    }
+
+    const todoId = nextId(todos, now)
+    setTodos(list => [...list, plannedTodo(todoId, value, achievementId, dueDate, now)])
+    setReviews(list => addGenerated(list, thisWeekKey(now), { achievementId, todoId }, snapshot, now))
   }
 
   return (
@@ -243,8 +284,17 @@ export default function App() {
             />
           )}
 
-          {/* 复盘只剩一页（原来的「数据」），不再有二级结构 */}
-          {route.page === 'review' && <ReviewData todos={mainTodos} moods={moods} />}
+          {/* 复盘：本周一句话 → 没动的里程碑 → 三句话 → 以前的周 */}
+          {route.page === 'review' && (
+            <ReviewData
+              todos={todos}
+              achievements={achievements}
+              stages={stages}
+              reviews={reviews}
+              setReviews={setReviews}
+              onPlanNextWeek={planNextWeek}
+            />
+          )}
 
           {/* 目标页：职业目标 → 阶段（每个阶段里是里程碑卡）；里程碑下的任务只在这一页出现 */}
           {route.page === 'goal' && (

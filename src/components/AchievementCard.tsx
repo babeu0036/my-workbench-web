@@ -3,14 +3,15 @@ import AddTaskPanel from './AddTaskPanel'
 import ConfirmDelete from './ConfirmDelete'
 import TaskInput from './TaskInput'
 import TaskList from './TaskList'
+import { WHY_MAX } from '../lib/achievements'
 import { dayKey, formatDateCn } from '../lib/date'
 import { MILESTONE_SHORT_MAX, milestoneState, shortOf, statsOf } from '../lib/milestones'
 import type { MilestoneState } from '../lib/milestones'
 import { isHttpUrl, middleEllipsis } from '../lib/text'
 import type { Achievement, Todo } from '../lib/types'
 
-/** 卡片上点一下就能就地改的三行 */
-type FieldKey = 'short' | 'criteria' | 'evidence'
+/** 卡片上点一下就能就地改的几行 */
+type FieldKey = 'short' | 'criteria' | 'why' | 'evidence'
 
 type Props = {
   achievement: Achievement
@@ -21,8 +22,8 @@ type Props = {
   onAddTask: (text: string, dueDate: string) => void
   /** 改文字和日期。里程碑任务的科目和类型不给改，所以只收这两项 */
   onEditTask: (id: number, text: string, dueDate: string) => void
-  /** 改短名 / 判断标准 / 证据 */
-  onUpdate: (patch: { short?: string; criteria?: string; evidence?: string }) => void
+  /** 改短名 / 判断标准 / 面试能说 / 证据 */
+  onUpdate: (patch: { short?: string; criteria?: string; why?: string; evidence?: string }) => void
   /** 写够证据以后才能点这里 */
   onComplete: () => void
   onReopen: () => void
@@ -44,7 +45,7 @@ const STATE_LABEL: Record<MilestoneState, string> = {
  * - 进行中 / 待确认：完成 x / y + 进度条 + 任务列表，可以直接勾；
  * - 已完成：任务全勾完、而且写了证据、手动确认过。
  *
- * 简称、判断标准、证据都是点一下就地改（回车保存、Esc 放弃、失焦也算保存）。
+ * 简称、判断标准、面试能说、证据都是点一下就地改（回车保存、Esc 放弃、失焦也算保存）。
  * 简称留空就跟着标题走：自动取前 4 个字加省略号，任务行的小标签显示的就是它。
  *
  * 「标记完成」会先弹出证据输入框 —— 证据为空时那个「确定完成」是禁用的，
@@ -99,7 +100,7 @@ export default function AchievementCard({
 
   function commit() {
     if (!field) return
-    onUpdate({ [field]: draft } as { short?: string; criteria?: string; evidence?: string })
+    onUpdate({ [field]: draft } as { short?: string; criteria?: string; why?: string; evidence?: string })
     setField(null)
   }
 
@@ -139,7 +140,9 @@ export default function AchievementCard({
             }}
             onBlur={commit}
             aria-label={label}
-            maxLength={key === 'short' ? MILESTONE_SHORT_MAX : 200}
+            maxLength={
+              key === 'short' ? MILESTONE_SHORT_MAX : key === 'why' ? WHY_MAX : 200
+            }
             placeholder={
               key === 'short' ? `留空自动取「${autoShort}」，最多 ${MILESTONE_SHORT_MAX} 个字` : placeholder
             }
@@ -194,6 +197,7 @@ export default function AchievementCard({
 
       {fieldRow('short', '简称', '')}
       {fieldRow('criteria', '判断标准', '做到什么程度算成')}
+      {fieldRow('why', '面试能说', '做完这个，我面试能说什么？')}
       {fieldRow('evidence', '证据', '怎么证明做到了')}
 
       {state === 'done' && achievement.doneAt !== undefined && (

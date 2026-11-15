@@ -99,6 +99,7 @@ export function weeklyGoalsToData(
       drafts.push({
         title,
         criteria: '',
+        why: '',
         evidence: '',
         status: done ? 'done' : 'todo',
         stageId,
@@ -174,6 +175,7 @@ export function goalsToDrafts(
     drafts.push({
       title,
       criteria: typeof item.criteria === 'string' ? item.criteria.trim() : '',
+      why: '',
       evidence: '',
       status: done ? 'done' : 'todo',
       ...(stageId !== undefined ? { stageId } : {}),

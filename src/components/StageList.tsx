@@ -27,10 +27,10 @@ type Props = {
   onAddTask: (achievementId: number, text: string, dueDate: string) => void
   onEditTask: (id: number, text: string, dueDate: string) => void
   onRemoveAchievement: (id: number) => void
-  /** 改短名 / 判断标准 / 证据 */
+  /** 改短名 / 判断标准 / 面试能说 / 证据 */
   onUpdateAchievement: (
     id: number,
-    patch: { short?: string; criteria?: string; evidence?: string },
+    patch: { short?: string; criteria?: string; why?: string; evidence?: string },
   ) => void
   /** 写了证据才能确认完成 */
   onCompleteAchievement: (id: number) => void

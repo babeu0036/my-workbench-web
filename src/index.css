@@ -4360,6 +4360,233 @@ textarea {
   font-size: 15px;
 }
 
+/* ---------- 职业目标卡：已拿下几块证据 ---------- */
+
+.career__evidence {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.career__evidence strong {
+  color: var(--text-h);
+  font-size: 15px;
+}
+
+/* ---------- 复盘：一句话的本周数字 ---------- */
+
+.week {
+  gap: 8px;
+}
+
+.week__pct {
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.week__line {
+  margin: 0;
+  color: var(--text-h);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ---------- 复盘：这周没动的里程碑 ---------- */
+
+.stallcard {
+  gap: 8px;
+}
+
+.stall {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stall__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+}
+
+.stall__row:first-child {
+  padding-top: 2px;
+  border-top: 0;
+}
+
+.stall__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stall__title {
+  color: var(--text-h);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.stall__meta {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* 「下周做它」比一般的 ghost 按钮更像一颗按钮：有边框，点得中 */
+.stall__btn {
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+/* 已加入下周：灰底但字还看得清 —— 这是「做过了」的状态，不是坏了 */
+.stall__btn:disabled {
+  color: var(--muted);
+  background: var(--surface-2);
+  border-color: transparent;
+  opacity: 1;
+  cursor: default;
+}
+
+/* ---------- 复盘：三句话 ---------- */
+
+.reviewform {
+  gap: 10px;
+}
+
+.reviewform__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reviewform__label {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.reviewform__input {
+  width: 100%;
+  min-height: 48px;
+  padding: 9px 11px;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+/* ---------- 复盘：以前的周 ---------- */
+
+.hist {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hist__item {
+  border-top: 1px solid var(--border);
+}
+
+.hist__item:first-child {
+  border-top: 0;
+}
+
+.hist__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hist__week {
+  flex: none;
+  color: var(--text-h);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hist__sum {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 13px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hist__arrow {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hist__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 12px;
+}
+
+.hist__line {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.hist__key {
+  flex: none;
+  width: 76px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hist__foot {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---------- 首页：下周要做 ---------- */
+
+.nextweek {
+  gap: 4px;
+}
+
+.nextweek__more {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+/* 弹窗里那句「面试能说」：跟标题分开，字比提示重一档 */
+.sheet__why {
+  margin: -4px 0 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 @media (max-width: 560px) {
   .career__vision {
     font-size: 16px;

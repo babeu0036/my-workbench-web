@@ -68,6 +68,11 @@ export type Achievement = {
   short?: string
   /** 判断标准：做到什么程度算成。空字符串 = 还没写 */
   criteria: string
+  /**
+   * 面试能说：做完这个，面试里能拿它讲什么（一句话）。空字符串 = 还没写。
+   * 只为复盘 / 面试服务，不参与任何统计；旧数据没有这个键，读盘时补 ''。
+   */
+  why: string
   /** 证据：怎么证明做到了（结果、链接、截图说明都行）。标记完成前必须非空 */
   evidence: string
   status: MilestoneStatus
@@ -187,6 +192,41 @@ export type FeedItem = {
 export type FeedCache = {
   fetchedAt: number
   items: FeedItem[]
+}
+
+/**
+ * 复盘里「下周做它」生成的那条任务：哪条里程碑、生成出来的是哪条任务。
+ * 只做记录用 —— 按钮靠它变成「已加入下周」，历史里也看不出这些细节。
+ */
+export type ReviewGenerated = {
+  achievementId: number
+  todoId: number
+}
+
+/**
+ * 一周的复盘，存在 `workbench.reviews` 里（数组）。
+ *
+ * `weekStart` 是那一周周一的日期键，**一周只有一条** —— 再保存就覆盖，
+ * 不追加。三句话可以为空（只是先点了几次「下周做它」时也会建一条），
+ * 所以页面上不能假设 best/stuck/next 一定有内容。
+ *
+ * movedCount / totalCount 是保存那一刻的快照：那一周推进了几条里程碑、
+ * 一共算进来几条（当前阶段及之前的）。之后里程碑变了，历史数字不跟着变。
+ */
+export type Review = {
+  id: number
+  /** 那一周周一的日期键，如 2026-11-09 */
+  weekStart: string
+  /** 这周最有价值的一件事 */
+  best: string
+  /** 卡在哪 */
+  stuck: string
+  /** 下周最重要的一件事 */
+  next: string
+  movedCount: number
+  totalCount: number
+  generated: ReviewGenerated[]
+  createdAt: number
 }
 
 export type Note = {

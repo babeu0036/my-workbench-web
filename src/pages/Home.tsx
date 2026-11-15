@@ -11,7 +11,7 @@ import TaskList from '../components/TaskList'
 import TodayCourses from '../components/TodayCourses'
 import TomorrowBlock from '../components/TomorrowBlock'
 import { todayCourses, tomorrowCourses } from '../lib/courses'
-import { dayKey, todayLabel } from '../lib/date'
+import { dayKey, todayLabel, weekKeyOf, weekKeyOffset } from '../lib/date'
 import { currentStage, sortStages } from '../lib/stages'
 import { activeMilestones } from '../lib/milestones'
 import type { MilestoneOption } from '../lib/milestones'
@@ -24,6 +24,7 @@ import {
   addTodo,
   clearDone,
   removeTodo,
+  nextWeekMilestoneTasks,
   sortForPlan,
   tomorrowTasks,
   toggleTodo,
@@ -128,6 +129,10 @@ export default function Home({
   // 明天：课按明天的学期周次筛（跨周时单双周会翻面），任务只要没做完的
   const classesTomorrow = tomorrowCourses(courses, semesterStart)
   const tasksTomorrow = tomorrowTasks(todos)
+  // 下周（周一起算）里排在里程碑上的事 —— 复盘点「下周做它」生成的就落在这里
+  const nextWeekKey = weekKeyOffset(weekKeyOf(), 1)
+  const nextWeekList = nextWeekMilestoneTasks(todos, nextWeekKey, weekKeyOffset(nextWeekKey, 1))
+  const evidenceDone = achievements.filter(item => item.status === 'done').length
 
   function handleAdd(
     text: string,
@@ -148,7 +153,11 @@ export default function Home({
         <h2 className="page__title">首页</h2>
         <p className="page__hint">{todayLabel()} · 今天的任务</p>
 
-        <CareerCard career={career} onOpen={onOpenGoal} />
+        <CareerCard
+          career={career}
+          evidence={{ done: evidenceDone, total: achievements.length }}
+          onOpen={onOpenGoal}
+        />
 
         <StageBar stage={stage} index={stageIndex} />
 
@@ -194,6 +203,28 @@ export default function Home({
           tasks={tasksTomorrow}
           onOpenPlan={onOpenPlan}
         />
+
+        {/* 复盘排进来的事得在首页看得见，否则「闭环」缺最后一格：
+            首页本来只列今天到期和逾期，下周的活不在里面 */}
+        {nextWeekList.length > 0 && (
+          <section className="card nextweek" aria-labelledby="nextweek-title">
+            <div className="card__head">
+              <span className="card__title" id="nextweek-title">
+                下周要做
+              </span>
+              <button type="button" className="btn btn--ghost nextweek__more" onClick={onOpenPlan}>
+                全部
+              </button>
+            </div>
+            <TaskList
+              todos={nextWeekList}
+              empty=""
+              milestones={milestones}
+              onToggle={id => setTodos(list => toggleTodo(list, id))}
+              onRemove={id => setTodos(list => removeTodo(list, id))}
+            />
+          </section>
+        )}
 
         <MoodPicker value={mood} onPick={value => setMoods(list => setMood(list, today, value))} />
       </div>

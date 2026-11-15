@@ -31,6 +31,8 @@ export const KEYS = {
    * 老数据在 `workbench.vision` / `workbench.finalGoal`，迁移时抄一次，老键不删。
    */
   career: 'workbench.career',
+  /** 复盘：每周一条，{ weekStart, best, stuck, next, ... } 的数组 */
+  reviews: 'workbench.reviews',
   /** 知识库：{ id, type, title, url?, summary, createdAt } 的数组 */
   knowledge: 'workbench.knowledge',
   /** 行业动态的缓存：{ fetchedAt, items }。几 KB，跟着云同步一起走 */

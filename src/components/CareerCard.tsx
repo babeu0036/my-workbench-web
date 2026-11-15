@@ -3,6 +3,8 @@ import type { Career } from '../lib/types'
 
 type Props = {
   career: Career
+  /** 里程碑证据的进度：已确认完成的 / 全部 */
+  evidence: { done: number; total: number }
   /** 点「去设置」跳到目标页那块三行输入 */
   onOpen: () => void
 }
@@ -13,7 +15,7 @@ type Props = {
  * 三样都可能空着 —— 空着不编内容，用灰字提示该填什么，右边留一个「去设置」。
  * 天数在 30 天以内变红，过了目标日就写「已经过了 N 天」，不显示负数。
  */
-export default function CareerCard({ career, onOpen }: Props) {
+export default function CareerCard({ career, evidence, onOpen }: Props) {
   const days = targetDays(career)
   const tone = days === undefined ? '' : days < 0 ? 'career__count--over' : days <= 30 ? 'career__count--near' : ''
 
@@ -42,6 +44,11 @@ export default function CareerCard({ career, onOpen }: Props) {
           </span>
         )}
       </div>
+
+      {/* 把「以后要成为谁」和「已经拿下几块证据」放在同一张卡上 */}
+      <p className="career__evidence">
+        已拿下 <strong>{evidence.done}</strong> / {evidence.total} 个证据
+      </p>
     </section>
   )
 }
