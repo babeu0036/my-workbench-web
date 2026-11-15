@@ -21,7 +21,7 @@ type CareerField = 'vision' | 'role' | 'targetDate'
 const CAREER_ROWS: { key: CareerField; label: string; placeholder: string; type: 'text' | 'date' }[] =
   [
     { key: 'vision', label: '愿景', placeholder: '想成为什么样的人、做成什么事', type: 'text' },
-    { key: 'role', label: '角色', placeholder: '想去的位置，比如「后端开发实习生」', type: 'text' },
+    { key: 'role', label: '角色', placeholder: '想去的位置，比如「嵌入式开发工程师」', type: 'text' },
     { key: 'targetDate', label: '目标日期', placeholder: '还没定', type: 'date' },
   ]
 

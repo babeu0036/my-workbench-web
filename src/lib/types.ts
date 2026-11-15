@@ -91,7 +91,7 @@ export type AchievementDraft = Omit<Achievement, 'id'>
 export type Career = {
   /** 一句话愿景：想成为什么样的人 / 做成什么事 */
   vision: string
-  /** 角色：想去的位置，比如「后端开发实习生」 */
+  /** 角色：想去的位置，比如「嵌入式开发工程师」 */
   role: string
   /** 目标日期，形如 2028-06-30。空字符串 = 还没定，首页就不算天数 */
   targetDate: string

@@ -21,6 +21,7 @@ import { normalizeKnowledgeList } from './lib/knowledge'
 import { normalizeFeedCache } from './lib/feed'
 import { normalizeMoods } from './lib/mood'
 import type { MoodMap } from './lib/mood'
+import { applyPresetRoadmap } from './lib/roadmap'
 import { startSync } from './lib/sync'
 import { UNCATEGORIZED_ID, UNCATEGORIZED_NAME, normalizeTodos, withoutAchievement } from './lib/todos'
 import type {
@@ -126,6 +127,21 @@ export default function App() {
     setRoute(next)
     // 手机上点完任意一项就把抽屉收起来
     setDrawerOpen(false)
+  }
+
+  /**
+   * 设置页的「一键生成我的路线」：四个阶段 + 第一阶段的三个里程碑 + 职业目标。
+   *
+   * 合并式 —— 已经有的阶段/里程碑不重复加，职业目标只填空着的行，
+   * 所以点几次都只有一套路线，自己写过的东西也不会被盖掉。
+   * 返回这次真补了几条，设置页拿去拼一句提示；没变化时三个都是 0。
+   */
+  const generateRoadmap = () => {
+    const result = applyPresetRoadmap({ stages, achievements, career })
+    if (result.stages !== stages) setStages(result.stages)
+    if (result.achievements !== achievements) setAchievements(result.achievements)
+    if (result.career !== career) setCareer(result.career)
+    return result.added
   }
 
   return (
@@ -252,7 +268,7 @@ export default function App() {
             />
           )}
 
-          {route.page === 'settings' && <Settings />}
+          {route.page === 'settings' && <Settings onGenerateRoadmap={generateRoadmap} />}
         </main>
       </div>
     </div>

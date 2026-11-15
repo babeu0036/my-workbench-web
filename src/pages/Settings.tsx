@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { RoadmapResult } from '../lib/roadmap'
 import { getSyncCode, setSyncCode, upload, download } from '../lib/sync'
 
 const PREFIX = 'workbench.'
@@ -15,9 +16,34 @@ function snapshot(): Record<string, string> {
   return out
 }
 
-export default function Settings() {
+/** 生成完那句提示：只报这次真补进去的东西，一条没补就直说 */
+function describeRoadmap(added: RoadmapResult['added']): string {
+  const bits: string[] = []
+  if (added.stages > 0) bits.push(`${added.stages} 个阶段`)
+  if (added.milestones > 0) bits.push(`${added.milestones} 个里程碑`)
+
+  if (bits.length === 0) {
+    return added.career > 0
+      ? '职业目标已填好，其余都已经是现成的。'
+      : '路线已经是现成的了，没有重复添加。'
+  }
+
+  const head = `已生成 ${bits.join('、')}`
+  return added.career > 0 ? `${head}，职业目标也填好了。` : `${head}。`
+}
+
+type Props = {
+  /**
+   * 「一键生成我的路线」：四个阶段 + 第一阶段的三个里程碑 + 职业目标。
+   * 合并式，返回这次补了几条（没变化时三个都是 0）。
+   */
+  onGenerateRoadmap: () => RoadmapResult['added']
+}
+
+export default function Settings({ onGenerateRoadmap }: Props) {
   const [code, setCode] = useState(() => getSyncCode())
   const [status, setStatus] = useState('')
+  const [routeNote, setRouteNote] = useState('')
   const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -84,7 +110,24 @@ export default function Settings() {
     <div className="page">
       <h2 className="page__title">设置</h2>
 
-      <h3 className="page__hint">云端同步</h3>
+      <h3 className="page__hint">我的路线</h3>
+      <p className="meta">
+        四个阶段、第一阶段的三条里程碑，再顺手填好职业目标。已经有的不会重复添加，也不会盖掉你自己写的内容。
+      </p>
+      <button
+        type="button"
+        className="btn btn--primary route-seed"
+        onClick={() => setRouteNote(describeRoadmap(onGenerateRoadmap()))}
+      >
+        一键生成我的路线
+      </button>
+      {routeNote && (
+        <p className="meta" role="status">
+          {routeNote}
+        </p>
+      )}
+
+      <h3 className="page__hint" style={{ marginTop: 24 }}>云端同步</h3>
       <p className="meta">两台设备填同一个同步码，数据就通了。</p>
       <div className="field-row">
         <input

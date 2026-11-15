@@ -4353,6 +4353,13 @@ textarea {
   flex: none;
 }
 
+/* 设置页那颗主按钮：一屏里最该被看见的动作，比旁边的「保存」大一号。
+   .page 是列方向的 flex，宽度本来就撑满，这里只管高度和字号 */
+.route-seed {
+  padding: 11px 14px;
+  font-size: 15px;
+}
+
 @media (max-width: 560px) {
   .career__vision {
     font-size: 16px;
