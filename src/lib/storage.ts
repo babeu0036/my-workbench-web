@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { appendAchievements, normalizeAchievements } from './achievements'
-import { EMPTY_CAREER, normalizeCareer } from './career'
+import { normalizeCareer } from './career'
 import { goalsToDrafts, isLegacyGoal, weeklyGoalsToData } from './legacyGoals'
-import { applyPresetRoadmap } from './roadmap'
-import { normalizeStages, presetStages } from './stages'
+import { normalizeStages } from './stages'
 import { normalizeTodos } from './todos'
-import type { Career, Todo } from './types'
+import type { Todo } from './types'
 
 /** localStorage 的几个 key，分开存，互不影响 */
 export const KEYS = {
@@ -196,10 +195,8 @@ function mergeGoalsIntoAchievements(): void {
 
 /**
  * 阶段这个键从无到有：老数据在 `workbench.goalPeriods`（字段是 start / end），
- * 搬过来顺手补上 order；一条老数据都没有才预置四个阶段。
- *
- * 全新安装走不到预置这一步 —— 上面 seedFirstRoadmap 已经把整套路线写好了，
- * 这里只是给「有别的数据、但从来没有阶段」的老用户兜底。
+ * 搬过来顺手补上 order；一条老数据都没有就建一个空数组 —— 阶段由用户自己加，
+ * 不预置任何东西。
  *
  * 判断用「键在不在」而不是「数组空不空」：用户把阶段全删了，
  * useStoredState 会把 `[]` 写回去，下次读到的是空数组而不是 null，
@@ -209,12 +206,7 @@ function migrateStages(): void {
   if (readKey<unknown>(KEYS.stages, null) !== null) return
 
   const legacy = readKey<unknown>(LEGACY_PERIODS_KEY, null)
-  if (Array.isArray(legacy)) {
-    writeKey(KEYS.stages, normalizeStages(legacy))
-    return
-  }
-
-  writeKey(KEYS.stages, presetStages())
+  writeKey(KEYS.stages, Array.isArray(legacy) ? normalizeStages(legacy) : [])
 }
 
 /**
@@ -256,53 +248,15 @@ function migrateCareer(): void {
 }
 
 /**
- * 全新安装：手上一点数据都没有的时候，直接把整条「我的路线」写进去 ——
- * 四个阶段 + 第一阶段的三个里程碑 + 职业目标默认值（见 lib/roadmap.ts）。
- *
- * 判断看的是**三个键都不存在**（再加上没有更老的目标/周期数据）：
- * 只要用户已经有任何一份东西，就不自动写。删掉的阶段、清空的里程碑
- * 不该因为刷新一下又长回来 —— 想再要回来，设置页那个按钮可以手动补。
- *
- * 必须排在 migrateCareer 之后（那一步会无条件建 career 键，但会把老愿景
- * 先搬进来，这里只填空行，不会覆盖）、migrateStages 之前（写完 stages 键，
- * 那一步就会认为「已经有了」而跳过）。
- */
-function isBlankInstall(): boolean {
-  if (readKey<unknown>(KEYS.stages, null) !== null) return false
-  if (readKey<unknown>(KEYS.career, null) !== null) return false
-  if (normalizeAchievements(readKey<unknown>(KEYS.achievements, [])).length > 0) return false
-  // 还有老的「周期」或者极老的一周一条目标，就不算全新 —— 交给后面几个迁移去搬
-  if (readKey<unknown>(LEGACY_PERIODS_KEY, null) !== null) return false
-  const legacyGoals = readKey<unknown>(LEGACY_GOALS_KEY, null)
-  return !Array.isArray(legacyGoals) || legacyGoals.length === 0
-}
-
-/**
- * @param career 已经迁过的职业目标（migrateCareer 刚写完的那份）。
- *   必须传进来：全新安装时 career 里也可能有从老 vision / finalGoal 抄过来的
- *   一句话，那颗预置的愿景只该填空行，不能把用户写过的那句盖掉。
- */
-function seedFirstRoadmap(career: Career): void {
-  const result = applyPresetRoadmap({ stages: [], achievements: [], career })
-  writeKey(KEYS.stages, result.stages)
-  writeKey(KEYS.achievements, result.achievements)
-  writeKey(KEYS.career, result.career)
-}
-
-/**
  * 老版本的待办存在 'todos' 里，这里搬到 'workbench.todos'，
  * 保证改造前加的待办不会丢。老 key 保留不删。
  */
 export function migrateLegacyStorage(): void {
-  // 先判断「是不是全新」，之后每一步都可能建键，判断就不准了
-  const blank = isBlankInstall()
-
   migrateLegacyVision()
   migrateCareer()
   // 顺序有讲究：先把极老的一周一条目标升成阶段（会写 stages），
-  // 再搬「周期 → 阶段」，最后才可能预置；然后才把目标条目并进里程碑
+  // 再搬「周期 → 阶段」，最后才把目标条目并进里程碑
   migrateWeeklyGoals()
-  if (blank) seedFirstRoadmap(normalizeCareer(readKey<unknown>(KEYS.career, EMPTY_CAREER)))
   migrateStages()
   mergeGoalsIntoAchievements()
 

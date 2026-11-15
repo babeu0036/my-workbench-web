@@ -26,24 +26,6 @@ export function orderRange(a: string, b: string): [string, string] {
   return a <= b ? [a, b] : [b, a]
 }
 
-/**
- * 预置的四个阶段（沿用「我的路线」那一条起跑线，见 lib/roadmap.ts）。
- *
- * 只在 `workbench.stages` 这个键**根本不存在**且没有老的 `workbench.goalPeriods`
- * 时才写一次 —— 用户删光了不会再长回来。全新安装写的其实是整套路线
- * （阶段 + 里程碑 + 职业目标），这里只负责阶段这一层。
- */
-const PRESETS: { title: string; startKey: string; endKey: string }[] = [
-  { title: '大一上', startKey: '2026-09-01', endKey: '2027-01-31' },
-  { title: '大一下', startKey: '2027-02-01', endKey: '2027-07-31' },
-  { title: '大二', startKey: '2027-09-01', endKey: '2028-07-31' },
-  { title: '大三到大四', startKey: '2028-09-01', endKey: '2029-06-30' },
-]
-
-export function presetStages(now: number = Date.now()): Stage[] {
-  return PRESETS.map((item, index) => ({ id: now + index, ...item, order: index }))
-}
-
 /* ---------- 读盘 ---------- */
 
 /**

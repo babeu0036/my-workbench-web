@@ -4429,13 +4429,6 @@ textarea {
   flex: none;
 }
 
-/* 设置页那颗主按钮：一屏里最该被看见的动作，比旁边的「保存」大一号。
-   .page 是列方向的 flex，宽度本来就撑满，这里只管高度和字号 */
-.route-seed {
-  padding: 11px 14px;
-  font-size: 15px;
-}
-
 /* ---------- 职业目标卡：已拿下几块证据 ---------- */
 
 .career__evidence {
