@@ -13,33 +13,29 @@ import {
   weekStats,
 } from '../lib/todos'
 import type { MilestoneOption } from '../lib/milestones'
-import type { Subject, SubjectSegment, Todo } from '../lib/types'
+import type { Subject, Todo } from '../lib/types'
 
 type Props = {
   subject: Subject | undefined
   /** 编辑任务时面板要列全部真科目：这条本来是英语的，也能改成高数 */
   subjects: Subject[]
-  seg: SubjectSegment
   todos: Todo[]
   setTodos: Dispatch<SetStateAction<Todo[]>>
   /** 「服务于」的选项：行右侧的小标签和编辑面板共用 */
   milestones: MilestoneOption[]
-  onSegChange: (seg: SubjectSegment) => void
 }
 
 /**
  * 科目详情。英语 / 高数 / C语言 共用这一个组件，靠 id 区分；
  * id 为空的「未分类」也走这一页，逻辑完全一样。
- * 错题段留到第 6 步。
+ * 只有任务一件事 —— 原来那个「任务 / 错题」分段已经删了，不再留错题这一层。
  */
 export default function SubjectPage({
   subject,
   subjects,
-  seg,
   todos,
   setTodos,
   milestones,
-  onSegChange,
 }: Props) {
   const [editing, setEditing] = useState<Todo | null>(null)
 
@@ -68,52 +64,22 @@ export default function SubjectPage({
         </span>
       </header>
 
-      <div className="seg" role="tablist" aria-label="科目分段">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={seg === 'tasks'}
-          className={seg === 'tasks' ? 'seg__btn seg__btn--active' : 'seg__btn'}
-          onClick={() => onSegChange('tasks')}
-        >
-          任务
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={seg === 'mistakes'}
-          className={seg === 'mistakes' ? 'seg__btn seg__btn--active' : 'seg__btn'}
-          onClick={() => onSegChange('mistakes')}
-        >
-          错题
-        </button>
-      </div>
+      <TaskList
+        todos={mine}
+        empty={`${subject.name}还没有任务，在下面加一条`}
+        milestones={milestones}
+        onToggle={id => setTodos(list => toggleTodo(list, id))}
+        onRemove={id => setTodos(list => removeTodo(list, id))}
+        onEdit={id => setEditing(todos.find(todo => todo.id === id) ?? null)}
+      />
 
-      {seg === 'tasks' ? (
-        <>
-          <TaskList
-            todos={mine}
-            empty={`${subject.name}还没有任务，在下面加一条`}
-            milestones={milestones}
-            onToggle={id => setTodos(list => toggleTodo(list, id))}
-            onRemove={id => setTodos(list => removeTodo(list, id))}
-            onEdit={id => setEditing(todos.find(todo => todo.id === id) ?? null)}
-          />
-
-          <TaskInput
-            placeholder={isUnclassified ? '写一件要做的事…' : `写一件${subject.name}要做的事…`}
-            label={`添加${subject.name}任务`}
-            onAdd={(text, dueDate) =>
-              setTodos(list => addTodo(list, text, subject.id, dueDate, 'study'))
-            }
-          />
-        </>
-      ) : (
-        <div className="empty-block">
-          <p className="empty">错题本还没做</p>
-          <p className="meta">第 6 步接错题导入和计数，这里先留白</p>
-        </div>
-      )}
+      <TaskInput
+        placeholder={isUnclassified ? '写一件要做的事…' : `写一件${subject.name}要做的事…`}
+        label={`添加${subject.name}任务`}
+        onAdd={(text, dueDate) =>
+          setTodos(list => addTodo(list, text, subject.id, dueDate, 'study'))
+        }
+      />
 
       {editing && (
         <AddTaskPanel

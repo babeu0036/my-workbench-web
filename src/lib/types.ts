@@ -320,7 +320,6 @@ export type Course = {
 }
 
 export type PlanSegment = 'courses' | 'tasks' | 'deadlines'
-export type SubjectSegment = 'tasks' | 'mistakes'
 
 /**
  * 侧边栏能去的地方，一个对象就是当前所在位置。
@@ -331,12 +330,13 @@ export type SubjectSegment = 'tasks' | 'mistakes'
  *
  * `subject`（科目页）暂时没有入口 —— 侧边栏去掉了科目一级项，
  * 但路由和页面都留着，首页到期提醒里点科目名还能进来。
+ * 科目页只有任务一件事，不再分「任务 / 错题」两段。
  */
 export type Route =
   | { page: 'home' }
   | { page: 'plan'; seg: PlanSegment }
   | { page: 'goal' }
   | { page: 'knowledge' }
-  | { page: 'subject'; id: string; seg: SubjectSegment }
+  | { page: 'subject'; id: string }
   | { page: 'review' }
   | { page: 'settings' }

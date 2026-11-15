@@ -234,7 +234,7 @@ export default function App() {
               semesterStart={semesterStart}
               moods={moods}
               setMoods={setMoods}
-              onOpenSubject={id => navigate({ page: 'subject', id, seg: 'tasks' })}
+              onOpenSubject={id => navigate({ page: 'subject', id })}
               onOpenGoal={() => navigate({ page: 'goal' })}
               onOpenPlan={() => navigate({ page: 'plan', seg: 'tasks' })}
             />
@@ -260,11 +260,9 @@ export default function App() {
             <SubjectPage
               subject={subjects.find(item => item.id === route.id)}
               subjects={subjects}
-              seg={route.seg}
               todos={mainTodos}
               setTodos={setTodos}
               milestones={milestones}
-              onSegChange={seg => setRoute({ page: 'subject', id: route.id, seg })}
             />
           )}
 
