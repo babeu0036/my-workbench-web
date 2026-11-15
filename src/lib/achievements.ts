@@ -1,5 +1,5 @@
 import { MILESTONE_SHORT_MAX } from './milestones'
-import type { Achievement, AchievementDraft, MilestoneStatus, Todo } from './types'
+import type { Achievement, AchievementDraft, MilestoneKind, MilestoneStatus, Todo } from './types'
 
 /**
  * 里程碑（Achievement，字段名沿用老叫法）。目标页上的大块，一条下面挂若干任务：
@@ -19,7 +19,7 @@ import type { Achievement, AchievementDraft, MilestoneStatus, Todo } from './typ
 
 const STATUSES: MilestoneStatus[] = ['todo', 'doing', 'done']
 
-/** 「面试能说」最多几个字。卡片上的输入框和读盘兜底都用它 */
+/** 「留下什么」最多几个字。卡片上的输入框和读盘兜底都用它 */
 export const WHY_MAX = 120
 
 /** 一条里程碑长什么样都可能，逐个字段兜底；没有标题的直接丢掉（认不出是什么） */
@@ -41,8 +41,11 @@ export function normalizeAchievement(raw: unknown, index = 0): Achievement | nul
         : ''
   ).trim()
   const evidence = typeof item.evidence === 'string' ? item.evidence.trim() : ''
-  // 面试能说：后来加的字段，老数据没有就按空字符串，卡片上显示淡色占位
+  // 留下什么：后来加的字段，老数据没有就按空字符串，卡片上显示淡色占位
   const why = typeof item.why === 'string' ? item.why.trim().slice(0, WHY_MAX) : ''
+  // 职业相关 / 个人兴趣：老数据没有这个键，一律按职业相关 ——
+  // 否则以前那些里程碑会突然从「已拿下 X / Y 个证据」里消失
+  const kind: MilestoneKind = item.kind === 'life' ? 'life' : 'work'
   // 短名只在真写了的时候留：空字符串存下来没意义，删掉键就回到「自动取标题前 4 字」
   const short = typeof item.short === 'string' ? item.short.trim().slice(0, MILESTONE_SHORT_MAX) : ''
   const stageId =
@@ -61,6 +64,7 @@ export function normalizeAchievement(raw: unknown, index = 0): Achievement | nul
     title,
     criteria,
     why,
+    kind,
     evidence,
     status,
     // 没有阶段就不写这个键：目标页会把它放进「未归类」
@@ -114,6 +118,7 @@ export function addAchievement(
   title: string,
   criteria = '',
   stageId?: number,
+  kind: MilestoneKind = 'work',
   now: number = Date.now(),
 ): Achievement[] {
   const value = title.trim()
@@ -125,6 +130,7 @@ export function addAchievement(
       title: value,
       criteria: criteria.trim(),
       why: '',
+      kind,
       evidence: '',
       status: 'todo',
       ...(stageId !== undefined ? { stageId } : {}),
@@ -133,14 +139,21 @@ export function addAchievement(
 }
 
 /**
- * 改标题 / 判断标准 / 面试能说 / 证据 / 短名。标题不能被改空；
+ * 改标题 / 判断标准 / 留下什么 / 证据 / 短名 / 类型。标题不能被改空；
  * 标准和证据可以改空（还没想清楚就先空着，卡片上显示灰字提示）；
  * 短名改空就删掉这个键，回到自动取标题前 4 个字。
  */
 export function updateAchievement(
   list: Achievement[],
   id: number,
-  patch: { title?: string; short?: string; criteria?: string; why?: string; evidence?: string },
+  patch: {
+    title?: string
+    short?: string
+    criteria?: string
+    why?: string
+    evidence?: string
+    kind?: MilestoneKind
+  },
 ): Achievement[] {
   return list.map(item => {
     if (item.id !== id) return item
@@ -157,8 +170,10 @@ export function updateAchievement(
       else delete next.short
     }
     if (patch.criteria !== undefined) next.criteria = patch.criteria.trim()
-    // 面试能说：超了直接截断，不弹错；空着就是空着
+    // 留下什么：超了直接截断，不弹错；空着就是空着，不影响标记完成
     if (patch.why !== undefined) next.why = patch.why.trim().slice(0, WHY_MAX)
+    // 只认这两个值，别的（手改坏的老数据）一律落回职业相关
+    if (patch.kind !== undefined) next.kind = patch.kind === 'life' ? 'life' : 'work'
     if (patch.evidence !== undefined) next.evidence = patch.evidence.trim()
     return next
   })

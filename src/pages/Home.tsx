@@ -13,7 +13,7 @@ import TomorrowBlock from '../components/TomorrowBlock'
 import { todayCourses, tomorrowCourses } from '../lib/courses'
 import { dayKey, todayLabel, weekKeyOf, weekKeyOffset } from '../lib/date'
 import { currentStage, sortStages } from '../lib/stages'
-import { activeMilestones } from '../lib/milestones'
+import { activeMilestones, evidenceStats } from '../lib/milestones'
 import type { MilestoneOption } from '../lib/milestones'
 import { moodOf, setMood } from '../lib/mood'
 import type { MoodMap } from '../lib/mood'
@@ -132,7 +132,8 @@ export default function Home({
   // 下周（周一起算）里排在里程碑上的事 —— 复盘点「下周做它」生成的就落在这里
   const nextWeekKey = weekKeyOffset(weekKeyOf(), 1)
   const nextWeekList = nextWeekMilestoneTasks(todos, nextWeekKey, weekKeyOffset(nextWeekKey, 1))
-  const evidenceDone = achievements.filter(item => item.status === 'done').length
+  // 「已拿下 X / Y 个证据」：个人兴趣那几条不算（见 evidenceStats）
+  const evidence = evidenceStats(achievements)
 
   function handleAdd(
     text: string,
@@ -155,7 +156,7 @@ export default function Home({
 
         <CareerCard
           career={career}
-          evidence={{ done: evidenceDone, total: achievements.length }}
+          evidence={evidence}
           onOpen={onOpenGoal}
         />
 

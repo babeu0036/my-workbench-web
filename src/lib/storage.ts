@@ -5,7 +5,7 @@ import { goalsToDrafts, isLegacyGoal, weeklyGoalsToData } from './legacyGoals'
 import { applyPresetRoadmap } from './roadmap'
 import { normalizeStages, presetStages } from './stages'
 import { normalizeTodos } from './todos'
-import type { Todo } from './types'
+import type { Career, Todo } from './types'
 
 /** localStorage 的几个 key，分开存，互不影响 */
 export const KEYS = {
@@ -33,6 +33,11 @@ export const KEYS = {
   career: 'workbench.career',
   /** 复盘：每周一条，{ weekStart, best, stuck, next, ... } 的数组 */
   reviews: 'workbench.reviews',
+  /**
+   * 复盘三句话的草稿：只有一个对象 { weekStart, best, stuck, next }。
+   * 输入停下来 600ms 写一次，保存复盘后删掉。
+   */
+  reviewDraft: 'workbench.reviewDraft',
   /** 知识库：{ id, type, title, url?, summary, createdAt } 的数组 */
   knowledge: 'workbench.knowledge',
   /** 行业动态的缓存：{ fetchedAt, items }。几 KB，跟着云同步一起走 */
@@ -82,6 +87,21 @@ export function writeKey<T>(key: string, value: T): void {
     window.dispatchEvent(new Event('workbench:change'))
   } catch {
     // 隐私模式 / 空间不足：忽略即可，页面照常可用
+  }
+}
+
+/**
+ * 删一个 key（目前只有「保存复盘后清掉草稿」在用）。
+ *
+ * 也要发一次变更事件：同步那边盯着这个事件重新打包上传，
+ * 不然草稿会一直躺在云端，换台设备再打开又被灌回文本框。
+ */
+export function removeKey(key: string): void {
+  try {
+    localStorage.removeItem(key)
+    window.dispatchEvent(new Event('workbench:change'))
+  } catch {
+    // 隐私模式：删不掉就算了，下次保存复盘还会再删一次
   }
 }
 
@@ -257,8 +277,13 @@ function isBlankInstall(): boolean {
   return !Array.isArray(legacyGoals) || legacyGoals.length === 0
 }
 
-function seedFirstRoadmap(): void {
-  const result = applyPresetRoadmap({ stages: [], achievements: [], career: EMPTY_CAREER })
+/**
+ * @param career 已经迁过的职业目标（migrateCareer 刚写完的那份）。
+ *   必须传进来：全新安装时 career 里也可能有从老 vision / finalGoal 抄过来的
+ *   一句话，那颗预置的愿景只该填空行，不能把用户写过的那句盖掉。
+ */
+function seedFirstRoadmap(career: Career): void {
+  const result = applyPresetRoadmap({ stages: [], achievements: [], career })
   writeKey(KEYS.stages, result.stages)
   writeKey(KEYS.achievements, result.achievements)
   writeKey(KEYS.career, result.career)
@@ -277,7 +302,7 @@ export function migrateLegacyStorage(): void {
   // 顺序有讲究：先把极老的一周一条目标升成阶段（会写 stages），
   // 再搬「周期 → 阶段」，最后才可能预置；然后才把目标条目并进里程碑
   migrateWeeklyGoals()
-  if (blank) seedFirstRoadmap()
+  if (blank) seedFirstRoadmap(normalizeCareer(readKey<unknown>(KEYS.career, EMPTY_CAREER)))
   migrateStages()
   mergeGoalsIntoAchievements()
 

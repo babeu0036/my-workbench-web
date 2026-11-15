@@ -14,7 +14,7 @@ import {
 import { countdownText, targetDays } from '../lib/career'
 import { addStage, removeStage, updateStage } from '../lib/stages'
 import { addAchievementTodo, removeTodo, toggleTodo, updateTodo } from '../lib/todos'
-import type { Achievement, Career, Stage, Todo } from '../lib/types'
+import type { Achievement, Career, MilestoneKind, Stage, Todo } from '../lib/types'
 
 type CareerField = 'vision' | 'role' | 'targetDate'
 
@@ -82,8 +82,13 @@ export default function Goal({
     setCareerField(null)
   }
 
-  function addAchievementItem(title: string, criteria: string, stageId: number) {
-    setAchievements(list => addAchievement(list, title, criteria, stageId))
+  function addAchievementItem(
+    title: string,
+    criteria: string,
+    stageId: number,
+    kind: MilestoneKind,
+  ) {
+    setAchievements(list => addAchievement(list, title, criteria, stageId, kind))
     setAddingFor(null)
   }
 

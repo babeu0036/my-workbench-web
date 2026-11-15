@@ -1,7 +1,7 @@
 import { dayKey, weekEnd, weekKeyOf, weekStart } from './date'
 import { lastDoneAt, tasksOf } from './milestones'
 import { sortStages } from './stages'
-import type { Achievement, Review, ReviewGenerated, Stage, Todo } from './types'
+import type { Achievement, Review, ReviewDraft, ReviewGenerated, Stage, Todo } from './types'
 
 /**
  * 每周复盘：一句话数字 + 没动的里程碑 + 三句话 + 历史。
@@ -79,6 +79,26 @@ export function normalizeReviews(list: unknown, now: number = Date.now()): Revie
 /** 某一周的复盘，没有就 undefined */
 export function reviewOf(list: Review[], weekStartKey: string): Review | undefined {
   return list.find(item => item.weekStart === weekStartKey)
+}
+
+/**
+ * 复盘三句话的草稿（`workbench.reviewDraft`，只有一个对象）。
+ *
+ * 只认本周的那份：上周没写完的草稿不再往这周的空格子里灌，否则人会以为自己
+ * 上周写的东西丢了 —— 它还在上周的历史里，或者干脆被新的草稿覆盖掉了。
+ * 认不出 weekStart 就整份丢掉，宁可空着。
+ */
+export function normalizeReviewDraft(raw: unknown, weekStartKey: string): ReviewDraft | null {
+  if (!raw || typeof raw !== 'object') return null
+  const item = raw as Partial<ReviewDraft>
+  if (typeof item.weekStart !== 'string' || !WEEK_KEY_RE.test(item.weekStart)) return null
+  if (item.weekStart !== weekStartKey) return null
+  return {
+    weekStart: item.weekStart,
+    best: text(item.best),
+    stuck: text(item.stuck),
+    next: text(item.next),
+  }
 }
 
 /** 历史记录：按周倒序，最新的一周在最上面 */
@@ -192,6 +212,8 @@ export type WeekClosure = {
   linked: number
   /** 0-100 的整数；done 为 0 时给 0，页面上显示「—」不显示 0% */
   percent: number
+  /** 本周新建了多少条任务（createdAt 落在 [本周一, 下周一)） */
+  created: number
 }
 
 /**
@@ -211,7 +233,16 @@ export function weekClosure(todos: Todo[], now: number = Date.now()): WeekClosur
     todo => todo.achievementId !== undefined || todo.goalId !== undefined,
   ).length
   const done = finished.length
-  return { done, linked, percent: done === 0 ? 0 : Math.round((linked / done) * 100) }
+  // 新加了几条：跟完成数是两个方向 —— 完成多说明在推进，新建多说明在铺摊子
+  const created = todos.filter(
+    todo => typeof todo.createdAt === 'number' && todo.createdAt >= start && todo.createdAt < end,
+  ).length
+  return {
+    done,
+    linked,
+    percent: done === 0 ? 0 : Math.round((linked / done) * 100),
+    created,
+  }
 }
 
 /* ---------- 这周没动的里程碑 ---------- */
@@ -284,6 +315,9 @@ export function closureScope(
   let totalCount = 0
 
   achievements.forEach(item => {
+    // 个人兴趣不进这一块：复盘催的是职业目标，自己的事不该每周被点名
+    if (item.kind === 'life') return
+
     const stageId = item.stageId
     // 挂在将来阶段上的不算 —— 需求是「当前阶段及之前」
     if (stageId !== undefined && allStageIds.has(stageId) && !inScopeIds.has(stageId)) return
@@ -315,6 +349,22 @@ export function closureScope(
   })
 
   return { rows, movedCount, totalCount, hasMilestones: totalCount > 0 }
+}
+
+/**
+ * 这条里程碑上还有没有没做完的活 —— 复盘里那颗按钮据此变成「已加入下周」。
+ *
+ * 认 achievementId 也认 goalId：「下周做它」生成的任务是软关联（写在 goalId 上，
+ * 这样它才出现在首页和计划里），只认 achievementId 的话按钮永远点得动。
+ *
+ * 反过来说，任务被勾掉或删掉之后按钮会自己退回「下周做它」——
+ * 那说明下周又空出来了，可以再排一件。
+ */
+export function hasOpenPlan(todos: Todo[], achievementId: number): boolean {
+  return todos.some(
+    todo =>
+      !todo.done && (todo.achievementId === achievementId || todo.goalId === achievementId),
+  )
 }
 
 /* ---------- 下周 ---------- */

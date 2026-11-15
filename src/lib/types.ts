@@ -47,6 +47,15 @@ export type Todo = {
 export type MilestoneStatus = 'todo' | 'doing' | 'done'
 
 /**
+ * 里程碑的类型：职业相关 / 个人兴趣。
+ *
+ * `life` 不进首页「已拿下 X / Y 个证据」，也不进复盘「这周没动的里程碑」——
+ * 它是自己的事，不该被职业目标的进度和每周复盘催。但它照常显示在所属阶段卡片里，
+ * 想推进的时候照样能推进，只是不参与这两处统计。
+ */
+export type MilestoneKind = 'work' | 'life'
+
+/**
  * 一条里程碑（目标页上的大块）。下面的任务通过
  * `Todo.achievementId`（硬关联）或 `Todo.goalId`（软关联）挂过来。
  *
@@ -69,10 +78,15 @@ export type Achievement = {
   /** 判断标准：做到什么程度算成。空字符串 = 还没写 */
   criteria: string
   /**
-   * 面试能说：做完这个，面试里能拿它讲什么（一句话）。空字符串 = 还没写。
-   * 只为复盘 / 面试服务，不参与任何统计；旧数据没有这个键，读盘时补 ''。
+   * 留下什么：做完这个，手里会多出什么（一句话）。空字符串 = 还没写。
+   * 纯记录，不参与任何统计、也不影响能不能标记完成；旧数据没有这个键，读盘时补 ''。
    */
   why: string
+  /**
+   * 职业相关 / 个人兴趣。旧数据没有这个键，读盘时一律按 'work'（职业相关），
+   * 免得老里程碑突然从「已拿下 X / Y 个证据」里消失。
+   */
+  kind: MilestoneKind
   /** 证据：怎么证明做到了（结果、链接、截图说明都行）。标记完成前必须非空 */
   evidence: string
   status: MilestoneStatus
@@ -227,6 +241,21 @@ export type Review = {
   totalCount: number
   generated: ReviewGenerated[]
   createdAt: number
+}
+
+/**
+ * 复盘三句话的草稿，存在 `workbench.reviewDraft` 里（**只有一个对象**，不是数组）。
+ *
+ * 写到一半关掉页面不该白写：输入停下来 600ms 就落一份进来，保存复盘后删掉这个键。
+ * `weekStart` 用来认这份草稿是哪一周的 —— 上周没写完的那份，这周不会灌进空格子里。
+ * 以 `workbench.` 开头，所以跟着现有同步一起走，不用另写同步代码。
+ */
+export type ReviewDraft = {
+  /** 哪一周周一的日期键；跟本周对不上就当没有草稿 */
+  weekStart: string
+  best: string
+  stuck: string
+  next: string
 }
 
 export type Note = {

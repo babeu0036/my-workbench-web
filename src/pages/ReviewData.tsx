@@ -1,17 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import PlanNextWeek from '../components/PlanNextWeek'
 import { formatWeekRange } from '../lib/date'
 import {
   closureScope,
+  hasOpenPlan,
   nextWeekSundayKey,
+  normalizeReviewDraft,
   reviewOf,
   saveReview,
   sortedReviews,
   thisWeekKey,
   weekClosure,
 } from '../lib/reviews'
-import type { Achievement, Review, Stage, Todo } from '../lib/types'
+import { KEYS, readKey, removeKey, writeKey } from '../lib/storage'
+import type { Achievement, Review, ReviewDraft, Stage, Todo } from '../lib/types'
 
 type Props = {
   /** 完整任务（含目标页的里程碑任务）：本周闭环要数挂了 achievementId 的那些 */
@@ -68,21 +71,45 @@ export default function ReviewData({
   const closure = weekClosure(todos, now)
   const scope = closureScope(achievements, todos, stages, now)
 
-  const [best, setBest] = useState(review?.best ?? '')
-  const [stuck, setStuck] = useState(review?.stuck ?? '')
-  const [next, setNext] = useState(review?.next ?? '')
+  // 本周的草稿：进页面时回填，写完自动落盘，保存复盘后删掉。
+  // 只在挂载时读一次 —— 之后文本框就是唯一真相，不然边打字边被读盘覆盖。
+  const [draft] = useState<ReviewDraft | null>(() =>
+    normalizeReviewDraft(readKey<unknown>(KEYS.reviewDraft, null), weekKey),
+  )
+  const [best, setBest] = useState(draft?.best ?? review?.best ?? '')
+  const [stuck, setStuck] = useState(draft?.stuck ?? review?.stuck ?? '')
+  const [next, setNext] = useState(draft?.next ?? review?.next ?? '')
+  const [dirty, setDirty] = useState(false)
   const [saved, setSaved] = useState(false)
   const [planning, setPlanning] = useState<Achievement | null>(null)
   const [openWeek, setOpenWeek] = useState<string | null>(null)
 
-  // 本周已经排进下周的里程碑：按钮据此变成「已加入下周」
-  const planned = new Set((review?.generated ?? []).map(entry => entry.achievementId))
   const rows = scope.rows.slice(0, 3)
   const history = sortedReviews(reviews)
+
+  /**
+   * 输入停下来 600ms 就存一份草稿（`workbench.reviewDraft`）。
+   *
+   * 只在真改过（dirty）之后才写：一进页面就写的话，会把「这周还没动笔」变成
+   * 一份空草稿，下次打开还得多判断一次空字符串。三个都清空就把键删掉 ——
+   * 空草稿没有意义，留着只会同步一份空对象上去。
+   */
+  useEffect(() => {
+    if (!dirty) return
+    const timer = window.setTimeout(() => {
+      if (!best.trim() && !stuck.trim() && !next.trim()) {
+        removeKey(KEYS.reviewDraft)
+        return
+      }
+      writeKey<ReviewDraft>(KEYS.reviewDraft, { weekStart: weekKey, best, stuck, next })
+    }, 600)
+    return () => window.clearTimeout(timer)
+  }, [best, stuck, next, dirty, weekKey])
 
   function touch(setter: (value: string) => void) {
     return (value: string) => {
       setter(value)
+      setDirty(true)
       setSaved(false)
     }
   }
@@ -98,6 +125,9 @@ export default function ReviewData({
         totalCount: scope.totalCount,
       }),
     )
+    // 存进这一周的复盘里了，草稿就没用了
+    removeKey(KEYS.reviewDraft)
+    setDirty(false)
     setSaved(true)
   }
 
@@ -119,6 +149,7 @@ export default function ReviewData({
             ? '这周还没有完成任何任务'
             : `本周完成 ${closure.done} 条，其中 ${closure.linked} 条挂在里程碑上（${closure.percent}%）`}
         </p>
+        <p className="week__new">这周新加了 {closure.created} 条任务</p>
         <div
           className="meter"
           role="img"
@@ -152,7 +183,8 @@ export default function ReviewData({
         ) : (
           <ul className="stall">
             {rows.map(row => {
-              const done = planned.has(row.item.id)
+              // 这条里程碑上还有没做完的活就算「已加入下周」，全做完/删掉了自动退回可点
+              const done = hasOpenPlan(todos, row.item.id)
               return (
                 <li key={row.item.id} className="stall__row">
                   <div className="stall__main">

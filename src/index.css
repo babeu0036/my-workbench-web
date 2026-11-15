@@ -4262,6 +4262,40 @@ textarea {
   font-size: 13px;
 }
 
+/* 「类型」那一行：两选一，点一下直接切，跟其它几行一样占满整行 */
+.ach__kind {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.ach__kind-pill {
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.ach__kind-pill:hover {
+  color: var(--text-h);
+  border-color: var(--muted);
+}
+
+.ach__kind-pill--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* 一条任务都没有：灰字，不显示 0% 那种看着像「已经落后」的数 */
 .ach__none {
   margin: 0;
@@ -4392,6 +4426,14 @@ textarea {
   color: var(--text-h);
   font-size: 14px;
   line-height: 1.6;
+}
+
+/* 紧跟在「本周完成…」下面的小字：完成和新建是两个方向，分两行看不打架 */
+.week__new {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- 复盘：这周没动的里程碑 ---------- */
@@ -4579,7 +4621,7 @@ textarea {
   font-size: 12px;
 }
 
-/* 弹窗里那句「面试能说」：跟标题分开，字比提示重一档 */
+/* 弹窗里那句「留下什么」：跟标题分开，字比提示重一档 */
 .sheet__why {
   margin: -4px 0 0;
   color: var(--text);

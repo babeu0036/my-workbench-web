@@ -8,7 +8,7 @@ import { dayKey, formatDateCn } from '../lib/date'
 import { MILESTONE_SHORT_MAX, milestoneState, shortOf, statsOf } from '../lib/milestones'
 import type { MilestoneState } from '../lib/milestones'
 import { isHttpUrl, middleEllipsis } from '../lib/text'
-import type { Achievement, Todo } from '../lib/types'
+import type { Achievement, MilestoneKind, Todo } from '../lib/types'
 
 /** 卡片上点一下就能就地改的几行 */
 type FieldKey = 'short' | 'criteria' | 'why' | 'evidence'
@@ -22,8 +22,14 @@ type Props = {
   onAddTask: (text: string, dueDate: string) => void
   /** 改文字和日期。里程碑任务的科目和类型不给改，所以只收这两项 */
   onEditTask: (id: number, text: string, dueDate: string) => void
-  /** 改短名 / 判断标准 / 面试能说 / 证据 */
-  onUpdate: (patch: { short?: string; criteria?: string; why?: string; evidence?: string }) => void
+  /** 改短名 / 判断标准 / 留下什么 / 证据 / 类型 */
+  onUpdate: (patch: {
+    short?: string
+    criteria?: string
+    why?: string
+    evidence?: string
+    kind?: MilestoneKind
+  }) => void
   /** 写够证据以后才能点这里 */
   onComplete: () => void
   onReopen: () => void
@@ -45,7 +51,8 @@ const STATE_LABEL: Record<MilestoneState, string> = {
  * - 进行中 / 待确认：完成 x / y + 进度条 + 任务列表，可以直接勾；
  * - 已完成：任务全勾完、而且写了证据、手动确认过。
  *
- * 简称、判断标准、面试能说、证据都是点一下就地改（回车保存、Esc 放弃、失焦也算保存）。
+ * 简称、判断标准、留下什么、证据都是点一下就地改（回车保存、Esc 放弃、失焦也算保存）；
+ * 职业相关 / 个人兴趣是两选一，点一下直接切。
  * 简称留空就跟着标题走：自动取前 4 个字加省略号，任务行的小标签显示的就是它。
  *
  * 「标记完成」会先弹出证据输入框 —— 证据为空时那个「确定完成」是禁用的，
@@ -100,7 +107,12 @@ export default function AchievementCard({
 
   function commit() {
     if (!field) return
-    onUpdate({ [field]: draft } as { short?: string; criteria?: string; why?: string; evidence?: string })
+    onUpdate({ [field]: draft } as {
+      short?: string
+      criteria?: string
+      why?: string
+      evidence?: string
+    })
     setField(null)
   }
 
@@ -197,7 +209,26 @@ export default function AchievementCard({
 
       {fieldRow('short', '简称', '')}
       {fieldRow('criteria', '判断标准', '做到什么程度算成')}
-      {fieldRow('why', '面试能说', '做完这个，我面试能说什么？')}
+      {/* 两选一：不做成文本行，点一下直接切，切换不留校验也不影响完成 */}
+      <div className="ach__kind">
+        <span className="ach__field-key">类型</span>
+        {(['work', 'life'] as MilestoneKind[]).map(value => {
+          const on = (achievement.kind ?? 'work') === value
+          return (
+            <button
+              key={value}
+              type="button"
+              className={on ? 'ach__kind-pill ach__kind-pill--on' : 'ach__kind-pill'}
+              onClick={() => onUpdate({ kind: value })}
+              aria-pressed={on}
+            >
+              {value === 'work' ? '职业相关' : '个人兴趣'}
+            </button>
+          )
+        })}
+      </div>
+
+      {fieldRow('why', '留下什么', '做完这个，我手里会多出什么（可留空）')}
       {fieldRow('evidence', '证据', '怎么证明做到了')}
 
       {state === 'done' && achievement.doneAt !== undefined && (

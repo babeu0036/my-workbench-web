@@ -12,7 +12,7 @@ import {
   stageRangeText,
   stageStats,
 } from '../lib/stages'
-import type { Achievement, Stage, Todo } from '../lib/types'
+import type { Achievement, MilestoneKind, Stage, Todo } from '../lib/types'
 
 type Props = {
   stages: Stage[]
@@ -27,10 +27,16 @@ type Props = {
   onAddTask: (achievementId: number, text: string, dueDate: string) => void
   onEditTask: (id: number, text: string, dueDate: string) => void
   onRemoveAchievement: (id: number) => void
-  /** 改短名 / 判断标准 / 面试能说 / 证据 */
+  /** 改短名 / 判断标准 / 留下什么 / 证据 / 类型 */
   onUpdateAchievement: (
     id: number,
-    patch: { short?: string; criteria?: string; why?: string; evidence?: string },
+    patch: {
+      short?: string
+      criteria?: string
+      why?: string
+      evidence?: string
+      kind?: MilestoneKind
+    },
   ) => void
   /** 写了证据才能确认完成 */
   onCompleteAchievement: (id: number) => void

@@ -107,6 +107,7 @@ export function applyPresetRoadmap(
     short: item.short,
     criteria: item.criteria,
     why: '',
+    kind: 'work',
     evidence: '',
     status: 'todo',
     ...(firstStageId === undefined ? {} : { stageId: firstStageId }),

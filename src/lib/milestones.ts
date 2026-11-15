@@ -162,3 +162,15 @@ export function milestoneOptions(list: Achievement[], stages: Stage[]): Mileston
     })
     .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, 'zh'))
 }
+
+/**
+ * 首页「已拿下 X / Y 个证据」：只数职业相关（kind !== 'life'）的里程碑。
+ *
+ * 个人兴趣那几条不算 —— 它们是自己的事，不该让「离职业目标还差几块证据」
+ * 这个数字忽高忽低。阶段卡片上的 done/total 仍然把 life 算进去，
+ * 那些卡说的是「这个阶段做了多少事」，不是「对职业有多少用」。
+ */
+export function evidenceStats(list: Achievement[]): { done: number; total: number } {
+  const work = list.filter(item => item.kind !== 'life')
+  return { done: work.filter(item => item.status === 'done').length, total: work.length }
+}
