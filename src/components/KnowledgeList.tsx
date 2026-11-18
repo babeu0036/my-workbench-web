@@ -45,12 +45,18 @@ export default function KnowledgeList({ items, onEdit, onRemove, onPreview }: Pr
               aria-label={`编辑：${item.title}`}
             >
               <span className="krow__head">
-                <span className={`ktag ktag--${item.type}`}>{typeLabel(item.type)}</span>
+                {/* 未分类（type 为空）用另一种淡色标签，跟五类的彩色标签区分开 */}
+                <span className={item.type ? `ktag ktag--${item.type}` : 'ktag ktag--none'}>
+                  {typeLabel(item.type)}
+                </span>
                 <span className="row__text krow__title">{item.title}</span>
               </span>
               {showSummary(item) && <span className="krow__summary">{item.summary}</span>}
-              {/* 收藏来的行业动态只带标题和链接，说明是空的 —— 灰字提示一句，点进正文就能补 */}
-              {!item.summary && <span className="krow__hint">补一句说明</span>}
+              {/* 收藏来的行业动态只带标题和链接，说明是空的 —— 灰字提示一句，点进正文就能补。
+                  一句话速记进来的条目不提示：它本身就是那句话，再催「补一句说明」是废话。 */}
+              {!item.summary && (item.url || item.fileName) && (
+                <span className="krow__hint">补一句说明</span>
+              )}
               {(item.tags ?? []).length > 0 && (
                 <span className="krow__tags">
                   {(item.tags ?? []).map(tag => (

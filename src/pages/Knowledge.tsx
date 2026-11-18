@@ -28,11 +28,17 @@ type Props = {
 }
 
 /**
- * 知识库。自上而下：标题 →（可折叠的行业动态）→ 搜索框 → 类型筛选 → 存储用量 → 列表；
- * 右下角 + 加一条。
+ * 知识库。自上而下：标题 → 一句话速记 →（可折叠的行业动态）→ 搜索框 →
+ * 类型筛选 → 存储用量 → 列表；右下角 + 打开完整面板。
+ *
+ * 顶部那个速记框是这一页的主入口：写一句、回车就存成一条未分类记录
+ * （type 空着），不弹窗、不逼人先想分类。存完清空输入框、飘一句「已记下」；
+ * 当前筛选或搜索看不见这条时，顺手把视图拉回全部 —— 不能让人「已记下」却找不着。
+ * 分类之后在详情里补（面板里「分类」默认就是「先不分类」）。
  *
  * 搜索是即时的：每敲一个字就重算，没有「搜索」按钮。标题、说明、标签、文件名、
- * 类型标签文字都参与。搜索和筛选都只活在内存里，刷新回到「全部」——
+ * 类型标签文字都参与（搜「未分类」也能出未分类的条目）。
+ * 搜索和筛选都只活在内存里，刷新回到「全部」——
  * 不落盘，也避免某天打开发现「记录不见了」其实是筛选没清。
  *
  * 存储用量只统计记录里的 fileSize，按全部记录算，不跟着筛选走；
@@ -40,7 +46,7 @@ type Props = {
  * 所以下面常驻一行说明，省得用户拿它对账。
  *
  * 两种空状态分开写，别混：
- * - 一条都没有：「还没有记录，点右下角添加一条」（点了直接开面板）；
+ * - 一条都没有：「还没有记录…」；
  * - 有记录但筛/搜不出来：「没有匹配的记录」+「清除筛选」。
  *
  * 行业动态：常驻顶部、默认收起，不绑类型筛选。打开页面就检查缓存，
@@ -57,6 +63,8 @@ type Props = {
 export default function KnowledgePage({ items, setItems, feed, setFeed }: Props) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<KnowledgeFilter>('all')
+  const [quick, setQuick] = useState('')
+  const [toast, setToast] = useState('')
   const [panelOpen, setPanelOpen] = useState(false)
   const [editing, setEditing] = useState<Knowledge | null>(null)
   /** 从行业动态收藏进来的那条，打开面板时焦点落在「一句话说明」 */
@@ -69,9 +77,21 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
   const busyRef = useRef(false)
 
   const shown = sortKnowledge(filterKnowledge(items, filter, query))
-  const filters = [{ key: 'all' as const, label: '全部' }, ...KNOWLEDGE_TYPES]
+  // 「未分类」排在五类前面 —— 它是「还没想好」，不是第六种类型
+  const filters = [
+    { key: 'all' as const, label: '全部' },
+    { key: 'unsorted' as const, label: '未分类' },
+    ...KNOWLEDGE_TYPES,
+  ]
   // 用量按**全部记录**算，不跟着筛选和搜索走：删掉的那几条也算进去才诚实
   const usage = storageUsage(items)
+
+  // 轻提示自己消失，不用点关闭
+  useEffect(() => {
+    if (!toast) return
+    const timer = window.setTimeout(() => setToast(''), 2000)
+    return () => window.clearTimeout(timer)
+  }, [toast])
 
   /** 已经收藏过的链接：同一个链接只放一个「收藏」，省得列表里出现两条一样的 */
   const collected = new Set(
@@ -110,6 +130,23 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
   function clearFilter() {
     setQuery('')
     setFilter('all')
+  }
+
+  /**
+   * 顶部速记：写一句 + 回车 = 一条未分类记录（type 空着）。
+   * 空输入不存；存完清空输入框，飘一句「已记下」。
+   */
+  function quickAdd() {
+    const text = quick.trim()
+    if (!text) return
+
+    setItems(list => addKnowledge(list, { title: text, summary: '', type: '' }))
+    setQuick('')
+    // 新记录是未分类的：当前筛选 / 搜索看不见它就把视图拉回来，
+    // 否则「已记下」之后满屏找不到这一条
+    if (filter !== 'all' && filter !== 'unsorted') setFilter('all')
+    if (query.trim()) setQuery('')
+    setToast('已记下')
   }
 
   function addOne(input: KnowledgeInput) {
@@ -155,6 +192,29 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
       <div className="page page--fab">
         <h2 className="page__title">知识库</h2>
 
+        {/* 常驻速记：一句话回车就存，不弹窗、不选分类 */}
+        <div className="kb-quick">
+          <input
+            className="input kb-quick__input"
+            value={quick}
+            onChange={e => setQuick(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') quickAdd()
+            }}
+            placeholder="记一句话，回车保存"
+            aria-label="记一句话"
+            maxLength={100}
+          />
+          <button
+            type="button"
+            className="btn btn--primary kb-quick__btn"
+            onClick={quickAdd}
+            disabled={!quick.trim()}
+          >
+            记下
+          </button>
+        </div>
+
         <FeedPanel
           status={feedStatus}
           items={feed.items}
@@ -198,7 +258,7 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
 
         {items.length === 0 ? (
           <button type="button" className="kb-empty" onClick={() => setPanelOpen(true)}>
-            还没有记录，点右下角添加一条
+            还没有记录，在上面记一句话就好
           </button>
         ) : shown.length === 0 ? (
           <div className="empty-block">
@@ -258,6 +318,13 @@ export default function KnowledgePage({ items, setItems, feed, setFeed }: Props)
           type={preview.fileType}
           onClose={() => setPreview(null)}
         />
+      )}
+
+      {/* 速记存下后的轻提示：2 秒自己消失，不挡点击 */}
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
       )}
     </>
   )

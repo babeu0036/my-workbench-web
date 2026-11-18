@@ -159,7 +159,11 @@ export type LegacyAttachment = {
  */
 export type Knowledge = {
   id: number
-  type: KnowledgeType
+  /**
+   * 五类之一；**空字符串 = 未分类**（一句话速记进来的记录就是这种，之后可以补）。
+   * 五类的取值跟以前完全一样，没有新增类型。
+   */
+  type: KnowledgeType | ''
   title: string
   /** 原始链接。保存时补全协议头，打不开的就不写进来 */
   url?: string

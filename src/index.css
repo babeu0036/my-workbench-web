@@ -2821,6 +2821,22 @@ textarea {
 
 /* ---------- 知识库 ---------- */
 
+/* 顶部速记：一句话输入 + 「记下」按钮；页面本身是 flex column，上下间距由 .page 的 gap 管着 */
+.kb-quick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kb-quick__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.kb-quick__btn {
+  flex: none;
+}
+
 /* 搜索框整行；页面本身是 flex column，上下间距已经由 .page 的 gap 管着 */
 .kb-search {
   width: 100%;
@@ -2916,6 +2932,14 @@ textarea {
 .ktag--exp {
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+/* 未分类：不给颜色，一圈虚线灰边就是「还没归」的意思；用 inset 阴影而不是 border，
+   免得它比旁边五类的标签高出一截、把标题那一行顶歪 */
+.ktag--none {
+  background: transparent;
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 /* 记录行：删除按钮对齐第一行，不要沉到说明下面 */
@@ -3352,39 +3376,56 @@ textarea {
   line-height: 1.5;
 }
 
-/* 类型那一行：平时只看得到判断结果，点「改」才展开胶囊 */
-.typebar {
+/* 「更多」折叠行：链接 / 附件 / 标签平时收着，一行就说得清里面有没有东西 */
+.sheet__more {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.typebar__label {
-  color: var(--muted);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-}
-
-.typebar__note {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.typebar__btn {
-  margin-left: auto;
-  padding: 2px 9px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
+  width: 100%;
+  padding: 8px 2px;
+  border: 0;
+  border-top: 1px solid var(--border);
   background: none;
   color: var(--muted);
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
+  text-align: left;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.typebar__btn:hover {
-  border-color: var(--accent);
+.sheet__more-label {
+  flex: none;
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+/* 收起时提示「已填了什么」，太长就省略，别把「展开」两字挤没 */
+.sheet__more-hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet__more-mark {
+  flex: none;
   color: var(--accent);
+  font-size: 12px;
+}
+
+.sheet__more:hover .sheet__more-mark {
+  text-decoration: underline;
+}
+
+/* 展开后的链接 / 标签 / 附件，间距跟 .sheet 里其它字段一致 */
+.sheet__more-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 /* ---------- 附件预览 ---------- */

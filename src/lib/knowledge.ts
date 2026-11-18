@@ -21,6 +21,9 @@ export const KNOWLEDGE_TYPES: { key: KnowledgeType; label: string }[] = [
   { key: 'exp', label: '经验技巧' },
 ]
 
+/** `type === ''` 的显示名。筛选栏在五类前面也用它 */
+export const UNSORTED_LABEL = '未分类'
+
 const LABELS: Record<KnowledgeType, string> = {
   course: '课程资料',
   contest: '竞赛项目',
@@ -29,8 +32,9 @@ const LABELS: Record<KnowledgeType, string> = {
   exp: '经验技巧',
 }
 
-export function typeLabel(type: KnowledgeType): string {
-  return LABELS[type]
+/** 空字符串也给得出名字（未分类），列表标签和搜索文案都靠它 */
+export function typeLabel(type: KnowledgeType | ''): string {
+  return type === '' ? UNSORTED_LABEL : (LABELS[type] ?? UNSORTED_LABEL)
 }
 
 export function isKnowledgeType(value: unknown): value is KnowledgeType {
@@ -298,8 +302,14 @@ export function normalizeKnowledge(
 
   const knowledge: Knowledge = {
     id,
-    // 老的 material / industry / mine / job / rule 都不能原样留着（会显示成不认识的标签），按内容重判
-    type: isKnowledgeType(item.type) ? item.type : guessType({ title, summary, fileName }),
+    // 空串表示「未分类」，读盘时原样留着；
+    // 老的不认识的值（含早期的 material / industry / mine / job）按内容重判一遍
+    type:
+      item.type === ''
+        ? ''
+        : isKnowledgeType(item.type)
+          ? item.type
+          : guessType({ title, summary, fileName }),
     title: titleFrom({ title, summary, url, fileName }),
     summary,
     // 老记录没有这个键，读盘时统一补成空数组，后面就不用到处判 undefined
@@ -348,9 +358,14 @@ export type KnowledgeInput = {
   file?: KnowledgeFileInput | null
   /** 标签：不传 = 不动（更新时）；传空数组 = 清空 */
   tags?: string[]
-  type: KnowledgeType
+  /** 五类之一；空字符串 = 先不分类 */
+  type: KnowledgeType | ''
 }
 
+/**
+ * 新建一条。`type` 空着就是「未分类」—— 一句话速记不该被逼着挑分类，
+ * 也不再自动猜（猜出来的东西用户没确认过，反而要在详情里改回来）。
+ */
 export function addKnowledge(
   list: Knowledge[],
   input: KnowledgeInput,
@@ -366,7 +381,7 @@ export function addKnowledge(
 
   const knowledge: Knowledge = {
     id: nextId(list, now),
-    type: isKnowledgeType(input.type) ? input.type : guessType({ title, summary, fileName }),
+    type: input.type === '' ? '' : isKnowledgeType(input.type) ? input.type : '',
     title: titleFrom({ title, summary, url, fileName }),
     summary,
     tags: normalizeTags(input.tags),
@@ -383,7 +398,7 @@ export function addKnowledge(
  * 改一条：标题、说明、链接、文件、类型都能改，而且都可以留空 ——
  * 标题空着会自动用文件名 / 网站名 / 说明顶上，所以列表不会出现没标题的行。
  * 四项全清空就整条不动（不许把记录改成没有内容）；
- * type 不合法就当没传，保留原来的；
+ * type 传空字符串 = 改成「未分类」，传不认识的值 = 保留原来的；不传 = 不动；
  * file 传 undefined = 不动，传 null = 清掉，传对象 = 换掉。
  */
 export function updateKnowledge(
@@ -401,7 +416,13 @@ export function updateKnowledge(
     const fileName = file?.name ?? ''
     if (!hasContent({ title, summary, url, fileName })) return item
 
-    const type = isKnowledgeType(patch.type) ? patch.type : item.type
+    // 空串是有效值（补选之后又想放回未分类），不认识的值才忽略
+    const type: KnowledgeType | '' =
+      patch.type === undefined
+        ? item.type
+        : patch.type === '' || isKnowledgeType(patch.type)
+          ? patch.type
+          : item.type
     const next: Knowledge = {
       ...item,
       type,
@@ -427,13 +448,15 @@ export function removeKnowledge(list: Knowledge[], id: number): Knowledge[] {
 
 /* ---------- 读 ---------- */
 
-export type KnowledgeFilter = 'all' | KnowledgeType
+/** `unsorted` = 只看未分类（type 为空字符串） */
+export type KnowledgeFilter = 'all' | 'unsorted' | KnowledgeType
 
 /**
  * 类型筛选 + 搜索一起做。
  *
+ * `unsorted` 不是第六种类型，只是「type 为空」的另一个说法 —— 五类的取值一个没变。
  * 搜索看标题、说明、标签、文件名和**类型标签**（搜「竞赛」能出竞赛项目，
- * 搜「成果档案」也出得来）；链接不参与。忽略大小写、忽略两头空格，空搜索词等于不搜。
+ * 搜「未分类」也出得来）；链接不参与。忽略大小写、忽略两头空格，空搜索词等于不搜。
  */
 export function filterKnowledge(
   list: Knowledge[],
@@ -442,7 +465,11 @@ export function filterKnowledge(
 ): Knowledge[] {
   const keyword = query.trim().toLowerCase()
   return list.filter(item => {
-    if (filter !== 'all' && item.type !== filter) return false
+    if (filter === 'unsorted') {
+      if (item.type !== '') return false
+    } else if (filter !== 'all' && item.type !== filter) {
+      return false
+    }
     if (!keyword) return true
     return (
       item.title.toLowerCase().includes(keyword) ||
