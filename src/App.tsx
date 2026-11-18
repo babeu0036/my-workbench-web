@@ -127,6 +127,11 @@ export default function App() {
   // 「服务于」的选项：每条里程碑 + 它属于哪个阶段。算一次，首页 / 计划 / 科目页共用
   const milestones = milestoneOptions(achievements, stages)
 
+  // 科目页兜底：这个 id 可能已经不存在了（科目被删 / 老数据带过来的），
+  // 拿不到 subject 就不渲染科目页，换一张「没找到 + 返回首页」的卡，不留白屏
+  const subjectOfRoute =
+    route.page === 'subject' ? subjects.find(item => item.id === route.id) : undefined
+
   const navigate = (next: Route) => {
     setRoute(next)
     // 手机上点完任意一项就把抽屉收起来
@@ -234,7 +239,11 @@ export default function App() {
               semesterStart={semesterStart}
               moods={moods}
               setMoods={setMoods}
-              onOpenSubject={id => navigate({ page: 'subject', id })}
+              // 科目不存在（没科目 / 已被删）就不跳：宁可不响应，也别把人送进「没有此科目」的页面
+              onOpenSubject={id => {
+                if (!subjects.some(item => item.id === id)) return
+                navigate({ page: 'subject', id })
+              }}
               onOpenGoal={() => navigate({ page: 'goal' })}
               onOpenPlan={() => navigate({ page: 'plan', seg: 'tasks' })}
             />
@@ -256,15 +265,34 @@ export default function App() {
             />
           )}
 
-          {route.page === 'subject' && (
-            <SubjectPage
-              subject={subjects.find(item => item.id === route.id)}
-              subjects={subjects}
-              todos={mainTodos}
-              setTodos={setTodos}
-              milestones={milestones}
-            />
-          )}
+          {route.page === 'subject' &&
+            (subjectOfRoute ? (
+              <SubjectPage
+                subject={subjectOfRoute}
+                subjects={subjects}
+                todos={mainTodos}
+                setTodos={setTodos}
+                milestones={milestones}
+              />
+            ) : (
+              <div className="page">
+                <h2 className="page__title">科目</h2>
+                <div className="card">
+                  <div className="empty-block">
+                    <p className="empty">没找到这个科目</p>
+                    <p className="meta">它可能已经被删掉了。回首页继续处理今天的任务吧。</p>
+                    <button
+                      type="button"
+                      className="btn btn--primary"
+                      style={{ marginTop: 4 }}
+                      onClick={() => navigate({ page: 'home' })}
+                    >
+                      返回首页
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
 
           {/* 复盘：本周一句话 → 没动的里程碑 → 三句话 → 以前的周 */}
           {route.page === 'review' && (

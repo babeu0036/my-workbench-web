@@ -164,7 +164,14 @@ export default function Home({
 
         <ActiveMilestones rows={active} onOpen={onOpenGoal} />
 
-        <DueSoon items={dueItems} subjects={subjects} onOpenSubject={onOpenSubject} />
+        {/* 点一行 = 打开这条任务的编辑面板，跟「今天的任务」用同一个 state / 面板；
+            只有点行里的科目名才跳科目页 */}
+        <DueSoon
+          items={dueItems}
+          subjects={subjects}
+          onEditTask={id => setEditing(todos.find(todo => todo.id === id) ?? null)}
+          onOpenSubject={onOpenSubject}
+        />
 
         <TodayCourses items={classes} />
 
@@ -224,6 +231,7 @@ export default function Home({
               milestones={milestones}
               onToggle={id => setTodos(list => toggleTodo(list, id))}
               onRemove={id => setTodos(list => removeTodo(list, id))}
+              onEdit={id => setEditing(todos.find(todo => todo.id === id) ?? null)}
             />
           </section>
         )}

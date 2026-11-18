@@ -478,37 +478,81 @@ textarea {
   list-style: none;
 }
 
+/* 一行是普通容器：里面有两颗按钮（科目名 / 行主体），button 不能套 button */
 .alert__row {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
   padding: 7px 0;
-  border: 0;
   border-top: 1px solid var(--border);
-  background: transparent;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .alert__list li:first-child .alert__row {
   border-top: 0;
 }
 
-.alert__row:hover .alert__text {
+/* 行主体 = 任务名 + 截止日期，点了打开编辑面板。把按钮自带的边框、
+   底色、字号全清掉，外观跟原来的整行一模一样，只多一个 hover 提示 */
+.alert__main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.alert__main:hover .alert__text {
   color: var(--accent);
 }
 
+.alert__main:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* 科目名小标签：有科目时是颗按钮（点了跳科目页），
+   找不到科目就是一个灰色「未分类」文本（见 --none），不是按钮 */
 .alert__subject {
   flex: none;
   padding: 1px 7px;
+  border: 0;
   border-radius: 6px;
   background: var(--accent-soft);
   color: var(--accent);
+  font-family: inherit;
   font-size: 12px;
   font-weight: 600;
+}
+
+button.alert__subject {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 只在能点的时候给 hover / focus 反馈，灰字那份不假装可点 */
+button.alert__subject:hover {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+button.alert__subject:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.alert__subject--none {
+  background: none;
+  color: var(--muted);
+  font-weight: 500;
 }
 
 .alert__text {

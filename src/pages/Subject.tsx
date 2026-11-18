@@ -16,7 +16,8 @@ import type { MilestoneOption } from '../lib/milestones'
 import type { Subject, Todo } from '../lib/types'
 
 type Props = {
-  subject: Subject | undefined
+  /** 调用方（App）已经确认这个科目存在，找不到就不渲染这个页面 */
+  subject: Subject
   /** 编辑任务时面板要列全部真科目：这条本来是英语的，也能改成高数 */
   subjects: Subject[]
   todos: Todo[]
@@ -26,9 +27,9 @@ type Props = {
 }
 
 /**
- * 科目详情。英语 / 高数 / C语言 共用这一个组件，靠 id 区分；
- * id 为空的「未分类」也走这一页，逻辑完全一样。
+ * 科目详情。英语 / 高数 / C语言 共用这一个组件，靠 id 区分。
  * 只有任务一件事 —— 原来那个「任务 / 错题」分段已经删了，不再留错题这一层。
+ * 「科目不存在」的兜底在 App 里：这里拿到的一定是个真科目。
  */
 export default function SubjectPage({
   subject,
@@ -38,15 +39,6 @@ export default function SubjectPage({
   milestones,
 }: Props) {
   const [editing, setEditing] = useState<Todo | null>(null)
-
-  if (!subject) {
-    return (
-      <div className="page">
-        <h2 className="page__title">科目</h2>
-        <p className="page__hint">这个科目不存在，可能数据被改过。</p>
-      </div>
-    )
-  }
 
   const mine = forSubject(todos, subject.id)
   // 未分类不是一个可选科目，编辑面板里不能选它
