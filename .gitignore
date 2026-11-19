@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 本地启动器：快捷方式是绑死本机路径的二进制，别进仓库
+*.lnk
+# 脚本里 %SystemDrive% 之类没展开时会在当前目录建出同名文件夹
+/%SystemDrive%/
