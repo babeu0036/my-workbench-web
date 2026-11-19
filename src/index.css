@@ -4768,3 +4768,38 @@ button.alert__subject:focus-visible {
     max-width: 110px;
   }
 }
+
+/* ---------- 手机端排版修正（必须留在文件最后，覆盖前面的旧规则） ---------- */
+
+@media (max-width: 899px) {
+  /* 筛选条固定一行、横向滑动：分类再多也不折行，也就不会出现
+     第二行只剩一两颗、被 flex 顶到右边的「散架」样子。
+     scrollbar-width / ::-webkit-scrollbar 把滚动条藏起来，靠滑动而不是靠看。 */
+  .seg--wrap {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .seg--wrap::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 不参与拉伸，宽度跟着文字走；字号比桌面收一点，一屏能多看两颗 */
+  .seg--wrap .seg__btn {
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+
+  /* 页面名顶栏已经写了一份，正文这份在手机上不再重复。
+     .plan 是计划页自己的容器，不是 .page，所以要单独带上。 */
+  .page > .page__title,
+  .plan > .page__title {
+    display: none;
+  }
+}
